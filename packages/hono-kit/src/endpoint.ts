@@ -323,17 +323,17 @@ type ParamsKeysOf<C extends RouteConfig> = C extends {
   : never;
 
 /**
- * The message shown when the path's `:name` and the keys of request.param disagree.
- * If they disagree, validation always fails at runtime or the value is missing
+ * The message shown when a `:name` in the path is missing from the keys of request.param.
+ * If it is missing, the value is never validated. Extra keys are allowed: they come from the
+ * path the router is mounted at (`.route("/:storeId/menus", router)`), which the endpoint does not see
  */
 type PathMismatch<C extends RouteConfig> = [
-  | Exclude<ParamKeys<C["path"]>, ParamsKeysOf<C>>
-  | Exclude<ParamsKeysOf<C>, ParamKeys<C["path"]>>,
+  Exclude<ParamKeys<C["path"]>, ParamsKeysOf<C>>,
 ] extends [never]
   ? never
-  : `The path params (${ParamKeys<C["path"]>}) do not match the keys of request.param (${ParamsKeysOf<C>})`;
+  : `The path params (${ParamKeys<C["path"]>}) are missing from the keys of request.param (${ParamsKeysOf<C>})`;
 
-/** The type of a declaration (config). A mismatch between path and request.param is underlined */
+/** The type of a declaration (config). A path param missing from request.param is underlined */
 export type EndpointConfig<C extends RouteConfig> = C &
   ([PathMismatch<C>] extends [never]
     ? unknown

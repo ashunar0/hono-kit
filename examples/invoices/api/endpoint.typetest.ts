@@ -33,6 +33,19 @@ export const mismatched = createRouter().endpoint(
   async (_c, reply) => reply(200, { ok: true }),
 );
 
+// 親のパスにある param（:storeId）は、子の path に無くても request.param に書いてよい。
+// router は .route("/stores/:storeId/closed-dates", router) で入れ子にマウントされる
+export const nested = createRouter().endpoint(
+  {
+    method: "get",
+    path: "/:date",
+    middleware: [allowAnonymous],
+    request: { param: z.object({ storeId: z.string(), date: z.string() }) },
+    responses: { 200: ok },
+  },
+  async (_c, reply) => reply(200, { ok: true }),
+);
+
 // 宣言していない入力は読めない（json を宣言していないのに valid("json") を呼ぶ）
 export const undeclared = createRouter().endpoint(
   {
