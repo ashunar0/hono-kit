@@ -139,7 +139,7 @@ export const KIND_HINTS = {
 export const NOTES = {
   webhook: "actor（システム）は `allowSystem` から受け取る",
   errors:
-    "入口だけの失敗（webhook の署名など）。モノの失敗は domain.ts に Failure として置く。どの module でも同じ意味のもの（401・403・404）は hnk の標準（NotFound など）を使う",
+    "入口だけの失敗（webhook の署名など）。モノの失敗は domain.ts に Failure として置く。どの module でも同じ意味のもの（401・403・404）は hono-kit の標準（NotFound など）を使う",
   cron: "deps・actor・now は createWorker が渡す",
   repo: "他 module の repo からは外部キーの表（〜Table）と読ませる窓口（〜Within）だけ、他 module の domain は SQL の定数と型だけ",
 };
