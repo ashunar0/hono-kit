@@ -63,7 +63,7 @@ export default {
         context.report({
           node: propOf(config, "path"),
           message:
-            "一覧の route に件数の上限が無い。query を pageQuerySchema(絞り込みのスキーマ) で包む（応答は pageResponseSchema と pageResponse）。query のスキーマは同じファイルに置く。件数が別の所で決まっているなら、この行の上に `// oxlint-disable-next-line hnk/route-lists-are-paged -- 理由` を書く",
+            "This list route has no limit. Wrap query in pageQuerySchema(filterSchema) (respond with pageResponseSchema and pageResponse). Keep the query schema in the same file. If the size is bounded elsewhere, put `// oxlint-disable-next-line hnk/route-lists-are-paged -- reason` above this line",
         });
       },
     };

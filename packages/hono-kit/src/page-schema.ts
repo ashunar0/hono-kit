@@ -39,7 +39,7 @@ type QueryValue = string | string[] | undefined;
 type PageQueryInput = { cursor?: string; limit?: string };
 type PageQueryOutput = { cursor?: Cursor; limit: number };
 
-const LIMIT_MESSAGE = `limit は 1 から ${PAGE_LIMIT.max} の整数で指定してください`;
+const LIMIT_MESSAGE = `limit must be an integer from 1 to ${PAGE_LIMIT.max}`;
 
 /**
  * 一覧の query。絞り込みのスキーマを包み、cursor と limit を足す。
@@ -72,7 +72,7 @@ export function pageQuerySchema(
           : typeof cursor === "string"
             ? decodeCursor(cursor)
             : null;
-      if (after === null) return issue("cursor が正しくありません");
+      if (after === null) return issue("Invalid cursor");
 
       const count = limit === undefined ? PAGE_LIMIT.default : Number(limit);
       if (
@@ -103,7 +103,7 @@ export function pageQuerySchema(
           ...(base.properties as Record<string, unknown>),
           cursor: {
             type: "string",
-            description: "続きを読む位置。前の応答の nextCursor",
+            description: "Where to continue from: nextCursor of the previous response",
           },
           limit: {
             type: "integer",
@@ -127,9 +127,9 @@ export const pageResponseSchema = <T extends StandardSchema<any, any>>(
     async (value) => {
       const { items, nextCursor } = (value ?? {}) as Partial<PageBody<unknown>>;
       if (!Array.isArray(items) || items.length > PAGE_LIMIT.max)
-        return issue(`items は ${PAGE_LIMIT.max} 件までの配列です`);
+        return issue(`items must be an array of at most ${PAGE_LIMIT.max} entries`);
       if (nextCursor !== null && typeof nextCursor !== "string")
-        return issue("nextCursor は文字列か null です");
+        return issue("nextCursor must be a string or null");
 
       const checked: InferOutput<T>[] = [];
       for (const each of items) {

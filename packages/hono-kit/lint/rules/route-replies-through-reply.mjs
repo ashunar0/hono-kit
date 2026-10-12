@@ -21,7 +21,7 @@ export default {
         if (!RESPONSE_METHODS.has(method)) return;
         context.report({
           node,
-          message: `c.${method}() ではなく reply で返す。reply(200, body) か reply.failure(error)`,
+          message: `Return with reply instead of c.${method}(): reply(200, body) or reply.failure(error)`,
         });
       },
     };

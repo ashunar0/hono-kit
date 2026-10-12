@@ -1,6 +1,6 @@
 declare global {
   interface Env {
-    /** vitest.config.ts が渡す、マイグレーションの中身 */
+    /** The migrations, passed in by vitest.config.ts */
     TEST_MIGRATIONS: import("cloudflare:test").D1Migration[];
   }
 }

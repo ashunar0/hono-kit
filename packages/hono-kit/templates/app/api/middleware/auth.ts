@@ -5,10 +5,10 @@ import type { User } from "../modules/users/domain";
 import { fail, guard, Unauthorized } from "hono-kit";
 
 /**
- * セッションの利用者を文脈に積む。未ログインでも通す。
+ * Sets the session user in the context. Lets signed-out requests through.
  *
- * TODO: modules/auth/ が cookie のセッションを解いて返すようになったら、
- * その結果を積む。認証提供元がまだ無いあいだは常に null
+ * TODO: once modules/auth/ decodes the cookie session,
+ * set its result here. Until there is an auth provider, this is always null
  */
 export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
   c.set("user", null);
@@ -16,9 +16,9 @@ export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 /**
- * ログインを要求する。.endpoint の middleware に置くと、その先の handler で
- * actor（誰として操作するか）が User になる（user は null を含んだまま）。
- * Unauthorized は responses に自動で足される
+ * Requires sign-in. Put it in .endpoint middleware and, in the handler after it,
+ * actor (who is acting) becomes a User (user itself still includes null).
+ * Unauthorized is added to responses automatically
  */
 export const requireAuth = guard(
   [Unauthorized],
@@ -34,10 +34,10 @@ export const requireAuth = guard(
 );
 
 /**
- * 認証を要求しないことを明示する。何もしない。
+ * Says explicitly that no auth is required. Does nothing.
  *
- * 置く意味は、opener の認証の引数を必ず 1 つにすること。書き忘れと「公開したい」が
- * 「書いていない」という同じ姿で現れるのを分ける。grep すればこのアプリの
- * 無認証エンドポイントが列挙できる
+ * It exists so every endpoint declares exactly one auth guard. It separates forgetting from
+ * "meant to be public", which would otherwise look the same. grep it to list
+ * every unauthenticated endpoint in this app
  */
 export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();

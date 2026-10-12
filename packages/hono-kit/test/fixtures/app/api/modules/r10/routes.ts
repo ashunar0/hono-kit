@@ -1,6 +1,6 @@
-// expect: hnk(route-lists-are-paged) | 一覧の route に件数の上限が無い
-// expect: hnk(route-lists-are-paged) | 一覧の route に件数の上限が無い
-// expect: hnk(route-lists-are-paged) | 一覧の route に件数の上限が無い
+// expect: hnk(route-lists-are-paged) | This list route has no limit
+// expect: hnk(route-lists-are-paged) | This list route has no limit
+// expect: hnk(route-lists-are-paged) | This list route has no limit
 import { createRouter } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
 import { importedQuery } from "./domain";

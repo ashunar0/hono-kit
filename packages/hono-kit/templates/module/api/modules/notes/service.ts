@@ -1,5 +1,5 @@
 /**
- * notes の手順（How）。domain のモノを使って、何をどの順でやるか
+ * The steps for notes (How). What to do with the domain thing, in what order
  */
 import { err, ok, type Result } from "hono-kit/result";
 import { NotFound } from "hono-kit/failures";
@@ -15,37 +15,37 @@ import {
   type NoteReach,
 } from "./domain";
 
-/** 一覧の 1 ページ。位置は更新の新しい順（updatedAt と id）で決まる */
+/** One page of the list. Position is by most recently updated (updatedAt and id) */
 export type NotePage = Page<Note>;
 
 /**
- * 手順が必要とする保存の形。使う側のここで宣言し、repo.d1.ts がそれを満たす。
- * service は保存の実装を知らないので、テストでは同じ形の偽物を渡せる
+ * The storage shape the steps need. Declared here, by the user of it; repo.d1.ts fulfills it.
+ * service does not know the storage implementation, so tests can pass a stand-in of the same shape
  */
 export type NotesRepository = {
-  /** 範囲の中のものを、更新の新しい順に 1 ページ */
+  /** One page within the reach, most recently updated first */
   listWithin(reach: NoteReach, query: PageQuery): Promise<NotePage>;
-  /** 範囲の中に無ければ null */
+  /** null if not within the reach */
   findWithin(id: NoteId, reach: NoteReach): Promise<Note | null>;
   insert(note: Note): Promise<Note>;
-  /** 範囲の中のものだけを書き換える。無ければ null */
+  /** Updates only within the reach. null if absent */
   updateWithin(id: NoteId, reach: NoteReach, changes: NoteChanges): Promise<Note | null>;
-  /** 範囲の中のものだけを消す。消せたら true */
+  /** Deletes only within the reach. true if deleted */
   deleteWithin(id: NoteId, reach: NoteReach): Promise<boolean>;
 };
 
 /**
- * 引数の順番は、誰として（actor）→ 何を → どうする → いつ（now）。
- * 時計は読まない。時刻が要る手順は、入口が決めた now を受け取る
+ * Argument order: as whom (actor) → what → how → when (now).
+ * It never reads the clock. Steps that need time take the now decided by the entry point
  */
 export function notesService(repo: NotesRepository) {
   return {
-    /** 一覧。触れる範囲のものだけ、更新の新しい順 */
+    /** List. Only what is within reach, most recently updated first */
     async list(actor: Actor, query: PageQuery): Promise<NotePage> {
       return repo.listWithin(reachOf(actor), query);
     },
 
-    /** 範囲の外のものは、在ることも知らせない */
+    /** Anything outside the reach is not even revealed to exist */
     async get(actor: Actor, id: NoteId): Promise<Result<Note, typeof NotFound.code>> {
       const found = await repo.findWithin(id, reachOf(actor));
       if (found === null) return err(NotFound.code);
@@ -53,7 +53,7 @@ export function notesService(repo: NotesRepository) {
       return ok(found);
     },
 
-    /** 作成。作った人が所有者になる */
+    /** Create. The creator becomes the owner */
     async create(actor: User, input: NoteInput, now: Date): Promise<Note> {
       return repo.insert({
         id: newNoteId(),
@@ -66,7 +66,7 @@ export function notesService(repo: NotesRepository) {
       });
     },
 
-    /** 書き換えられるのは、範囲の中のものだけ */
+    /** Only what is within reach can be updated */
     async update(
       actor: Actor,
       id: NoteId,
@@ -80,7 +80,7 @@ export function notesService(repo: NotesRepository) {
       return ok(updated);
     },
 
-    /** 消せるのは、範囲の中のものだけ */
+    /** Only what is within reach can be deleted */
     async remove(actor: Actor, id: NoteId): Promise<Result<void, typeof NotFound.code>> {
       const deleted = await repo.deleteWithin(id, reachOf(actor));
       if (!deleted) return err(NotFound.code);

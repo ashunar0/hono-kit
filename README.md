@@ -27,9 +27,9 @@ An app is split into modules by noun (`invoices`, `posts`, ...). Each module has
 
 | Side         | What it is                                                     | Files                        |
 | ------------ | -------------------------------------------------------------- | ---------------------------- |
-| **core**     | What the thing is and what it can do. Knows nothing outside.  | domain, service, commands    |
+| **core**     | What the thing is and what it can do. Knows nothing outside.   | domain, service, commands    |
 | **inbound**  | Called from outside. Decides who is acting and calls the core. | routes, webhook, cron, queue |
-| **outbound** | Goes outside. Fulfills the shapes the core declares.          | repo, gateway, mailer, jobs  |
+| **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs  |
 
 Every module starts with four files:
 
@@ -101,16 +101,39 @@ async update(actor: Actor, id: PostId, input: PostInput, now: Date): Promise<Res
 
 Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 
-| Rule                           | Stops                                                               |
-| ------------------------------ | ------------------------------------------------------------------- |
-| `layer-imports`                | Imports that break the direction of the arrows, per file role       |
-| `route-declares-auth`          | Endpoints that do not declare who may call them                     |
-| `route-replies-through-reply`  | `c.json` that bypasses the `responses` contract                     |
-| `route-lists-are-paged`        | List endpoints without a page limit                                 |
-| `no-clock-outside-inbound`     | `new Date()` / `Date.now()` in core and outbound                    |
-| `no-foreign-table-reads`       | Reading another module's table directly                             |
-| `no-id-cast`                   | Branding IDs with `as`                                              |
-| `no-module-scope-state`        | Mutable state at module scope                                       |
+| Rule                          | Stops                                                         |
+| ----------------------------- | ------------------------------------------------------------- |
+| `layer-imports`               | Imports that break the direction of the arrows, per file role |
+| `route-declares-auth`         | Endpoints that do not declare who may call them               |
+| `route-replies-through-reply` | `c.json` that bypasses the `responses` contract               |
+| `route-lists-are-paged`       | List endpoints without a page limit                           |
+| `no-clock-outside-inbound`    | `new Date()` / `Date.now()` in core and outbound              |
+| `no-foreign-table-reads`      | Reading another module's table directly                       |
+| `no-id-cast`                  | Branding IDs with `as`                                        |
+| `no-module-scope-state`       | Mutable state at module scope                                 |
+
+### Who may import what
+
+Each file in a module is classified by its name prefix (its role). `layer-imports` allows only the imports below; everything else is an error.
+
+<!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
+
+| Side     | Role     | May import                                                                                                                                                                                                                                                                               |
+| -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| core     | domain   | zod, hono-kit/system (types only), hono-kit/failures (types only), another module's domain (types only)                                                                                                                                                                                  |
+| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), domain, another module's domain (types only)                                                                                                                                               |
+| core     | commands | hono-kit/result, hono-kit/failures, hono-kit/system (types only), domain, service (types only), another module's domain (types only)                                                                                                                                                     |
+| inbound  | routes   | hono-kit, zod, errors, middleware, domain                                                                                                                                                                                                                                                |
+| inbound  | webhook  | hono-kit, zod, errors, middleware, domain. actor (the system) comes from `allowSystem`                                                                                                                                                                                                   |
+| inbound  | errors   | hono-kit. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                        |
+| inbound  | cron     | hono-kit (types only), domain (types only). createWorker passes deps, actor and now                                                                                                                                                                                                      |
+| inbound  | queue    | hono-kit (types only), domain (types only)                                                                                                                                                                                                                                               |
+| outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, domain, service (types only), another module's repo, another module's domain. From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types |
+| outbound | gateway  | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
+| outbound | mailer   | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
+| outbound | jobs     | domain (types only), service (types only)                                                                                                                                                                                                                                                |
+
+<!-- layers:end -->
 
 ## `pnpm check`
 

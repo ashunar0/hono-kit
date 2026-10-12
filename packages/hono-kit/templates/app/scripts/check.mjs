@@ -1,6 +1,6 @@
 /**
- * pnpm check。全部の確認を順に回し、途中で落ちても止めずに、最後に失敗を一覧で出す。
- * 型が落ちたときに lint の指摘が見えない、を避けるため（直せる量が分からなくなる）
+ * pnpm check. Runs every check in order, keeps going when one fails, and lists the failures at the end.
+ * So a type error does not hide the lint findings (you would not know how much there is to fix)
  */
 import { spawnSync } from "node:child_process";
 
@@ -19,7 +19,7 @@ for (const [name, [command, ...args]] of steps) {
 }
 
 if (failed.length > 0) {
-  console.error(`\n失敗: ${failed.join(", ")}`);
+  console.error(`\nFailed: ${failed.join(", ")}`);
   process.exit(1);
 }
-console.log("\n全部通った");
+console.log("\nAll checks passed");

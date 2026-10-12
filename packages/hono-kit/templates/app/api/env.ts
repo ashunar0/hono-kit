@@ -1,8 +1,8 @@
 import type { User } from "./modules/users/domain";
 
-/** withUser が積む文脈変数。ハンドラ側で書き写さないための単一定義 */
+/** Context variables set by withUser. Defined once so handlers do not copy them */
 export type AuthVariables = {
-  /** セッションの利用者。ログインしていなければ null。handler は読まず、guard が actor に決める */
+  /** The session user, or null when signed out. Handlers do not read it; the guard turns it into actor */
   user: User | null;
 };
 

@@ -195,24 +195,7 @@ routes（利用者の HTTP）には再送が無いので、routes から変え�
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の inbound（routes と webhook）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。どこでも、モジュールの一番上に変わる状態を置かない。
   他 module の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、core と outbound で時計を読まない（`no-clock-outside-inbound`）、上限の無い一覧を書かない（`route-lists-are-paged`）も、lint で止める
 
-<!-- layers:start（packages/hono-kit/lint/layers.mjs から生成。直接は書き換えない） -->
-
-| 側       | 役割     | import してよいもの                                                                                                                                                                                                                             |
-| -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| core     | domain   | zod, hono-kit/system（型だけ）, hono-kit/failures（型だけ）, 他 module の domain（型だけ）                                                                                                                                                      |
-| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page（型だけ）, hono-kit/system（型だけ）, domain, 他 module の domain（型だけ）                                                                                                                   |
-| core     | commands | hono-kit/result, hono-kit/failures, hono-kit/system（型だけ）, domain, service（型だけ）, 他 module の domain（型だけ）                                                                                                                         |
-| inbound  | routes   | hono-kit, zod, errors, middleware, domain                                                                                                                                                                                                       |
-| inbound  | webhook  | hono-kit, zod, errors, middleware, domain。actor（システム）は `allowSystem` から受け取る                                                                                                                                                       |
-| inbound  | errors   | hono-kit。入口だけの失敗（webhook の署名など）。モノの失敗は domain.ts に Failure として置く。どの module でも同じ意味のもの（401・403・404）は hono-kit の標準（NotFound など）を使う                                                          |
-| inbound  | cron     | hono-kit（型だけ）, domain（型だけ）。deps・actor・now は createWorker が渡す                                                                                                                                                                   |
-| inbound  | queue    | hono-kit（型だけ）, domain（型だけ）                                                                                                                                                                                                            |
-| outbound | repo     | drizzle-orm, hono-kit/page, db（型だけ）, dbErrors, domain, service（型だけ）, 他 module の repo, 他 module の domain。他 module の repo からは外部キーの表（〜Table）と読ませる窓口（〜Within）だけ、他 module の domain は SQL の定数と型だけ |
-| outbound | gateway  | hono-kit/result, domain（型だけ）, service（型だけ）                                                                                                                                                                                            |
-| outbound | mailer   | hono-kit/result, domain（型だけ）, service（型だけ）                                                                                                                                                                                            |
-| outbound | jobs     | domain（型だけ）, service（型だけ）                                                                                                                                                                                                             |
-
-<!-- layers:end -->
+役割ごとに import してよい相手の表は、英語の [README の「Who may import what」](README.md#who-may-import-what) にある（`packages/hono-kit/lint/layers.mjs` から生成）。
 
 - **名前は Hono に合わせて `create〜`**。束は `invoicesRouter`
 - **一覧のページ送りは hono-kit の部品**（`hono-kit/page` と `pageQuerySchema` / `pageResponseSchema` / `pageResponse`）。

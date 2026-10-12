@@ -1,4 +1,4 @@
-// expect: hnk(layer-imports) | service が routes を import している。service は HTTP を知らない
+// expect: hnk(layer-imports) | service imports routes. service does not know HTTP
 import { r } from "./routes";
 
 export const s = r;

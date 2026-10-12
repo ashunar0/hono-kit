@@ -58,7 +58,7 @@ export default {
           ) {
             context.report({
               node,
-              message: `他の module の表 ${node.name} を読みに使っている。表は外部キーの references() の中でだけ使う。読むときは ${tables.get(node.name)} が出している範囲付きの読み（〜Within）を使う`,
+              message: `Reads another module's table ${node.name}. Use tables only inside foreign-key references(). To read, use the scoped read (…Within) that ${tables.get(node.name)} exports`,
             });
           }
           for (const [key, value] of Object.entries(node)) {

@@ -61,7 +61,7 @@ const write = (file, text) => {
 const insertAbove = (file, marker, lines) => {
   const source = fs.readFileSync(file, "utf8").split("\n");
   const at = source.findIndex((line) => line.trim() === `// hnk:${marker}`);
-  if (at < 0) die(`${file} に // hnk:${marker} の行が無い。生成器がつなげない`);
+  if (at < 0) die(`${file} has no // hnk:${marker} line, so the generator cannot wire the module`);
 
   const indent = source[at].match(/^\s*/)[0];
   const fresh = lines.filter((line) => !source.some((s) => s.trim() === line.trim()));
@@ -72,9 +72,9 @@ const insertAbove = (file, marker, lines) => {
 // ---- init ----
 
 const init = (target) => {
-  if (!target) die("使い方: hnk init <dir>");
+  if (!target) die("Usage: hnk init <dir>");
   const dir = path.resolve(target);
-  if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0) die(`${dir} は空ではない`);
+  if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0) die(`${dir} is not empty`);
 
   fs.mkdirSync(dir, { recursive: true });
   const appName = path.basename(dir);
@@ -91,21 +91,21 @@ const init = (target) => {
     write(path.join(dir, file === "gitignore" ? ".gitignore" : file), text);
   }
 
-  console.log(`✓ ${dir} に土台を出した`);
+  console.log(`✓ Created an app in ${dir}`);
   console.log(`  cd ${target} && pnpm install && pnpm check`);
-  console.log("  module を足す: pnpm hnk g module <複数形の名前>");
+  console.log("  Add a module: pnpm hnk g module <plural name>");
 };
 
 // ---- g module ----
 
 const generateModule = (plural) => {
   if (!plural || !/^[a-z][a-zA-Z0-9]*$/.test(plural)) {
-    die("使い方: hnk g module <name>（camelCase の複数形。例: invoices、signupRequests）");
+    die("Usage: hnk g module <name> (plural camelCase, e.g. invoices, signupRequests)");
   }
   if (!fs.existsSync("api/deps.ts") || !fs.existsSync("api/index.ts")) {
-    die("アプリのルート（api/deps.ts がある所）で実行する");
+    die("Run this at the app root (where api/deps.ts is)");
   }
-  if (fs.existsSync(`api/modules/${plural}`)) die(`api/modules/${plural} は既にある`);
+  if (fs.existsSync(`api/modules/${plural}`)) die(`api/modules/${plural} already exists`);
 
   const from = path.join(root, "templates/module");
   for (const file of listFiles(from)) {
@@ -134,7 +134,7 @@ const generateModule = (plural) => {
   insertAbove(index, "imports", [`import { ${plural}Router } from "./modules/${plural}/routes";`]);
   insertAbove(index, "routes", [`.route("/${kebab(plural)}", ${plural}Router)`]);
 
-  console.log(`✓ api/modules/${plural}/ を足し、deps.ts と index.ts につないだ（${one} 1 件の CRUD）`);
+  console.log(`✓ Added api/modules/${plural}/ and wired it into deps.ts and index.ts (CRUD for ${one})`);
   console.log("  pnpm db:generate && pnpm exec prettier --write . && pnpm check");
 };
 
@@ -144,4 +144,4 @@ const [command, ...args] = process.argv.slice(2);
 
 if (command === "init") init(args[0]);
 else if (command === "g" && args[0] === "module") generateModule(args[1]);
-else die("使い方: hnk init <dir> / hnk g module <name>");
+else die("Usage: hnk init <dir> / hnk g module <name>");

@@ -24,17 +24,17 @@ export type Failure<
 export const Unauthorized = {
   code: "UNAUTHORIZED",
   kind: "unauthenticated",
-  message: "ログインが必要です",
+  message: "Authentication required",
 } as const;
 
 export const NotFound = {
   code: "NOT_FOUND",
   kind: "notFound",
-  message: "対象が見つかりません",
+  message: "Not found",
 } as const;
 
 export const Forbidden = {
   code: "FORBIDDEN",
   kind: "forbidden",
-  message: "この操作は許可されていません",
+  message: "This operation is not allowed",
 } as const;

@@ -21,7 +21,7 @@ export default {
           if (declaration.kind !== "const") {
             context.report({
               node: declaration,
-              message: `モジュールの一番上の ${declaration.kind}。同時リクエストで共有されるので、変わる値は置かない`,
+              message: `${declaration.kind} at module scope. It is shared across concurrent requests, so do not keep changing values here`,
             });
             continue;
           }
@@ -33,7 +33,7 @@ export default {
             ) {
               context.report({
                 node: declarator,
-                message: `モジュールの一番上の new ${init.callee.name}()。同時リクエストで共有されるので、中身が変わる入れ物は置かない`,
+                message: `new ${init.callee.name}() at module scope. It is shared across concurrent requests, so do not keep mutable containers here`,
               });
             }
           }

@@ -7,9 +7,9 @@ import { withUser } from "./middleware/auth";
 // hnk:imports
 
 /**
- * アプリを組み立てる。依存の組み立て方と、ログイン状態の決め方を外から受け取るので、
- * 本番は makeDeps と withUser を、テストは偽物を渡す。
- * authenticate はセッションの user（ログインしていなければ null）を文脈に積む middleware。認証の提供元を差し込む場所
+ * Builds the app. It takes how to build deps and how to decide the signed-in user from outside, so
+ * production passes makeDeps and withUser, and tests pass stand-ins.
+ * authenticate is the middleware that sets the session user (null when signed out). This is where an auth provider plugs in
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
@@ -21,7 +21,7 @@ export const buildApp = (
     // hnk:routes
     .onError(onError);
 
-  // 登録された route の宣言から作る。リクエストのたびに読むので、登録の順番に関係しない
+  // Built from the registered route declarations. Read on every request, so registration order does not matter
   app.get("/openapi.json", (c) =>
     c.json(openapiDocument(app, { title: "__APP_NAME__", version: "0.0.0" })),
   );
@@ -34,8 +34,8 @@ export type ApiApp = ReturnType<typeof buildApp>;
 const app = buildApp(makeDeps);
 
 /**
- * Workers の入口。HTTP は app に渡す。
- * cron やキューを足すときは、scheduled / queue をここに渡す。依存の組み立て、actor（システム）、now、
- * ack と retry は createWorker が受け持つ
+ * The Workers entry point. HTTP goes to app.
+ * To add cron or a queue, pass scheduled / queue here. Building deps, the actor (the system), now,
+ * ack and retry are handled by createWorker
  */
 export default createWorker({ makeDeps, fetch: app.fetch });

@@ -81,7 +81,7 @@ const errorSchema = <K extends string>(codes: readonly K[]) =>
         typeof error?.message !== "string" ||
         !(codes as readonly string[]).includes(error.code)
       )
-        return issue(`error.code は ${codes.join(" / ")} のどれかです`);
+        return issue(`error.code must be one of ${codes.join(" / ")}`);
 
       return { value: value as ErrorBody<K> };
     },
@@ -265,7 +265,7 @@ type DeclaredFailure<R extends RouteConfig> = R extends {
  * ここを `never` にすると、赤線の理由が読めなくなる
  */
 type NoFailureDeclared =
-  "この route には、手で書いた失敗の宣言が無い。responses に ...errorResponses(NotFound など) を足す";
+  "This route declares no domain failures. Add ...errorResponses(NotFound, ...) to responses";
 
 /** 失敗のコードごとに、宣言したステータスの応答を返す。「404 なら NOT_FOUND」の対応を型に残す */
 type FailureResponse<R extends RouteConfig, K> = {
@@ -331,13 +331,13 @@ type PathMismatch<C extends RouteConfig> = [
   | Exclude<ParamsKeysOf<C>, ParamKeys<C["path"]>>,
 ] extends [never]
   ? never
-  : `path のパラメータ（${ParamKeys<C["path"]>}）と request.param のキー（${ParamsKeysOf<C>}）が合っていない`;
+  : `The path params (${ParamKeys<C["path"]>}) do not match the keys of request.param (${ParamsKeysOf<C>})`;
 
 /** 宣言（config）の型。path と request.param が食い違っていれば、その旨の赤線が出る */
 export type EndpointConfig<C extends RouteConfig> = C &
   ([PathMismatch<C>] extends [never]
     ? unknown
-    : { readonly "path と request.param が合っていない": PathMismatch<C> });
+    : { readonly "path and request.param do not match": PathMismatch<C> });
 
 /** hc の応答の型などに使う、自動の失敗を足した後の宣言の型 */
 export type BuiltRoute<C extends RouteConfig> = Built<C>;
@@ -376,7 +376,7 @@ export const buildEndpoint = <const C extends RouteConfig>(
       (() => RegisteredDeps) | undefined;
     if (resolve === undefined)
       throw new Error(
-        'provideDeps が use されていない。app.use("*", provideDeps(makeDeps))',
+        'provideDeps is not installed. Add app.use("*", provideDeps(makeDeps))',
       );
     const deps = resolve();
 

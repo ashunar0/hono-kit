@@ -1,29 +1,29 @@
 /**
- * note というモノ。何であって、どんなルールを持つか（What）。
- * 手順も HTTP も DB も知らない。他のファイルは全部ここに向かう
+ * The note. What it is and which rules it has (What).
+ * It knows no steps, HTTP or DB. Every other file points here
  */
 import { z } from "zod";
 import type { Actor, OrgId, UserId } from "../users/domain";
 
 /**
- * note の ID。ただの string と区別するための印。
- * 他の ID（利用者、組織）と取り違えると型エラーになる。印を付けられるのは下の noteId だけ
+ * The note ID. A brand to tell it apart from a plain string.
+ * Mixing it up with other IDs (user, organization) is a type error. Only noteId below may apply the brand
  */
 declare const noteIdBrand: unique symbol;
 
 export type NoteId = string & { readonly [noteIdBrand]: true };
 
-/** 外から来た文字列、または DB から読んだ文字列に、note の ID の印を付ける。`as` を書くのはここだけ */
+/** Brands a string from outside or from the DB as a note ID. The only place that writes `as` */
 export const noteId = (value: string) => value as NoteId;
 
 export const newNoteId = () => noteId(crypto.randomUUID());
 
-/** 入力（URL やボディ）の ID。検査を通ると印が付く */
+/** An ID in the input (URL or body). Branded once it passes validation */
 export const noteIdSchema = z.string().min(1).transform(noteId);
 
 export type Note = {
   id: NoteId;
-  /** 属する組織。作った人の組織で、変わらない */
+  /** The organization. The creator's, and it never changes */
   orgId: OrgId;
   ownerId: UserId;
   title: string;
@@ -33,33 +33,33 @@ export type Note = {
 };
 
 /**
- * ルール。フロントのフォームもここを使う。
- * 検査を通った値にだけ NoteInput の印が付く。service はこの型しか受け取らないので、
- * どの入口から呼んでも、検査を飛ばして保存することが書けない
+ * Rules. Frontend forms use these too.
+ * Only validated values carry the NoteInput brand. service accepts only this type, so
+ * no entry point can skip validation and save
  */
 export const noteInputSchema = z
   .object({
-    title: z.string().trim().min(1, "タイトルを入力してください").max(100, "タイトルは100文字以内です"),
-    body: z.string().trim().min(1, "本文を入力してください").max(20000, "本文は20000文字以内です"),
+    title: z.string().trim().min(1, "Title is required").max(100, "Title must be at most 100 characters"),
+    body: z.string().trim().min(1, "Body is required").max(20000, "Body must be at most 20000 characters"),
   })
   .brand<"NoteInput">();
 
-/** 作成・更新で受け取る値。検査済みの印付き */
+/** The value received on create and update. Validated and branded */
 export type NoteInput = z.infer<typeof noteInputSchema>;
 
-/** 書き換えてよいもの。id や ownerId は変えられない */
+/** What may be changed. id and ownerId cannot */
 export type NoteChanges = Partial<Pick<Note, "title" | "body">> & Pick<Note, "updatedAt">;
 
 /**
- * 操作する人が触れる notes の範囲。どの範囲も、組織をまたがない（all を除く）。
- * member は自分のものだけ
+ * Which notes the actor may touch. No reach crosses organizations (except all).
+ * A member reaches only their own
  */
 export type NoteReach =
   | { kind: "all" }
   | { kind: "org"; orgId: OrgId }
   | { kind: "member"; orgId: OrgId; userId: UserId };
 
-/** システムは全組織に、admin は自分の組織の全員のものに、member は自分のものに触れる */
+/** The system reaches every organization, an admin everything in their organization, a member only their own */
 export const reachOf = (actor: Actor): NoteReach => {
   if (actor.kind === "system") return { kind: "all" };
   if (actor.role === "admin") return { kind: "org", orgId: actor.orgId };

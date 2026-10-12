@@ -1,9 +1,9 @@
 /**
- * 本物のプロジェクトでは `pnpm wrangler types` が生成できる。
- * 束縛（D1、キュー、secret など）を wrangler.jsonc に足したら、ここにも足す
+ * In a real project, `pnpm wrangler types` can generate this.
+ * When you add a binding (D1, queue, secret, ...) to wrangler.jsonc, add it here too
  */
 declare global {
-  // cloudflare:workers の env は Cloudflare.Env 型なので、このアプリの Env とつなぐ
+  // env from cloudflare:workers is typed as Cloudflare.Env, so connect it to this app's Env
   namespace Cloudflare {
     interface Env extends globalThis.Env {}
   }

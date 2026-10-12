@@ -98,38 +98,38 @@ export const LAYERS = {
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
-  "domain→service": "domain はモノとルールだけ。手順は service に置く",
+  "domain→service": "domain holds only the thing and its rules. Put steps in service",
   "domain→hono-kit/result":
-    "domain は失敗を返す手順を持たない。手順は service に置く",
+    "domain has no steps that return failures. Put steps in service",
   "service→routes":
-    "service は HTTP を知らない。失敗は Result のコードで返し、番号は routes が決める",
+    "service does not know HTTP. Return failures as Result codes; routes decides the status",
   "service→hono-kit":
-    "service が hono-kit から使ってよいのは Result だけ。hono-kit/result から import する",
+    "service may only use Result from hono-kit. Import it from hono-kit/result",
   "service→foreign:service":
-    "他の module は import しない。使う形を service に宣言し、deps.ts でつなぐ。書くなら相手の commands/ を渡してもらう",
+    "Do not import other modules. Declare the shape you use in service and wire it in deps.ts. To write, have the other module's commands/ passed in",
   "routes→foreign:domain":
-    'routes は認証した利用者として呼ぶ。システムが要る入口は、middleware に allowSystem を置いて c.get("actor") で受け取る',
+    'routes act as the authenticated user. For an entry point that needs the system, put allowSystem in middleware and read c.get("actor")',
   "routes→foreign:errors":
-    "他の module の入口の失敗は借りない。自分の service が返す失敗なら自分の domain.ts に Failure として、どの module でも同じ意味のもの（401・403・404）なら hnk の標準（NotFound など）を使う",
+    "Do not borrow another module's entry-point failures. A failure your service returns goes in your domain.ts as a Failure; one that means the same in every module (401, 403, 404) is a hono-kit standard (NotFound, ...)",
   "webhook→foreign:errors":
-    "他の module の入口の失敗は借りない。自分の service が返す失敗なら自分の domain.ts に Failure として、どの module でも同じ意味のもの（401・403・404）なら hnk の標準（NotFound など）を使う",
+    "Do not borrow another module's entry-point failures. A failure your service returns goes in your domain.ts as a Failure; one that means the same in every module (401, 403, 404) is a hono-kit standard (NotFound, ...)",
   "routes→foreign:service":
-    "他の module の操作は、その流れの持ち主の service から呼ぶ",
+    "Call another module's operations from the service that owns the flow",
   "repo→foreign:service":
-    "読みは自分の repo の join で（相手の repo からテーブルを import してよい）",
+    "Read with a join in your own repo (you may import the table from the other repo)",
 };
 
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
   "core→outbound":
-    "core は outbound を知らない。必要な形は service に type で宣言し、outbound がそれを満たす",
+    "core does not know outbound. Declare the shape you need as a type in service; outbound fulfills it",
   "core→inbound":
-    "core は inbound を知らない。失敗は Result のコードで返し、HTTP の番号などは inbound が決める",
+    "core does not know inbound. Return failures as Result codes; inbound decides HTTP status and the like",
   "inbound→outbound":
-    "inbound は outbound を知らない。deps から core を受け取って呼ぶ",
+    "inbound does not know outbound. Receive core from deps and call it",
   "inbound→core":
-    "inbound は service や commands を import しない。deps から受け取って呼ぶ",
-  "outbound→inbound": "outbound は inbound を知らない",
+    "inbound does not import service or commands. Receive them from deps and call them",
+  "outbound→inbound": "outbound does not know inbound",
 };
 
 /**
@@ -137,9 +137,9 @@ export const KIND_HINTS = {
  * 表そのものは LAYERS から作るので、ここには表で言い切れないことだけを書く
  */
 export const NOTES = {
-  webhook: "actor（システム）は `allowSystem` から受け取る",
+  webhook: "actor (the system) comes from `allowSystem`",
   errors:
-    "入口だけの失敗（webhook の署名など）。モノの失敗は domain.ts に Failure として置く。どの module でも同じ意味のもの（401・403・404）は hono-kit の標準（NotFound など）を使う",
-  cron: "deps・actor・now は createWorker が渡す",
-  repo: "他 module の repo からは外部キーの表（〜Table）と読ませる窓口（〜Within）だけ、他 module の domain は SQL の定数と型だけ",
+    "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
+  cron: "createWorker passes deps, actor and now",
+  repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types",
 };

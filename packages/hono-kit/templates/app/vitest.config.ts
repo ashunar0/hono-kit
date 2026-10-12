@@ -1,7 +1,7 @@
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
-// 本物と同じマイグレーションを、テスト用の D1 に当てる
+// Apply the same migrations as production to the test D1
 const migrations = await readD1Migrations("./migrations");
 
 export default defineConfig({

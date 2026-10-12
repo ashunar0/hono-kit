@@ -1,5 +1,5 @@
 /**
- * notes を HTTP で公開する。入出力の形と、モノ → 応答の変換もここに置く
+ * Exposes notes over HTTP. The input/output shapes and the thing → response mapping live here too
  */
 import {
   createRouter,
@@ -13,14 +13,14 @@ import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
 import { noteIdSchema, noteInputSchema, type Note } from "./domain";
 
-// 受け取る形。本文の入力は domain の noteInputSchema
+// What it receives. The body input is noteInputSchema from domain
 const noteParamsSchema = z.object({
   id: noteIdSchema,
 });
 
 const listNotesQuerySchema = pageQuerySchema();
 
-// 返す形
+// What it returns
 const noteResponseSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -37,7 +37,7 @@ const deleteNoteResponseSchema = z.object({
 
 type NoteResponse = z.infer<typeof noteResponseSchema>;
 
-// モノ → 応答。モノをそのまま返さず、見せる形に詰め替える
+// Thing → response. Do not return the thing as is; map it to what is shown
 function noteResponse(note: Note): NoteResponse {
   return {
     id: note.id,
@@ -49,7 +49,7 @@ function noteResponse(note: Note): NoteResponse {
 }
 
 export const notesRouter = createRouter()
-  // 一覧
+  // List
   .endpoint(
     {
       method: "get",
@@ -69,7 +69,7 @@ export const notesRouter = createRouter()
       return reply(200, pageResponse(page, noteResponse));
     },
   )
-  // 1件
+  // One
   .endpoint(
     {
       method: "get",
@@ -91,7 +91,7 @@ export const notesRouter = createRouter()
       return reply(200, noteResponse(result.value));
     },
   )
-  // 作成
+  // Create
   .endpoint(
     {
       method: "post",
@@ -112,7 +112,7 @@ export const notesRouter = createRouter()
       return reply(200, noteResponse(created));
     },
   )
-  // 更新
+  // Update
   .endpoint(
     {
       method: "put",
@@ -136,7 +136,7 @@ export const notesRouter = createRouter()
       return reply(200, noteResponse(result.value));
     },
   )
-  // 削除
+  // Delete
   .endpoint(
     {
       method: "delete",

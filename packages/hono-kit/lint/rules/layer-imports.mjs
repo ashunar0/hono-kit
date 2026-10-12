@@ -8,7 +8,7 @@ import {
 import { HINTS, KINDS, KIND_HINTS, LAYERS } from "../layers.mjs";
 
 /** foreign:domain → 他 module の domain */
-const show = (name) => name.replace(/^foreign:/, "他 module の ");
+const show = (name) => name.replace(/^foreign:/, "another module's ");
 
 /** 他の module の repo から借りてよい名前。外部キーの表と、読ませる窓口 */
 const WINDOW = /(Table|Within)$/;
@@ -38,7 +38,7 @@ export default {
         Program(node) {
           context.report({
             node,
-            message: `module の中のファイルは、役割の名前で始める（${Object.keys(KINDS).join(", ")}）。外へ繋ぐものは「役割.技術名.ts」（repo.d1.ts など）`,
+            message: `Files in a module start with their role (${Object.keys(KINDS).join(", ")}). Outbound adapters are named "role.tech.ts" (repo.d1.ts, ...)`,
           });
         },
       };
@@ -65,16 +65,16 @@ export default {
           : undefined);
       if (!kind) {
         const list = Object.entries(allowed)
-          .map(([k, v]) => (v === "type" ? `${show(k)}（型だけ）` : show(k)))
+          .map(([k, v]) => (v === "type" ? `${show(k)} (types only)` : show(k)))
           .join(", ");
         context.report({
           node,
-          message: `${self.role} が ${show(target)} を import している。${hint ? `${hint}。` : ""}${self.role} が import してよいのは ${list}`,
+          message: `${self.role} imports ${show(target)}. ${hint ? `${hint}. ` : ""}${self.role} may import: ${list}`,
         });
       } else if (kind === "type" && !isTypeOnly(node)) {
         context.report({
           node,
-          message: `${self.role} は ${show(target)} から型だけを借りる。import type にする`,
+          message: `${self.role} may only borrow types from ${show(target)}. Use import type`,
         });
       } else if (target === "foreign:repo") {
         // 他の module の repo は、外部キーの表と、読ませる窓口だけを外に見せる
@@ -84,7 +84,7 @@ export default {
           if (name !== undefined && WINDOW.test(name)) continue;
           context.report({
             node: spec,
-            message: `${self.role} が 他 module の repo から ${name ?? "全部"} を import している。他 module の repo から借りてよいのは、外部キーの表（〜Table）と、読ませる窓口（〜Within）だけ。手順や詰め替えは相手の module の中に置いたまま、必要なら相手に〜Within を足してもらう`,
+            message: `${self.role} imports ${name ?? "everything"} from another module's repo. From another module's repo you may borrow only foreign-key tables (…Table) and scoped reads (…Within). Keep steps and mapping inside that module; if needed, add a …Within there`,
           });
         }
       }

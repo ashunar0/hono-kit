@@ -1,5 +1,5 @@
-// expect: hnk(no-clock-outside-inbound) | service が時計を読んでいる（new Date()）。今の時刻は入口が決める
-// expect: hnk(no-clock-outside-inbound) | service が時計を読んでいる（Date.now()）
+// expect: hnk(no-clock-outside-inbound) | service reads the clock (new Date()). The entry point decides the current time
+// expect: hnk(no-clock-outside-inbound) | service reads the clock (Date.now())
 export const stamp = () => new Date();
 export const ms = () => Date.now();
 

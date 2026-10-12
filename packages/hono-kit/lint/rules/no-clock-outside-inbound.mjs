@@ -20,7 +20,7 @@ export default {
     const report = (node, what) =>
       context.report({
         node,
-        message: `${self.role} が時計を読んでいる（${what}）。今の時刻は入口が決める。引数で now を受け取る（routes と webhook は handler の new Date()、cron と queue は createWorker が渡す now）`,
+        message: `${self.role} reads the clock (${what}). The entry point decides the current time. Take now as an argument (routes and webhook: new Date() in the handler; cron and queue: the now that createWorker passes)`,
       });
 
     return {

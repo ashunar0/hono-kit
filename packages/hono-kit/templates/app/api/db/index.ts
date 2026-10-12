@@ -2,19 +2,19 @@ import type { InferInsertModel } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { SQLiteTable } from "drizzle-orm/sqlite-core";
 
-/** データベースドライバを名指しする、このプロジェクトで唯一の場所 */
+/** The only place in this project that names the database driver */
 export const wireDb = (binding: D1Database) => drizzle(binding);
 
 export type Db = ReturnType<typeof wireDb>;
 
-/** 読みだけの db。他 module の table も読める（join のため） */
+/** A read-only db. It can read other modules' tables too (for joins) */
 export type ReadDb = Pick<Db, "select">;
 
 /**
- * この module が触れる範囲だけを取り出す。
+ * Takes out only what this module may touch.
  *
- * 読みは越境してよく、書きはこの table に限る——規約の非対称性がそのまま型になる。
- * repository に db を渡さないので、他 module の table への書き込みは書きようがない
+ * Reads may cross modules, writes are limited to this table: the asymmetry in the convention becomes the type.
+ * The repository never gets db, so writing to another module's table cannot be written
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({
   reads: db as ReadDb,

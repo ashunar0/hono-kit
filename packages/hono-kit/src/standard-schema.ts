@@ -58,7 +58,7 @@ export const toJsonSchema = (
 ): Record<string, unknown> => {
   if (!canEmitJsonSchema(schema))
     throw new Error(
-      `この schema（${schema["~standard"].vendor}）は JSON Schema を出せない。OpenAPI の文書には、Standard JSON Schema を満たすものを使う`,
+      `This schema (${schema["~standard"].vendor}) cannot produce JSON Schema. For OpenAPI documents, use a schema that implements Standard JSON Schema`,
     );
 
   const { $schema: _, ...converted } =

@@ -1,6 +1,6 @@
 /**
- * notes の保存。service.ts が宣言した NotesRepository を、D1 で満たす。
- * 行の形はこのファイルの外に出さず、domain の Note に詰め替えて返す
+ * Storage for notes. Fulfills the NotesRepository declared in service.ts with D1.
+ * Row shapes never leave this file; rows are mapped to the domain Note
  */
 import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
@@ -10,16 +10,16 @@ import { orgId, userId } from "../users/domain";
 import { noteId, type Note, type NoteReach } from "./domain";
 import type { NotesRepository } from "./service";
 
-/** 列の既定値: 今の時刻（ミリ秒）。SQL の式で、JS の Date ではない */
+/** Column default: the current time (ms). A SQL expression, not a JS Date */
 const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
-/** note。組織と所有者を持つ */
+/** A note. Has an organization and an owner */
 export const notesTable = sqliteTable(
   "__snake__",
   {
     id: text("id").primaryKey(),
     orgId: text("org_id").notNull(),
-    /** 所有者の利用者 id。利用者の表がまだ無い（認証の提供元を決めたら外部キーを張る）ので、外部キーは無い */
+    /** The owner's user id. No foreign key yet, since there is no users table (add one once the auth provider is decided) */
     ownerId: text("owner_id").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
@@ -27,16 +27,16 @@ export const notesTable = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).default(nowMs).notNull(),
   },
   (table) => [
-    // 一覧の並び（自分のもの、更新の新しい順）をそのまま辿る
+    // Follows the list order directly (own items, most recently updated first)
     index("__snake___owner_updated_idx").on(table.orgId, table.ownerId, table.updatedAt, table.id),
-    // admin が組織の全員のものを見るときの並び
+    // The order when an admin sees everything in the organization
     index("__snake___org_updated_idx").on(table.orgId, table.updatedAt, table.id),
   ],
 );
 
 type NoteRow = typeof notesTable.$inferSelect;
 
-/** 行 → モノ。今は同じ形だが、列が増えても domain に漏らさないための関所 */
+/** Row → thing. Same shape today, but this is the gate that keeps new columns out of domain */
 const toNote = (row: NoteRow): Note => ({
   id: noteId(row.id),
   orgId: orgId(row.orgId),
@@ -47,7 +47,7 @@ const toNote = (row: NoteRow): Note => ({
   updatedAt: row.updatedAt,
 });
 
-/** 範囲を WHERE の条件にする。all なら絞らない */
+/** Turns the reach into a WHERE condition. all means no filter */
 const within = (reach: NoteReach) => {
   switch (reach.kind) {
     case "all":
@@ -62,7 +62,7 @@ const within = (reach: NoteReach) => {
 export function notesRepository(scope: Scope<typeof notesTable>): NotesRepository {
   return {
     async listWithin(reach, { after, limit }) {
-      // 1 件多く読んで、続きがあるかを知る
+      // Read one extra row to know whether there is more
       const rows = await scope.reads
         .select()
         .from(notesTable)
@@ -100,7 +100,7 @@ export function notesRepository(scope: Scope<typeof notesTable>): NotesRepositor
       return toNote(row);
     },
 
-    // 範囲の条件を WHERE に入れて 1 文で書く。確認と書き込みの間に割り込まれない
+    // Put the reach in WHERE and do it in one statement, so nothing can slip in between check and write
     async updateWithin(id, reach, changes) {
       const [row] = await scope
         .update(changes)

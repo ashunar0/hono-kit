@@ -42,21 +42,21 @@ export default {
           context.report({
             node,
             message:
-              ".endpoint に認証の指定が無い。middleware: [requireAuth] か、公開なら [allowAnonymous] を置く",
+              ".endpoint does not declare auth. Put middleware: [requireAuth], or [allowAnonymous] if it is public",
           });
           return;
         }
         if (guards.length > 1) {
           context.report({
             node: guards[1],
-            message: `認証の指定が ${guards.length} 個ある。1 つに決める`,
+            message: `${guards.length} auth guards are declared. Pick one`,
           });
         }
         if (elements[0] !== guards[0]) {
           context.report({
             node: guards[0],
             message:
-              "認証の指定は middleware の先頭に置く。宣言を縦に読めるようにするため",
+              "Put the auth guard first in middleware, so the declaration reads top to bottom",
           });
         }
       },
