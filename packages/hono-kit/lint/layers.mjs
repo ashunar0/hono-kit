@@ -5,9 +5,6 @@
 export const KINDS = {
   domain: "core",
   service: "core",
-  commands: "core",
-  routes: "inbound",
-  webhook: "inbound",
   errors: "inbound",
   cron: "inbound",
   queue: "inbound",
@@ -46,37 +43,13 @@ export const LAYERS = {
     domain: "value",
     "foreign:domain": "type",
   },
-  // 他の module に変えさせてよい操作。使う outbound の形は service の宣言を借りる
-  commands: {
-    "hono-kit/result": "value",
-    "hono-kit/failures": "value",
-    "hono-kit/system": "type",
-    domain: "value",
-    service: "type",
-    "foreign:domain": "type",
-  },
 
-  // inbound（HTTP）
-  routes: {
-    "hono-kit": "value",
-    zod: "value",
-    errors: "value",
-    middleware: "value",
-    domain: "value",
-  },
-  // 利用者のいない HTTP。誰として呼ぶか（システム）は allowSystem から c.get("actor") で受け取る
-  webhook: {
-    "hono-kit": "value",
-    zod: "value",
-    errors: "value",
-    middleware: "value",
-    domain: "value",
-  },
-  // その module だけの失敗を、HTTP でどう返すか。routes と webhook が使う
+  // その module だけの失敗を、HTTP でどう返すか。HTTP の入口（api/routes/）が使う
   errors: { "hono-kit": "value" },
-  // inbound（HTTP 以外）。deps と actor と now は createWorker が渡すので、型を借りるだけ
-  cron: { "hono-kit": "type", domain: "type" },
-  queue: { "hono-kit": "type", domain: "type" },
+  // inbound（HTTP 以外）。deps と actor と now は createWorker が渡す。
+  // 入口なので、複数の module の service を deps から受け取ってつなぐ。他の module の ID の印を付けるため、domain の値も使う
+  cron: { "hono-kit": "type", domain: "value", "foreign:domain": "value" },
+  queue: { "hono-kit": "type", domain: "value", "foreign:domain": "value" },
 
   // outbound
   repo: {
@@ -124,26 +97,14 @@ export const HINTS = {
   "domain→service": "domain holds only the thing and its rules. Put steps in service",
   "domain→hono-kit/result":
     "domain has no steps that return failures. Put steps in service",
-  "service→routes":
-    "service does not know HTTP. Return failures as Result codes; routes decides the status",
   "service→hono-kit":
     "service may only use Result from hono-kit. Import it from hono-kit/result",
   "service→foreign:service":
-    "Do not import other modules. Declare the shape you use in service and wire it in deps.ts. To write, have the other module's commands/ passed in",
-  "routes→foreign:domain":
-    'routes act as the authenticated user. For an entry point that needs the system, put allowSystem in middleware and read c.get("actor")',
-  "routes→foreign:errors":
-    "Do not borrow another module's entry-point failures. A failure your service returns goes in your domain.ts as a Failure; one that means the same in every module (401, 403, 404) is a hono-kit standard (NotFound, ...)",
-  "webhook→foreign:errors":
-    "Do not borrow another module's entry-point failures. A failure your service returns goes in your domain.ts as a Failure; one that means the same in every module (401, 403, 404) is a hono-kit standard (NotFound, ...)",
-  "routes→foreign:service":
-    "Call another module's operations from the service that owns the flow",
+    "Modules do not call each other. Join them at the entry point: the handler (or cron / queue) reads from both services and passes values to the one that writes. See node_modules/hono-kit/docs/cross-module.md",
   "repo→foreign:service":
     "Read with a join in your own repo (you may import the table from the other repo)",
   "resource→foreign:service":
-    "A resource does not import services. The handler receives them from deps as its third argument ({ stores, menus })",
-  "resource→foreign:commands":
-    "A resource does not import services. The handler receives them from deps as its third argument ({ stores, menus })",
+    "A resource does not import services. The handler receives them from deps as its third argument ({ customers, invoices })",
   "resource→foreign:repo":
     "A resource does not read tables. Read through the owner's service, received from deps",
   "response→resource":
@@ -163,7 +124,7 @@ export const KIND_HINTS = {
   "inbound→outbound":
     "inbound does not know outbound. Receive core from deps and call it",
   "inbound→core":
-    "inbound does not import service or commands. Receive them from deps and call them",
+    "inbound does not import service. Receive it from deps and call it",
   "outbound→inbound": "outbound does not know inbound",
 };
 
@@ -172,10 +133,10 @@ export const KIND_HINTS = {
  * 表そのものは LAYERS から作るので、ここには表で言い切れないことだけを書く
  */
 export const NOTES = {
-  webhook: "actor (the system) comes from `allowSystem`",
   errors:
     "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
-  cron: "createWorker passes deps, actor and now",
+  cron: "createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps",
+  queue: "Same as cron",
   repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types",
   resource:
     "`api/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",

@@ -20,7 +20,7 @@ export default {
     const report = (node, what) =>
       context.report({
         node,
-        message: `${self.role} reads the clock (${what}). The entry point decides the current time. Take now as an argument (routes and webhook: new Date() in the handler; cron and queue: the now that createWorker passes)`,
+        message: `${self.role} reads the clock (${what}). The entry point decides the current time. Take now as an argument (HTTP resources in api/routes/: new Date() in the handler; cron and queue: the now that createWorker passes)`,
       });
 
     return {

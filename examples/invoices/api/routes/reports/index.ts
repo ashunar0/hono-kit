@@ -1,10 +1,10 @@
 /**
- * reports を HTTP で公開する
+ * /reports。集計のリソース
  */
 import { createRouter, errorResponses, Forbidden } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import { monthsBetween, type Month } from "./domain";
+import { monthsBetween, type Month } from "../../modules/reports/domain";
 
 /** 1 回に出せる月の数。重い集計で詰まらないように */
 const MAX_MONTHS = 24;

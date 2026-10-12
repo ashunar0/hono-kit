@@ -4,15 +4,7 @@
 import { err, ok, type Result } from "hono-kit/result";
 import { NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
-import type { Actor } from "../users/domain";
-import {
-  GatewayFailed,
-  isStale,
-  NotPayable,
-  PaymentStarting,
-  type Payment,
-  type PaymentEvent,
-} from "./domain";
+import { GatewayFailed, isStale, PaymentStarting, type Payment, type PaymentEvent } from "./domain";
 
 /** 手順が必要とする保存の形。repo.d1.ts が満たす */
 export type PaymentsRepository = {
@@ -58,52 +50,25 @@ export type PaymentGateway = {
 };
 
 /**
- * 手順が必要とする請求書の形。読みは invoices の service、書きは invoices の commands が満たし、deps.ts でつなぐ。
- * payments は invoices を import しない
+ * 支払う請求書。入口（handler）が invoices の service から読み、値で渡す。
+ * 支払えるか（送付済みか、範囲の中か）は、渡す前に invoices が確かめている。payments は invoices を知らない
  */
-export type PayableInvoices = {
-  // メソッドの書き方ではなく関数の型で宣言する。引数の型が厳しい関数（InvoiceId を要求する側）を
-  // そのまま渡すと型エラーになり、deps.ts で印を付けて渡すことになる
-  getPayable: (
-    actor: Actor,
-    id: string,
-  ) => Promise<
-    Result<
-      { id: string; title: string; amount: number },
-      typeof NotFound.code | typeof NotPayable.code
-    >
-  >;
-  /** 支払い済みにする。invoices の commands が満たす。何度呼んでも同じ結果になる */
-  markPaid: (
-    system: System,
-    id: string,
-    now: Date,
-  ) => Promise<Result<unknown, typeof NotFound.code | typeof NotPayable.code>>;
-};
+export type PayableInvoice = { id: string; title: string; amount: number };
 
 /** 引数の順番は、誰として（actor）→ 何を → どうする → いつ（now）。時計は読まない */
-export function paymentsService(
-  repo: PaymentsRepository,
-  gateway: PaymentGateway,
-  invoices: PayableInvoices,
-) {
+export function paymentsService(repo: PaymentsRepository, gateway: PaymentGateway) {
   return {
-    /** 支払いを始める。送付済みの請求書に対してだけ */
+    /** 支払いを始める。請求書は、入口が invoices から読んだ支払えるもの */
     async start(
-      actor: Actor,
-      invoiceId: string,
+      invoice: PayableInvoice,
       now: Date,
     ): Promise<
       Result<
         { payment: Payment; checkoutUrl: string },
-        | typeof NotFound.code
-        | typeof NotPayable.code
-        | typeof GatewayFailed.code
-        | typeof PaymentStarting.code
+        typeof GatewayFailed.code | typeof PaymentStarting.code
       >
     > {
-      const invoice = await invoices.getPayable(actor, invoiceId);
-      if (!invoice.ok) return invoice;
+      const invoiceId = invoice.id;
 
       // 1 つの請求書に進行中の支払いは 1 つ。2 回目は、1 回目の決済画面をそのまま返す
       const existing = await repo.findPending(invoiceId);
@@ -121,7 +86,7 @@ export function paymentsService(
       const payment = await repo.insertPending({
         id: crypto.randomUUID(),
         invoiceId,
-        amount: invoice.value.amount,
+        amount: invoice.amount,
         providerRef: null,
         checkoutUrl: null,
         createdAt: now,
@@ -133,7 +98,7 @@ export function paymentsService(
       const checkout = await gateway.createCheckout({
         paymentId: payment.id,
         amount: payment.amount,
-        description: invoice.value.title,
+        description: invoice.title,
       });
       if (!checkout.ok) {
         await repo.markFailed(payment.id, now);
@@ -154,31 +119,21 @@ export function paymentsService(
     },
 
     /**
-     * 決済サービスから届いた結果を反映する。
-     *
-     * 成功なら、支払いを成功にしてから、請求書を支払い済みにする。2 つの module に書くが、
-     * 1 回の書き込みで変えるのは 1 つずつ。まとめて取り消す仕組みが無いので、
-     * どちらも何度やっても同じ結果にしておき、途中で落ちたら決済サービスの再送でやり直す
+     * 決済サービスから届いた結果を、支払いに反映する。何度やっても同じ結果になる。
+     * 請求書を支払い済みにするのは、この後に入口（webhook）が invoices を呼んで行う。
+     * 反映した支払いを返すので、入口は status で成功を見分けられる
      */
+    // system は使わないが、受け取ることで利用者の route からは呼べなくなる
     async receive(
-      system: System,
+      _system: System,
       event: PaymentEvent,
       now: Date,
-    ): Promise<Result<void, typeof NotFound.code | typeof NotPayable.code>> {
-      if (event.kind === "failed") {
-        const failed = await repo.updateStatusByProviderRef(event.providerRef, "failed", now);
-        if (failed === null) return err(NotFound.code);
-
-        return ok(undefined);
-      }
-
-      const payment = await repo.updateStatusByProviderRef(event.providerRef, "succeeded", now);
+    ): Promise<Result<Payment, typeof NotFound.code>> {
+      const status = event.kind === "failed" ? "failed" : "succeeded";
+      const payment = await repo.updateStatusByProviderRef(event.providerRef, status, now);
       if (payment === null) return err(NotFound.code);
 
-      const invoice = await invoices.markPaid(system, payment.invoiceId, now);
-      if (!invoice.ok) return invoice;
-
-      return ok(undefined);
+      return ok(payment);
     },
   };
 }

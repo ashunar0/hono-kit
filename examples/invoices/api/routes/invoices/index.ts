@@ -1,5 +1,5 @@
 /**
- * invoices を HTTP で公開する。入出力の形と、モノ → 応答の変換もここに置く
+ * /invoices。請求書のリソース。共有（/:id/shares）は子のリソースとして shares/ にある
  */
 import {
   createRouter,
@@ -17,9 +17,9 @@ import {
   invoiceInputSchema,
   invoiceStatuses,
   NotDraft,
-  shareLevels,
-  type Invoice,
-} from "./domain";
+} from "../../modules/invoices/domain";
+import { invoiceResponse, invoiceResponseSchema } from "./response";
+import { invoiceSharesRouter } from "./shares";
 
 // 受け取る形。本文の入力は domain の invoiceInputSchema
 const invoiceParamsSchema = z.object({
@@ -32,54 +32,12 @@ const listInvoicesQuerySchema = pageQuerySchema(
   }),
 );
 
-// 返す形
-const invoiceResponseSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  body: z.string(),
-  amount: z.number(),
-  customerEmail: z.string(),
-  dueAt: z.number(),
-  status: z.enum(invoiceStatuses),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-});
-
+// 返す形。請求書そのものは response.ts
 const listInvoicesResponseSchema = pageResponseSchema(invoiceResponseSchema);
 
 const deleteInvoiceResponseSchema = z.object({
   ok: z.literal(true),
 });
-
-const shareInputSchema = z.object({
-  /** 共有する相手 */
-  userId: z.string().min(1),
-  level: z.enum(shareLevels),
-});
-
-const shareParamsSchema = z.object({
-  id: invoiceIdSchema,
-  userId: z.string(),
-});
-
-const okResponseSchema = z.object({ ok: z.literal(true) });
-
-type InvoiceResponse = z.infer<typeof invoiceResponseSchema>;
-
-// モノ → 応答。モノをそのまま返さず、見せる形に詰め替える
-function invoiceResponse(invoice: Invoice): InvoiceResponse {
-  return {
-    id: invoice.id,
-    title: invoice.title,
-    body: invoice.body,
-    amount: invoice.amount,
-    customerEmail: invoice.customerEmail,
-    dueAt: invoice.dueAt.getTime(),
-    status: invoice.status,
-    createdAt: invoice.createdAt.getTime(),
-    updatedAt: invoice.updatedAt.getTime(),
-  };
-}
 
 export const invoicesRouter = createRouter()
   // 一覧
@@ -214,48 +172,4 @@ export const invoicesRouter = createRouter()
       return reply(200, { ok: true });
     },
   )
-  // 共有
-  .endpoint(
-    {
-      method: "put",
-      path: "/:id/shares",
-      middleware: [requireAuth],
-      request: { param: invoiceParamsSchema, json: shareInputSchema },
-      responses: {
-        200: okResponseSchema,
-        ...errorResponses(NotFound, Forbidden),
-      },
-    },
-    async (c, reply, { invoices }) => {
-      const actor = c.get("actor");
-      const { id } = c.req.valid("param");
-      const { userId, level } = c.req.valid("json");
-
-      const result = await invoices.share(actor, id, userId, level);
-      if (!result.ok) return reply.failure(result.error);
-
-      return reply(200, { ok: true });
-    },
-  )
-  // 共有をやめる
-  .endpoint(
-    {
-      method: "delete",
-      path: "/:id/shares/:userId",
-      middleware: [requireAuth],
-      request: { param: shareParamsSchema },
-      responses: {
-        200: okResponseSchema,
-        ...errorResponses(NotFound, Forbidden),
-      },
-    },
-    async (c, reply, { invoices }) => {
-      const actor = c.get("actor");
-      const { id, userId } = c.req.valid("param");
-
-      const result = await invoices.unshare(actor, id, userId);
-      if (!result.ok) return reply.failure(result.error);
-
-      return reply(200, { ok: true });
-    },
-  );
+  .route("/:id/shares", invoiceSharesRouter);

@@ -41,21 +41,24 @@ it("ログインしていなければ 401", async () => {
   expect(res.status).toBe(401);
 });
 
-it("webhook は allowSystem で、署名を確かめた後の handler にシステムを渡す", async () => {
+it("webhook は allowSystem で、署名を確かめた後、支払いと請求書の両方にシステムを渡す", async () => {
   const received: unknown[] = [];
   const fakeApp = buildApp(
     () =>
       ({
         payments: {
           async verifyEvent() {
-            return {
-              ok: true,
-              value: { providerRef: "cs_x", outcome: "succeeded", at: new Date() },
-            };
+            return { ok: true, value: { providerRef: "cs_x", kind: "succeeded" } };
           },
           async receive(system: unknown) {
-            received.push(system);
-            return { ok: true, value: undefined };
+            received.push(["payments", system]);
+            return { ok: true, value: { invoiceId: "inv_x", status: "succeeded" } };
+          },
+        },
+        invoices: {
+          async markPaid(system: unknown) {
+            received.push(["invoices", system]);
+            return { ok: true, value: {} };
           },
         },
       }) as never,
@@ -64,5 +67,8 @@ it("webhook は allowSystem で、署名を確かめた後の handler にシス�
   const res = await fakeApp.request("/webhooks/stripe", { method: "POST", body: "{}" }, env);
 
   expect(res.status).toBe(200);
-  expect(received).toEqual([systemActor]);
+  expect(received).toEqual([
+    ["payments", systemActor],
+    ["invoices", systemActor],
+  ]);
 });

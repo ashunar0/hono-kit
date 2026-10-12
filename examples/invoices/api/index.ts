@@ -3,14 +3,14 @@ import { createRouter, createWorker, onError, provideDeps } from "hono-kit";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
-import { invoicesRouter } from "./modules/invoices/routes";
-import { paymentsRouter } from "./modules/payments/routes";
-import { reportsRouter } from "./modules/reports/routes";
-import { stripeWebhookRouter } from "./modules/payments/webhook.stripe";
 import { withUser } from "./middleware/auth";
 import { enqueueOverdueReminders } from "./modules/reminders/cron";
 import type { ReminderJob } from "./modules/reminders/domain";
 import { sendReminder } from "./modules/reminders/queue";
+import { invoicesRouter } from "./routes/invoices";
+import { paymentsRouter } from "./routes/payments";
+import { reportsRouter } from "./routes/reports";
+import { webhooksRouter } from "./routes/webhooks";
 
 /** zod の日付は JSON Schema で表せないので、文書には日時の文字列として出す */
 const dateAsString = (ctx: {
@@ -38,7 +38,7 @@ export const buildApp = (
     .route("/invoices", invoicesRouter)
     .route("/payments", paymentsRouter)
     .route("/reports", reportsRouter)
-    .route("/webhooks/stripe", stripeWebhookRouter)
+    .route("/webhooks", webhooksRouter)
     .onError(onError);
 
   // 登録された route の宣言から作る。リクエストのたびに読むので、登録の順番に関係しない

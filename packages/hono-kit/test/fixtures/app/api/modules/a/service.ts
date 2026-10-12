@@ -1,4 +1,4 @@
-// expect: hnk(layer-imports) | service imports routes. service does not know HTTP
-import { r } from "./routes";
+// expect: hnk(layer-imports) | service imports resource. Modules do not know routes
+import { r } from "../../routes/ok";
 
 export const s = r;

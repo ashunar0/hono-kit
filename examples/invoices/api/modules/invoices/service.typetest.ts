@@ -47,3 +47,11 @@ export async function idsAreNotInterchangeable(invoices: InvoicesService, actor:
   // 印は作る関数で付ける
   await invoices.get(actor, invoiceId("x"));
 }
+
+// 支払い済みにできるのはシステム（webhook）だけ。利用者の route からは呼べない
+export async function usersCannotMarkPaid(invoices: InvoicesService, actor: User) {
+  // @ts-expect-error markPaid が受け取るのは System だけ
+  await invoices.markPaid(actor, invoiceId("x"), new Date());
+
+  await invoices.markPaid(systemActor, invoiceId("x"), new Date());
+}

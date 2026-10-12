@@ -1,8 +1,6 @@
 import { scopeTo, wireDb } from "./db";
 import type { AppEnv } from "./env";
-import { invoiceId } from "./modules/invoices/domain";
 import { invoicesService } from "./modules/invoices/service";
-import { markPaid } from "./modules/invoices/commands/markPaid";
 import { invoicesRepository, invoiceSharesTable, invoicesTable } from "./modules/invoices/repo.d1";
 import { stripeGateway } from "./modules/payments/gateway.stripe";
 import { paymentsRepository, paymentsTable } from "./modules/payments/repo.d1";
@@ -24,6 +22,8 @@ import { reportsService } from "./modules/reports/service";
  *
  * 上から順に const で組み立てる。依存する相手を先に書かないと、tsc が「宣言の前に使っている」で止める。
  * なので、module の依存の輪はコンパイルが通らない（Go の main と同じ）。
+ * module どうしは何もつながない。複数の module にまたがる処理は、入口（routes の handler、webhook、
+ * cron、queue）が両方を受け取って、読んだものを値で渡す。
  * 遅延（getter）で「使う module だけ組み立てる」ことをやめた代わりに、宣言順の保証を取った。
  * 組み立ては関数を返すだけで、env の検証も接続もしないので軽い。
  * db そのものは返さない。inbound が書き込み先を選べてしまうので
@@ -31,12 +31,9 @@ import { reportsService } from "./modules/reports/service";
 export const makeDeps = (env: AppEnv["Bindings"]) => {
   const db = wireDb(env.DB);
 
-  const invoicesRepo = invoicesRepository(
-    scopeTo(db, invoicesTable),
-    scopeTo(db, invoiceSharesTable),
+  const invoices = invoicesService(
+    invoicesRepository(scopeTo(db, invoicesTable), scopeTo(db, invoiceSharesTable)),
   );
-  const invoices = invoicesService(invoicesRepo);
-  const markInvoicePaid = markPaid(invoicesRepo);
 
   const payments = paymentsService(
     paymentsRepository(scopeTo(db, paymentsTable)),
@@ -46,23 +43,12 @@ export const makeDeps = (env: AppEnv["Bindings"]) => {
       successUrl: `${env.APP_URL}/payments/done`,
       cancelUrl: `${env.APP_URL}/payments/canceled`,
     }),
-    // payments が宣言した PayableInvoices を、読みは invoices の service、書きは commands が満たす。
-    // payments は請求書の ID を素の string として持つので、ここで請求書の ID の印を付けて渡す
-    {
-      getPayable: (actor, id) => invoices.getPayable(actor, invoiceId(id)),
-      markPaid: (system, id, now) => markInvoicePaid(system, invoiceId(id), now),
-    },
   );
 
   const reminders = remindersService(
     remindersRepository(scopeTo(db, remindersTable)),
     resendMailer({ apiKey: env.RESEND_API_KEY, from: env.MAIL_FROM }),
     queuesReminderJobs(env.REMINDER_QUEUE),
-    // reminders が宣言した OverdueInvoices を、invoices の service が満たす。ID の印はここで付ける
-    {
-      listOverdue: invoices.listOverdue,
-      getRemindable: (actor, id, now) => invoices.getRemindable(actor, invoiceId(id), now),
-    },
   );
 
   // 自分のテーブルを持たず、読むだけ。書き込みの範囲（scope）ではなく、db をそのまま読みとして渡す

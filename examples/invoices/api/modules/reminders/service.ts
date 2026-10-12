@@ -2,8 +2,6 @@
  * 督促の手順（How）。期限切れを探して積む手順と、1 件ずつ送る手順の 2 つ
  */
 import { err, ok, type Result } from "hono-kit/result";
-import { NotFound } from "hono-kit/failures";
-import type { Actor } from "../users/domain";
 import {
   dayOf,
   reminderKey,
@@ -39,34 +37,22 @@ export type ReminderJobs = {
   enqueue(jobs: ReminderJob[]): Promise<void>;
 };
 
-/** 手順が必要とする請求書の形。invoices の service が満たし、deps.ts でつなぐ */
-export type OverdueInvoices = {
-  listOverdue: (actor: Actor, now: Date) => Promise<{ id: string }[]>;
-  /** 督促してよいかを invoices に問う。判定は invoices のルールに任せる */
-  getRemindable: (
-    actor: Actor,
-    id: string,
-    now: Date,
-  ) => Promise<
-    Result<
-      { title: string; amount: number; customerEmail: string; dueAt: Date },
-      typeof NotFound.code | "NOT_REMINDABLE"
-    >
-  >;
+/**
+ * 督促する請求書。入口（cron.ts、queue.ts）が invoices の service から読み、値で渡す。
+ * 督促してよいか（期限切れか、範囲の中か）の判定は invoices のルール。reminders は invoices を知らない
+ */
+export type RemindableInvoice = {
+  title: string;
+  amount: number;
+  customerEmail: string;
+  dueAt: Date;
 };
 
 /** 引数の順番は、誰として（actor）→ 何を → いつ（now）。時計は読まない */
-export function remindersService(
-  repo: RemindersRepository,
-  mailer: Mailer,
-  jobs: ReminderJobs,
-  invoices: OverdueInvoices,
-) {
+export function remindersService(repo: RemindersRepository, mailer: Mailer, jobs: ReminderJobs) {
   return {
-    /** 期限切れの請求書を探し、督促を 1 件ずつキューに積む。範囲は actor で決まる */
-    async enqueueOverdue(actor: Actor, now: Date): Promise<number> {
-      const overdue = await invoices.listOverdue(actor, now);
-
+    /** 期限切れの請求書（入口が invoices から読んだもの）の督促を、1 件ずつキューに積む */
+    async enqueueOverdue(overdue: { id: string }[]): Promise<number> {
       await jobs.enqueue(overdue.map((invoice) => ({ invoiceId: invoice.id })));
 
       return overdue.length;
@@ -78,29 +64,28 @@ export function remindersService(
      * 先に押さえ → メールを送る → 確定、の順。キューは同じ中身を 2 回届けることがあり、途中で落ちれば再送される。
      * - 確定済みか見送り済みなら送らない
      * - 押さえたまま落ちたら、再送で送り直す。冪等キーが同じなので、提供元が 1 通にまとめる
-     * - 送るべきでなくなっていたら、見送りとして残す
+     * - 送るべきでなくなっていたら（入口が invoices から読めなかったら、invoice が null）、見送りとして残す
      * 業務の判断: 督促は欠けても重複してもいけない。冪等キーで両方を防ぐ。
      * ただし提供元が冪等キーを覚えているのは 24 時間（Resend）。それより後の再送では 2 通目が出うる。
      * キーに日付が入っていて、キューの再送も同じ日のうちに終わる前提で成り立つ
      */
     async send(
-      actor: Actor,
       job: ReminderJob,
+      invoice: RemindableInvoice | null,
       now: Date,
     ): Promise<Result<"SENT" | "SKIPPED", "MAIL_FAILED">> {
       const reminder = { invoiceId: job.invoiceId, sentOn: dayOf(now) };
       if ((await repo.claim(reminder)) !== "claimed") return ok("SKIPPED");
 
       // 積んだ後に支払われたり消されたりしたものは送らない
-      const invoice = await invoices.getRemindable(actor, job.invoiceId, now);
-      if (!invoice.ok) {
+      if (invoice === null) {
         await repo.markSkipped(reminder);
         return ok("SKIPPED");
       }
 
       const sent = await mailer.send({
-        to: invoice.value.customerEmail,
-        ...reminderMail(invoice.value),
+        to: invoice.customerEmail,
+        ...reminderMail(invoice),
         idempotencyKey: reminderKey(reminder),
       });
       if (!sent.ok) return err(sent.error);

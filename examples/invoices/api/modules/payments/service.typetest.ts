@@ -1,13 +1,16 @@
-import type { InvoicesService } from "../invoices/service";
-import type { PayableInvoices } from "./service";
+import { systemActor } from "hono-kit/testing";
+import type { User } from "../users/domain";
+import type { PaymentEvent } from "./domain";
+import type { PaymentsService } from "./service";
 
-// 他の module の ID の印は、つなぐ場所（deps.ts）で付ける。印を要求する関数を、そのまま渡すことはできない
-export function idsAreMintedWhereWired(invoices: InvoicesService) {
-  const direct: PayableInvoices = {
-    // @ts-expect-error InvoiceId を要求する関数は、string を受け取る宣言には渡せない
-    getPayable: invoices.getPayable,
-    // @ts-expect-error 同じく
-    markPaid: invoices.markPaid,
-  };
-  return direct;
+// 支払いの結果を反映できるのはシステム（webhook）だけ。利用者の route からは呼べない
+export async function usersCannotReceive(
+  payments: PaymentsService,
+  user: User,
+  event: PaymentEvent,
+) {
+  // @ts-expect-error receive が受け取るのは System だけ
+  await payments.receive(user, event, new Date());
+
+  await payments.receive(systemActor, event, new Date());
 }

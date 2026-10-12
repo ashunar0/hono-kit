@@ -4,6 +4,7 @@
 import type { Page, PageQuery } from "hono-kit/page";
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
+import type { System } from "hono-kit/system";
 import type { Actor, User } from "../users/domain";
 import {
   canEdit,
@@ -160,6 +161,29 @@ export function invoicesService(repo: InvoicesRepository) {
       if (!isPayable(found.invoice)) return err("NOT_PAYABLE");
 
       return ok(found.invoice);
+    },
+
+    /**
+     * 支払い済みにする。利用者の操作ではなく、決済の結果を受けた入口（webhook）が呼ぶので、システムの印を受け取る。
+     * requireAuth を通った利用者は System ではないので、利用者の route からは呼べない。
+     * 何度呼んでも同じ結果になる（すでに支払い済みなら、そのまま返す）。webhook は再送されるので、それに耐える
+     */
+    async markPaid(
+      system: System,
+      id: InvoiceId,
+      now: Date,
+    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_PAYABLE">> {
+      const all = reachOf(system);
+
+      const paid = await repo.updateWithin(id, all, { status: "paid", updatedAt: now }, "sent");
+      if (paid !== null) return ok(paid);
+
+      // 書き換わらなかった。無いのか、もう支払い済みなのか、送付前なのか
+      const found = await repo.findWithin(id, all);
+      if (found === null) return err(NotFound.code);
+      if (found.invoice.status === "paid") return ok(found.invoice);
+
+      return err("NOT_PAYABLE");
     },
 
     /** 送付する。admin だけが、下書きだけを送れる */
