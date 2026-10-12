@@ -23,36 +23,43 @@ pnpm db:generate && pnpm check
 
 ## The shape
 
-An app is split into modules by noun (`invoices`, `posts`, ...). Each module has three sides, as in hexagonal architecture.
+An app has two axes, because the nouns in a URL and the nouns of the domain are different things.
 
-| Side         | What it is                                                     | Files                        |
-| ------------ | -------------------------------------------------------------- | ---------------------------- |
-| **core**     | What the thing is and what it can do. Knows nothing outside.   | domain, service, commands    |
-| **inbound**  | Called from outside. Decides who is acting and calls the core. | routes, webhook, cron, queue |
-| **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs  |
+- **Resources** (`api/routes/<noun>/`): what a client points at, cut by the URL. `/customers/:customerId/invoices` lives in `api/routes/customers/invoices/`.
+- **Modules** (`api/modules/<name>/`): who keeps which rules, cut by the domain. Each module has three sides, as in hexagonal architecture.
 
-Every module starts with four files:
+Routes use modules, never the other way. A route may use as many modules as it needs; modules never call each other.
+
+| Side         | What it is                                                     | Files                       |
+| ------------ | -------------------------------------------------------------- | --------------------------- |
+| **core**     | What the thing is and what it can do. Knows nothing outside.   | domain, service             |
+| **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, cron, queue      |
+| **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs |
+
+`pnpm hnk g module posts` starts a module and the resource of the same noun:
 
 ```
 api/modules/posts/
-├─ domain.ts    core: types and rules
-├─ service.ts   core: steps, and the shape of storage they need
-├─ routes.ts    inbound: HTTP input/output
-└─ repo.d1.ts   outbound: table and D1 implementation
+├─ domain.ts     core: types and rules
+├─ service.ts    core: steps, and the shape of storage they need
+└─ repo.d1.ts    outbound: table and D1 implementation
+api/routes/posts/
+├─ index.ts      inbound: the router (HTTP input, handlers)
+└─ response.ts   inbound: how a post is shown over HTTP
 ```
 
 ```
-  routes ──────→ domain ←────── repo.d1
-                   ↑               │
-                service ←──────────┘
+  api/routes ──→ domain ←────── repo.d1
+       │           ↑               │
+       └──(deps)─→ service ←───────┘
 ```
 
-One rule: **every arrow points to the core.** More files are added only when a second one appears (a second entry point, a second storage, ...).
+One rule: **every arrow points to the core.** Handlers receive services from deps instead of importing them. More files are added only when a second one appears (a second entry point, a second storage, ...).
 
 ## What the code looks like
 
 ```ts
-// api/modules/posts/routes.ts
+// api/routes/posts/index.ts
 export const postsRouter = createRouter().endpoint(
   {
     method: "put",
@@ -81,6 +88,7 @@ export const postsRouter = createRouter().endpoint(
 - `responses` is the contract. If the handler returns something else, the wrong value gets the red squiggle.
 - The 401 from `requireAuth` and the 400 from input validation are declared for you. You only write domain failures.
 - Who is acting (`actor`) and when (`now`) are decided at the entry point and passed down as arguments.
+- When a request touches several modules, the handler reads from as many services as it needs and writes through one call to one service ([cross-module.md](packages/hono-kit/docs/cross-module.md)).
 
 ```ts
 // api/modules/posts/service.ts
@@ -114,7 +122,7 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 
 ### Who may import what
 
-Each file in a module is classified by its name prefix (its role). `layer-imports` allows only the imports below; everything else is an error.
+Each file in a module is classified by its name prefix (its role); each file in `api/routes/` is a `resource` (`index.ts`) or a `response` (`response.ts`). `layer-imports` allows only the imports below; everything else is an error.
 
 <!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
 
@@ -122,12 +130,9 @@ Each file in a module is classified by its name prefix (its role). `layer-import
 | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | core     | domain   | zod, hono-kit/system (types only), hono-kit/failures (types only), another module's domain (types only)                                                                                                                                                                                  |
 | core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), domain, another module's domain (types only)                                                                                                                                               |
-| core     | commands | hono-kit/result, hono-kit/failures, hono-kit/system (types only), domain, service (types only), another module's domain (types only)                                                                                                                                                     |
-| inbound  | routes   | hono-kit, zod, errors, middleware, domain                                                                                                                                                                                                                                                |
-| inbound  | webhook  | hono-kit, zod, errors, middleware, domain. actor (the system) comes from `allowSystem`                                                                                                                                                                                                   |
 | inbound  | errors   | hono-kit. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                        |
-| inbound  | cron     | hono-kit (types only), domain (types only). createWorker passes deps, actor and now                                                                                                                                                                                                      |
-| inbound  | queue    | hono-kit (types only), domain (types only)                                                                                                                                                                                                                                               |
+| inbound  | cron     | hono-kit (types only), domain, another module's domain. createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps                                                                                                                         |
+| inbound  | queue    | hono-kit (types only), domain, another module's domain. Same as cron                                                                                                                                                                                                                     |
 | outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, domain, service (types only), another module's repo, another module's domain. From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types |
 | outbound | gateway  | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
 | outbound | mailer   | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
@@ -152,7 +157,7 @@ The generated app also includes `AGENTS.md` (and a `CLAUDE.md` that points to it
 ## More
 
 - All conventions and the reasons behind them: [README.ja.md](README.ja.md) (Japanese)
-- Example app: [examples/invoices](examples/invoices) — invoices with cross-module writes, cron, queue, webhook, organizations and sharing
+- Example app: [examples/invoices](examples/invoices) — invoices with payments across modules, cron, queue, webhook, organizations and sharing
 
 ## License
 
