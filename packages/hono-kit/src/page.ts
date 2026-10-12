@@ -1,20 +1,20 @@
 /**
- * 一覧のページ送り（キーセット）。並びは「時刻 + id」で決まり、続きは位置（Cursor）で指す。
- * 一覧は必ず PageQuery を受け取り、Page を返す——上限の無い一覧を書く道を作らない。
- * 型と、純粋な関数だけ。HTTP の入出力の形は page-schema.ts にある
+ * List pagination (keyset). Order is "time + id", and the next page is pointed to by a position (Cursor).
+ * A list always takes a PageQuery and returns a Page, leaving no way to write an unbounded list.
+ * Types and pure functions only. HTTP input/output shapes live in page-schema.ts
  */
 
-/** 一覧の中の位置。並びを決める時刻と id。同じ時刻が複数あっても、id で一意になる */
+/** A position in a list: the ordering time and id. Unique by id even when times collide */
 export type Cursor = { at: Date; id: string };
 
-/** 一覧の条件。limit は必須で、上限は PAGE_LIMIT.max */
+/** List conditions. limit is required, capped at PAGE_LIMIT.max */
 export type PageQuery = {
-  /** この位置より後ろから */
+  /** Start after this position */
   after?: Cursor;
   limit: number;
 };
 
-/** 一覧の 1 ページ。続きが無ければ next は null */
+/** One page of a list. next is null when there is no more */
 export type Page<T> = {
   items: T[];
   next: Cursor | null;
@@ -23,8 +23,8 @@ export type Page<T> = {
 export const PAGE_LIMIT = { default: 20, max: 100 } as const;
 
 /**
- * 「limit + 1 件」読んだ行から、1 ページを作る。
- * 1 件多く読むのは、続きがあるかを知るため。repo は `.limit(limit + 1)` で読んで、これに渡す
+ * Builds a page from rows read with "limit + 1".
+ * The extra row tells whether there is more. The repo reads with `.limit(limit + 1)` and passes the rows here
  */
 export const toPage = <T>(
   rows: T[],

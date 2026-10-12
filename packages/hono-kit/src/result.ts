@@ -1,8 +1,8 @@
 /**
- * 想定内の失敗を戻り値で返すための型。
+ * A type for returning expected failures as values.
  *
- * value を取り出すには先に ok で絞る必要があるので、失敗の処理を飛ばせない。
- * どの失敗がありうるかは E に列挙する。想定外の失敗（DB が落ちた等）は throw のままにする
+ * You must narrow on ok before reading value, so failure handling cannot be skipped.
+ * List the possible failures in E. Unexpected failures (the DB is down, ...) are still thrown
  */
 export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 

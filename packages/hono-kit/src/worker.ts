@@ -6,14 +6,14 @@ import { systemActor } from "./system-value.js";
 import type { System } from "./system.js";
 
 /**
- * 入口が受け取るもの。誰として呼ぶか（actor）も、いつの出来事か（now）も、入口が決めずに受け取る。
- * HTTP の handler が c.get("actor") と new Date() で決めるものを、ここでは createWorker が渡す
+ * What an entry point receives. Who is acting (actor) and when it happened (now) are received, not decided, here.
+ * What an HTTP handler gets from c.get("actor") and new Date() is passed in by createWorker
  */
 export type CronContext = {
   deps: RegisteredDeps;
-  /** 利用者のいない入口なので、いつもシステム */
+  /** An entry point with no user, so always the system */
   actor: System;
-  /** 予定されていた時刻（実際に動いた時刻ではない） */
+  /** The scheduled time (not when it actually ran) */
   now: Date;
 };
 
@@ -24,14 +24,14 @@ export type QueueContext<Body> = CronContext & {
 type Bindings = RegisteredEnv["Bindings"];
 
 /**
- * Workers の入口。HTTP は fetch、時刻は scheduled、キューは queue に渡す。
+ * The Workers entry point. HTTP goes to fetch, schedules to scheduled, queues to queue.
  *
- * - 依存は呼び出しごとに 1 回、makeDeps で組み立てる（HTTP は provideDeps が同じことをする）
- * - 利用者のいない入口なので、service を呼ぶための actor（システム）をここが渡す。入口のファイルは作らず、受け取るだけ
- * - now はイベントから渡す。scheduled は予定の時刻、queue はメッセージが積まれた時刻
- *   （再送が日をまたいでも、同じ日付のまま扱える）
- * - queue の handler は Result を返す。ok なら ack、err なら retry。想定外の throw も、
- *   そのメッセージだけ retry にして、同じバッチの残りは処理を続ける
+ * - deps are built once per call with makeDeps (provideDeps does the same for HTTP)
+ * - There is no user, so this passes the actor (the system) for calling services. Entry files never create it; they only receive it
+ * - now comes from the event: the scheduled time for scheduled, the enqueue time for queue
+ *   (so a retry that crosses midnight is still treated as the same date)
+ * - A queue handler returns a Result: ok acks, err retries. An unexpected throw
+ *   retries only that message, and the rest of the batch continues
  */
 export const createWorker = <Body = never>(options: {
   makeDeps: (env: Bindings) => RegisteredDeps;
@@ -81,9 +81,9 @@ export const createWorker = <Body = never>(options: {
 };
 
 /**
- * 認証を別の方法で確かめる入口（署名つきの webhook など）の宣言。
- * allowAnonymous と同じ並びで、route の middleware の先頭に置き、handler は `c.get("actor")` で受け取る（requireAuth と同じ名前）。
- * 署名を確かめるのは handler の仕事——確かめる前に actor を使わない
+ * Declares an entry point that verifies the caller another way (a signed webhook, ...).
+ * Like allowAnonymous, put it first in the route's middleware; the handler reads `c.get("actor")` (the same name as with requireAuth).
+ * Verifying the signature is the handler's job: do not use actor before verifying
  */
 export const allowSystem = createMiddleware<{ Variables: { actor: System } }>(
   async (c, next) => {

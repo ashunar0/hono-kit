@@ -1,6 +1,6 @@
 /**
- * 登録された route の宣言から、OpenAPI の文書を作る。hnk の本体は OpenAPI を知らないので、
- * 要る人だけが使う部品。JSON Schema への変換は、スキーマのライブラリ自身が持つ（Standard JSON Schema）
+ * Builds an OpenAPI document from the registered route declarations. The core of hono-kit does not know OpenAPI,
+ * so this is an opt-in part. Conversion to JSON Schema belongs to the schema library itself (Standard JSON Schema)
  */
 import type { Hono } from "hono";
 import { ROUTE } from "./router.js";
@@ -9,13 +9,13 @@ import { toJsonSchema } from "./standard-schema.js";
 
 const TARGET = "draft-2020-12";
 
-/** 文書を作るときの指定。libraryOptions は、スキーマのライブラリ固有の指定をそのまま渡す口 */
+/** Options for building the document. libraryOptions are passed through to the schema library as is */
 export type OpenapiOptions = { libraryOptions?: Record<string, unknown> };
 
 type Io = "input" | "output";
 
 const jsonSchemaOf = (schema: AnySchema, io: Io, options: OpenapiOptions) =>
-  // 表せない型は、文書では「何でも」にして、文書の生成そのものは止めない。指定があればそちらが先
+  // Types that cannot be expressed become "anything" in the document instead of stopping generation. Explicit options win
   toJsonSchema(schema, io, {
     target: TARGET,
     libraryOptions: { unrepresentable: "any", ...options.libraryOptions },
@@ -47,7 +47,7 @@ const jsonContent = (schema: AnySchema, io: Io, options: OpenapiOptions) => ({
   "application/json": { schema: jsonSchemaOf(schema, io, options) },
 });
 
-/** 応答の宣言から、スキーマと説明を取り出す（スキーマだけなら説明は空） */
+/** Takes the schema and description from a response declaration (no description for a bare schema) */
 const responseOf = (entry: ResponseEntry) =>
   "~standard" in entry ? { schema: entry, description: "" } : entry;
 
@@ -80,7 +80,7 @@ const operationOf = (route: RouteConfig, options: OpenapiOptions) => {
   };
 };
 
-/** app に登録された route から文書を作る。`app.get("/openapi.json", (c) => c.json(openapiDocument(app, info)))` */
+/** Builds the document from the routes registered on app.`app.get("/openapi.json", (c) => c.json(openapiDocument(app, info)))` */
 export const openapiDocument = (
   app: Hono<any, any, any>,
   info: { title: string; version: string },

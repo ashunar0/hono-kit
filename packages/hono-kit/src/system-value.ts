@@ -1,8 +1,8 @@
 import type { System } from "./system.js";
 
 /**
- * システムの値。hnk の中の createWorker と allowSystem だけが渡す。テストは hnk/testing から借りる。
- * 型（system.ts）と値をファイルで分けているのは、`hono-kit/system` として外に出すのを型だけにするため。
- * 値は package.json の exports に出さず、hnk の中と、テスト用の `hono-kit/testing` だけが持つ
+ * The system value. Only createWorker and allowSystem inside hono-kit hand it out. Tests borrow it from hono-kit/testing.
+ * The type (system.ts) and the value live in separate files so that `hono-kit/system` exports only the type.
+ * The value is not in package.json exports; only hono-kit itself and `hono-kit/testing` (for tests) have it
  */
 export const systemActor = { kind: "system" } as System;

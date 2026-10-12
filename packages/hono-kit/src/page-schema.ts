@@ -1,6 +1,6 @@
 /**
- * 一覧のページ送りの、HTTP の入出力の形。スキーマのライブラリに依存しないよう、
- * Standard Schema を手で満たす（hnkSchema）。絞り込みや 1 件の形は、アプリのスキーマ（zod、valibot など）を包む
+ * HTTP input/output shapes for list pagination. To stay independent of schema libraries,
+ * it implements Standard Schema by hand (hnkSchema). Filters and item shapes wrap the app's schemas (zod, valibot, ...)
  */
 import { PAGE_LIMIT, type Cursor, type Page } from "./page.js";
 import {
@@ -12,11 +12,11 @@ import {
   type StandardSchema,
 } from "./standard-schema.js";
 
-/** 位置を、外からは中身の読めない文字列にする */
+/** Encodes a position as a string that is opaque from outside */
 const encodeCursor = (cursor: Cursor) =>
   btoa(`${cursor.at.getTime()}:${cursor.id}`);
 
-/** 文字列から位置を戻す。形が正しくなければ null */
+/** Decodes a position from a string. null if malformed */
 const decodeCursor = (value: string): Cursor | null => {
   let decoded: string;
   try {
@@ -32,19 +32,19 @@ const decodeCursor = (value: string): Cursor | null => {
   return { at: new Date(ms), id };
 };
 
-/** query の値。Hono は同じ名前が複数あると配列で渡す */
+/** A query value. Hono passes an array when a name repeats */
 type QueryValue = string | string[] | undefined;
 
-/** ページ送りの部分の、受け取る形（query の文字列）と、handler に届く形 */
+/** The pagination part: what is received (query strings) and what reaches the handler */
 type PageQueryInput = { cursor?: string; limit?: string };
 type PageQueryOutput = { cursor?: Cursor; limit: number };
 
 const LIMIT_MESSAGE = `limit must be an integer from 1 to ${PAGE_LIMIT.max}`;
 
 /**
- * 一覧の query。絞り込みのスキーマを包み、cursor と limit を足す。
- * `request: { query: pageQuerySchema(z.object({ status: ... })) }`、絞り込みが無ければ `pageQuerySchema()`。
- * limit に既定（20）と上限（100）があるので、上限の無い一覧にならない
+ * The list query. Wraps the filter schema and adds cursor and limit.
+ * `request: { query: pageQuerySchema(z.object({ status: ... })) }`, or `pageQuerySchema()` without filters.
+ * limit has a default (20) and a cap (100), so the list is never unbounded
  */
 export function pageQuerySchema(): StandardSchema<
   PageQueryInput,
@@ -119,7 +119,7 @@ export function pageQuerySchema(
 
 type PageBody<T> = { items: T[]; nextCursor: string | null };
 
-/** 一覧の応答 `{ items, nextCursor }` の形。1 件の形はアプリのスキーマ。items の上限も持つ */
+/** The list response shape `{ items, nextCursor }`. The item shape is the app's schema. Also caps items */
 export const pageResponseSchema = <T extends StandardSchema<any, any>>(
   item: T,
 ) =>
@@ -148,14 +148,14 @@ export const pageResponseSchema = <T extends StandardSchema<any, any>>(
           maxItems: PAGE_LIMIT.max,
           items: toJsonSchema(item, io, options),
         },
-        /** 続きを読むときに cursor に渡す。続きが無ければ null */
+        /** Pass as cursor to read more. null when there is no more */
         nextCursor: { type: ["string", "null"] },
       },
       required: ["items", "nextCursor"],
     }),
   );
 
-/** Page → 応答。items は map で見せる形に詰め替える */
+/** Page → response. map turns items into what is shown */
 export const pageResponse = <T, R>(
   page: Page<T>,
   map: (item: T) => R,

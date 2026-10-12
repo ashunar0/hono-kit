@@ -23,10 +23,10 @@ import type {
   RouteConfigToTypedResponse,
 } from "./route-types.js";
 
-/** handler に、宣言を覚えさせる。OpenAPI の文書は、登録された handler からこれを読んで作る */
+/** Attaches the declaration to the handler. The OpenAPI document is built by reading it from registered handlers */
 export const ROUTE: unique symbol = Symbol("hnk.route");
 
-/** 入力の検査。Standard Schema を満たすものなら何でも。失敗は ValidationError で onError へ流す */
+/** Input validation. Anything that implements Standard Schema. Failures go to onError as ValidationError */
 const check = (
   target: "param" | "query" | "header" | "cookie" | "json",
   schema: AnySchema,
@@ -51,8 +51,8 @@ const validatorsOf = (route: RouteConfig) => {
 };
 
 /**
- * route をまとめる Hono。`.endpoint(config, fn)` で、宣言と handler を組にして登録する。
- * 宣言から、c.req.valid() の型と、hc の応答の型が決まる
+ * A Hono that groups routes. `.endpoint(config, fn)` registers a declaration together with its handler.
+ * The declaration determines the types of c.req.valid() and of hc responses
  */
 export class Router<
   E extends Env = Env,
@@ -77,7 +77,7 @@ export class Router<
     const middleware = [route.middleware ?? []].flat();
     const last = Object.assign(handler, { [ROUTE]: route });
 
-    // 型は引数の宣言で守られている。Hono の on は、この中では型を照らし合わせきれない
+    // Types are guarded by the parameter declarations. Hono's on cannot match them up in here
     (
       (this as unknown as Hono<any, any, any>).on as (
         ...args: unknown[]
@@ -93,5 +93,5 @@ export class Router<
   }
 }
 
-/** route をまとめる Hono。`new Hono()` の代わり */
+/** A Hono that groups routes. Use instead of `new Hono()` */
 export const createRouter = () => new Router<RegisteredEnv>();

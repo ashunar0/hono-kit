@@ -1,9 +1,9 @@
 /**
- * hnk の入口。中身は役割ごとのファイルにある。
- * - endpoint.ts + router.ts: route の宣言と handler（createRouter、reply、guard、provideDeps）
- * - failure.ts: HTTP で返す失敗（httpError、fail、onError）
- * - worker.ts: Workers の入口（createWorker）と、HTTP 以外の入口が受け取るもの
- * - page-schema.ts: 一覧のページ送りの、HTTP の入出力の形
+ * Entry point of hono-kit. The contents live in one file per role.
+ * - endpoint.ts + router.ts: route declarations and handlers (createRouter, reply, guard, provideDeps)
+ * - failure.ts: failures returned over HTTP (httpError, fail, onError)
+ * - worker.ts: the Workers entry point (createWorker) and what non-HTTP entry points receive
+ * - page-schema.ts: HTTP input/output shapes for list pagination
  */
 export { err, ok, type Result } from "./result.js";
 export type { System } from "./system.js";

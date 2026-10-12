@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Failure, FailureKind } from "./failures.js";
 
-/** HTTP で返す失敗 1 つ。コード、何番か、既定の文言を持つ */
+/** One failure returned over HTTP. Has a code, a status and a default message */
 export type HttpError<
   K extends string = string,
   S extends ContentfulStatusCode = ContentfulStatusCode,
@@ -14,8 +14,8 @@ export type HttpError<
 };
 
 /**
- * 失敗の種類と、HTTP で返す番号の対応。ここ 1 か所だけが持つ（Go の errors.go、gRPC のステータスコードと同じ考え方）。
- * 種類を足すのは、既存のどれでも言い表せない失敗が現れたとき
+ * Maps failure kinds to HTTP statuses. Only this one place holds it (same idea as Go's errors.go or gRPC status codes).
+ * Add a kind only when a failure appears that none of the existing ones can express
  */
 const FAILURE_STATUS = {
   unauthenticated: 401,
@@ -25,10 +25,10 @@ const FAILURE_STATUS = {
   upstream: 502,
 } as const satisfies Record<FailureKind, ContentfulStatusCode>;
 
-/** errorResponses が受け取れる失敗。Failure は種類から番号が決まり、HttpError は番号を自分で持つ */
+/** Failures errorResponses accepts. A Failure gets its status from its kind; an HttpError carries its own */
 export type AnyFailure = Failure | HttpError;
 
-/** Failure なら種類から番号を決めた HttpError にする。HttpError はそのまま */
+/** Turns a Failure into an HttpError with the status of its kind. An HttpError is returned as is */
 export type ToHttpError<F extends AnyFailure> =
   F extends Failure<infer K, infer Kind>
     ? HttpError<K, (typeof FAILURE_STATUS)[Kind]>
@@ -45,7 +45,7 @@ export const toHttpError = <const F extends AnyFailure>(
         failure.message,
       )) as ToHttpError<F>;
 
-/** `export const NotFound = httpError("NOT_FOUND", 404, "対象が見つかりません");` */
+/** `export const NotFound = httpError("NOT_FOUND", 404, "Not found");` */
 export const httpError = <
   const K extends string,
   const S extends ContentfulStatusCode,
@@ -55,7 +55,7 @@ export const httpError = <
   message: string,
 ): HttpError<K, S> => ({ code, status, message });
 
-/** 入力の検査に失敗したとき。createRouter が使う */
+/** When input validation fails. Used by createRouter */
 export const ValidationError = httpError(
   "VALIDATION_ERROR",
   400,
@@ -72,7 +72,7 @@ class HnkError extends HTTPException {
   }
 }
 
-/** HTTP の入口で起きる失敗を作る。middleware など、handler の外で `throw fail(Unauthorized)` */
+/** Creates a failure raised at the HTTP entry point. Outside handlers, e.g. in middleware: `throw fail(Unauthorized)` */
 export const fail = (failure: AnyFailure, message = failure.message) => {
   const error = toHttpError(failure);
 
@@ -83,7 +83,7 @@ export const errorBody = (code: string, message: string) => ({
   error: { code, message },
 });
 
-/** 全ての失敗の唯一の出口。`app.onError(onError)` */
+/** The single exit for every failure. `app.onError(onError)` */
 export const onError: ErrorHandler = (error, c) => {
   if (error instanceof HnkError) {
     return c.json(

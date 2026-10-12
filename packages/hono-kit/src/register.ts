@@ -1,9 +1,9 @@
 import type { Env } from "hono";
 
 /**
- * アプリが型を登録する場所。AppEnv を定義するファイルで
- * `declare module "hono-kit" { interface Register { env: AppEnv } }`、
- * 組み立てのファイルで `interface Register { deps: Deps }` と書く
+ * Where the app registers its types. In the file that defines AppEnv, write
+ * `declare module "hono-kit" { interface Register { env: AppEnv } }`,
+ * and in the composition file, `interface Register { deps: Deps }`
  */
 export interface Register {}
 

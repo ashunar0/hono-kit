@@ -1,8 +1,8 @@
 /**
- * システム（利用者のいない呼び出し元）の型。cron・キュー・webhook が、service を呼ぶときの「誰として」。
- * 値を作る場所は hnk の中の 1 か所だけ（system-value.ts）で、アプリは作れず、受け取るだけ。
- * この印は外から名前が見えないので、`{ kind: "system" }` と書いてもシステムにはなれない。
- * ロールではないので、ロールを文字列で扱う場所に紛れ込まない
+ * The type of the system (a caller with no user): "as whom" when cron, queues and webhooks call a service.
+ * The value is created in only one place inside hono-kit (system-value.ts); apps cannot create it, only receive it.
+ * The brand's name is invisible from outside, so writing `{ kind: "system" }` does not make a system.
+ * It is not a role, so it cannot sneak into places that handle roles as strings
  */
 declare const mark: unique symbol;
 

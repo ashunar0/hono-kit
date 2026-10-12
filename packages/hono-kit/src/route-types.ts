@@ -1,6 +1,6 @@
 /**
- * route の宣言（config）と、そこから決まる型。Hono の Handler / ToSchema に載せるので、
- * c.req.valid()、reply、hc の応答の型が、宣言から決まる
+ * Route declarations (config) and the types derived from them. Built on Hono's Handler / ToSchema, so
+ * the types of c.req.valid(), reply and hc responses come from the declaration
  */
 import type {
   Env,
@@ -25,16 +25,16 @@ type MaybePromise<T> = Promise<T> | T;
 export type AnySchema = StandardSchema<any, any>;
 
 /**
- * 応答の宣言 1 つ。アプリはスキーマをそのまま書く。
- * `{ schema, description }` は errorResponses が作る失敗の応答で、説明（失敗の文言）が OpenAPI の文書に出る。
- * スキーマは Standard Schema の `~standard` を持つので、両者は見分けられる
+ * One response declaration. Apps write the schema as is.
+ * `{ schema, description }` is a failure response made by errorResponses; its description (the failure message) appears in the OpenAPI document.
+ * Schemas have Standard Schema's `~standard`, so the two can be told apart
  */
 export type ResponseEntry =
   AnySchema | { schema: AnySchema; description: string };
 
 /**
- * route の宣言。request のキーは、handler で読むときの `c.req.valid("…")` の名前と同じ
- * （`param` を宣言したら `c.req.valid("param")`）。method は小文字、path は Hono の書き方（`/users/:id`）
+ * A route declaration. The keys of request match the names read in the handler with `c.req.valid("…")`
+ * (declare `param`, read `c.req.valid("param")`). method is lowercase; path uses Hono syntax (`/users/:id`)
  */
 export type RouteConfig = {
   method: "get" | "post" | "put" | "patch" | "delete";
@@ -45,20 +45,20 @@ export type RouteConfig = {
     query?: AnySchema;
     header?: AnySchema;
     cookie?: AnySchema;
-    /** JSON の本文 */
+    /** The JSON body */
     json?: AnySchema;
   };
   responses: { [status: number]: ResponseEntry };
 };
 
-/** 応答の宣言から、スキーマを取り出す */
+/** Takes the schema out of a response declaration */
 export type SchemaOfResponse<T> = T extends AnySchema
   ? T
   : T extends { schema: infer S extends AnySchema }
     ? S
     : never;
 
-// ---- 入力 ----
+// ---- Input ----
 
 type HasUndefined<T> = undefined extends T ? true : false;
 
@@ -88,12 +88,12 @@ export type ComputeInput<R extends RouteConfig> = InputTypeBase<R, "param"> &
   InputTypeBase<R, "cookie"> &
   InputTypeJson<R>;
 
-// ---- 出力 ----
+// ---- Output ----
 
 type DefinedStatusCodes<R extends RouteConfig> = keyof R["responses"] &
   StatusCode;
 
-/** 宣言した応答の和。hc の応答の型になる */
+/** The union of declared responses. Becomes the hc response type */
 export type RouteConfigToTypedResponse<R extends RouteConfig> = {
   [Status in DefinedStatusCodes<R>]: TypedResponse<
     JSONParsed<InferOutput<SchemaOfResponse<R["responses"][Status]>>>,
@@ -102,7 +102,7 @@ export type RouteConfigToTypedResponse<R extends RouteConfig> = {
   >;
 }[DefinedStatusCodes<R>];
 
-// ---- middleware の Env ----
+// ---- middleware Env ----
 
 type AsArray<T> = T extends undefined ? [] : T extends any[] ? T : [T];
 
@@ -117,7 +117,7 @@ type OfHandlerType<T extends MiddlewareHandler> =
     ? { env: E; path: P; input: I }
     : never;
 
-/** 並べた middleware を 1 つにまとめた型（Env を重ねる） */
+/** The listed middleware combined into one type (Envs merged) */
 type MiddlewareToHandlerType<M extends MiddlewareHandler<any, any, any>[]> =
   M extends [infer First, infer Second, ...infer Rest]
     ? First extends MiddlewareHandler<any, any, any>
@@ -151,7 +151,7 @@ export type RouteConfigToEnv<R extends RouteConfig> =
     ? Env
     : RouteMiddlewareParams<R>["env"];
 
-/** handler。c.req.valid() と c が宣言から決まり、返せるのは宣言した応答だけ */
+/** A handler. c.req.valid() and c come from the declaration, and only declared responses can be returned */
 export type RouteHandler<
   R extends RouteConfig,
   E extends Env = RouteConfigToEnv<R>,

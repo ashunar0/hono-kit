@@ -34,21 +34,21 @@ import {
 import type { System } from "./system.js";
 
 /**
- * `as never` / `as unknown as` を書いてよい場所と数は、test/source.test.mjs が決めて確かめる
+ * Where and how many `as never` / `as unknown as` are allowed is fixed and checked by test/source.test.mjs
  */
 
-// ---- 依存 ----
+// ---- Dependencies ----
 
-/** hnk の中だけで使う置き場所。アプリのコードは c.var から依存を取り出さない */
+/** A slot used only inside hono-kit. App code does not take deps out of c.var */
 const DEPS_KEY = "hnk:deps";
 
 /**
- * リクエストごとに依存を組み立てる middleware。`app.use("*", provideDeps(makeDeps))`。
+ * Middleware that builds deps per request. `app.use("*", provideDeps(makeDeps))`.
  *
- * 起動時に 1 回だけ組み立てると、接続を持つ DB では Workers がリクエストをまたいだ
- * I/O を拒む。だから組み立てた結果ではなく、組み立て方を受け取る。
- * ここでは組み立てない。endpoint の handler が初めて受け取るときに 1 回だけ組み立てるので、
- * 401 で返すだけのリクエストや /openapi.json では何も作られない
+ * If deps were built once at startup, Workers would reject I/O across requests
+ * for a connection-holding DB. So it takes how to build, not what was built.
+ * Nothing is built here. Deps are built once, when an endpoint handler first receives them, so
+ * nothing is built for requests that just return 401, or for /openapi.json
  */
 export const provideDeps =
   (
@@ -62,9 +62,9 @@ export const provideDeps =
   };
 
 type MaybePromise<T> = T | Promise<T>;
-// ---- responses の宣言 ----
+// ---- responses declarations ----
 
-/** 説明（OpenAPI の文書に出る）を付けた応答。失敗の応答だけが使う。アプリはスキーマをそのまま書く */
+/** A response with a description (shown in the OpenAPI document). Only failure responses use it; apps write schemas as is */
 const described = <T extends AnySchema>(schema: T, description: string) => ({
   schema,
   description,
@@ -72,7 +72,7 @@ const described = <T extends AnySchema>(schema: T, description: string) => ({
 
 type ErrorBody<K extends string> = { error: { code: K; message: string } };
 
-/** 失敗の応答の本文 `{ error: { code, message } }`。code は宣言した失敗のどれか */
+/** The failure response body `{ error: { code, message } }`. code is one of the declared failures */
 const errorSchema = <K extends string>(codes: readonly K[]) =>
   hnkSchema<ErrorBody<K>, ErrorBody<K>>(
     (value) => {
@@ -101,14 +101,14 @@ const errorSchema = <K extends string>(codes: readonly K[]) =>
     }),
   );
 
-/** 応答の宣言に、その番号で返しうる失敗を覚えさせる。OpenAPI には出ない */
+/** Attaches the failures that may be returned with that status to the response declaration. Not shown in OpenAPI */
 const DECLARED_ERRORS: unique symbol = Symbol("hnk.declaredErrors");
 
 type ErrorResponse = ReturnType<typeof described> & {
   readonly [DECLARED_ERRORS]: readonly HttpError[];
 };
 
-/** 同じ番号の失敗を 1 つの応答にまとめる。コードは literal の和、文言はコードごとに覚えておく */
+/** Merges failures with the same status into one response. Codes become a union of literals; messages are kept per code */
 const errorResponseOf = (errors: readonly HttpError[]): ErrorResponse => ({
   ...described(
     errorSchema(errors.map((e) => e.code)),
@@ -118,9 +118,9 @@ const errorResponseOf = (errors: readonly HttpError[]): ErrorResponse => ({
 });
 
 /**
- * responses の失敗の部分。ステータスは失敗が持っているので、手では書かない。
+ * The failure part of responses. Failures carry their status, so you do not write it by hand.
  * `responses: { 200: invoiceSchema, ...errorResponses(Unauthorized, NotFound) }`
- * 同じ番号の失敗が複数あっても、1 つの応答にまとめるので消えない
+ * Several failures with the same status are merged into one response, so none is lost
  */
 export const errorResponses = <const T extends readonly AnyFailure[]>(
   ...failures: T
@@ -141,7 +141,7 @@ type ErrorResponses<E extends HttpError> = {
   };
 };
 
-/** 2 つの responses を重ねる。同じ番号の失敗の宣言どうしは、片方で消さずにまとめる */
+/** Merges two responses. Failure declarations with the same status are combined, not overwritten */
 const mergeResponses = (
   a: Record<string, unknown>,
   b: Record<string, unknown>,
@@ -157,11 +157,11 @@ const mergeResponses = (
   return merged;
 };
 
-// ---- guard と、失敗の自動の宣言 ----
+// ---- guards and automatic failure declarations ----
 
 const GUARD_ERRORS: unique symbol = Symbol("hnk.guardErrors");
 
-/** 返しうる失敗を持った middleware */
+/** Middleware that carries the failures it may return */
 export type Guard<
   M extends MiddlewareHandler,
   E extends readonly AnyFailure[],
@@ -170,8 +170,8 @@ export type Guard<
 };
 
 /**
- * middleware に、それが返しうる失敗を持たせる。.endpoint の middleware に置くと、
- * その失敗が responses に自動で足される。`export const requireAuth = guard([Unauthorized], ...)`
+ * Gives a middleware the failures it may return. Put it in .endpoint middleware and
+ * those failures are added to responses automatically. `export const requireAuth = guard([Unauthorized], ...)`
  */
 export const guard = <
   const F extends readonly AnyFailure[],
@@ -189,19 +189,19 @@ type GuardErrorsOf<M> = M extends readonly unknown[]
 
 const INPUT_PARTS = ["param", "query", "header", "cookie", "json"] as const;
 
-/** 入力の検査があるか。あれば ValidationError を返しうる */
+/** Whether there is input validation. If so, ValidationError may be returned */
 type HasInput<R> = R extends { request: infer Q }
   ? Extract<keyof Q, (typeof INPUT_PARTS)[number]> extends never
     ? false
     : true
   : false;
 
-/** 自動で足す失敗。guard が持つものと、入力があれば ValidationError */
+/** Failures added automatically: those of the guards, and ValidationError when there is input */
 type AutoErrors<R> =
   | GuardErrorsOf<R extends { middleware: infer M } ? M : never>
   | (HasInput<R> extends true ? typeof ValidationError : never);
 
-/** 手で書いた失敗のコード。reply.failure が受け取れるのはこれだけ */
+/** Codes of the failures written by hand. The only ones reply.failure accepts */
 declare const DECLARED_BY_HAND: unique symbol;
 
 type WithAutoErrors<R extends RouteConfig> = Omit<R, "responses"> & {
@@ -212,9 +212,9 @@ type WithAutoErrors<R extends RouteConfig> = Omit<R, "responses"> & {
 };
 
 /**
- * route の宣言に、失敗の自動の宣言を足したもの。
- * guard が返しうる失敗（requireAuth なら Unauthorized）と、入力があるときの ValidationError は
- * responses に書かなくていい。書くのはドメインの失敗だけ
+ * A route declaration with the automatic failure declarations added.
+ * Failures a guard may return (Unauthorized for requireAuth) and ValidationError when there is input
+ * need not be written in responses. Write only domain failures
  */
 const createRoute = <const R extends RouteConfig>(config: R) => {
   const middleware = [config.middleware ?? []].flat() as {
@@ -243,16 +243,16 @@ type JsonBodyOf<R extends RouteConfig, S> = InferOutput<JsonSchemaOf<R, S>>;
 type CodeOf<R extends RouteConfig, S> =
   JsonBodyOf<R, S> extends { error: { code: infer K } } ? K : never;
 
-/** 2xx のうち、この route が宣言したもの */
+/** The 2xx responses this route declares */
 type DeclaredSuccess<R extends RouteConfig> = keyof R["responses"] &
   SuccessStatusCode;
 
-/** createRoute が組み立てた route の型 */
+/** The type of a route built by createRoute */
 type Built<C extends RouteConfig> = ReturnType<typeof createRoute<C>>;
 
 /**
- * reply.failure が受け取れる失敗のコード。hnk の .endpoint なら手で書いたものだけ
- * （guard や入力の検査が返す失敗は、handler が返すものではないので除く）
+ * Failure codes reply.failure accepts. With hono-kit's .endpoint, only those written by hand
+ * (failures from guards or input validation are excluded, since the handler does not return them)
  */
 type DeclaredFailure<R extends RouteConfig> = R extends {
   readonly [DECLARED_BY_HAND]?: infer K;
@@ -261,13 +261,13 @@ type DeclaredFailure<R extends RouteConfig> = R extends {
   : { [S in keyof R["responses"]]: CodeOf<R, S> }[keyof R["responses"]];
 
 /**
- * 失敗を 1 つも宣言していない route で reply.failure を呼んだとき、引数の型としてエラーに出る文言。
- * ここを `never` にすると、赤線の理由が読めなくなる
+ * The message shown as the argument type when reply.failure is called on a route that declares no failures.
+ * With `never` here, the reason for the red squiggle would be unreadable
  */
 type NoFailureDeclared =
   "This route declares no domain failures. Add ...errorResponses(NotFound, ...) to responses";
 
-/** 失敗のコードごとに、宣言したステータスの応答を返す。「404 なら NOT_FOUND」の対応を型に残す */
+/** Returns the declared status for each failure code, keeping "NOT_FOUND means 404" in the type */
 type FailureResponse<R extends RouteConfig, K> = {
   [S in keyof R["responses"] & ContentfulStatusCode]: K extends CodeOf<R, S>
     ? TypedResponse<{ error: { code: K; message: string } }, S, "json">
@@ -275,9 +275,9 @@ type FailureResponse<R extends RouteConfig, K> = {
 }[keyof R["responses"] & ContentfulStatusCode];
 
 /**
- * route の responses から型を作った返し方。
- * c.json だと、ずれたときの赤線が handler の頭に付く。reply は期待する形を引数で受けるので、
- * 間違えた値そのものに赤線が付く
+ * A way of returning, typed from the route's responses.
+ * With c.json, a mismatch is underlined at the top of the handler. reply takes the expected shape as its argument, so
+ * the wrong value itself is underlined
  */
 type Reply<R extends RouteConfig> = {
   <S extends DeclaredSuccess<R>>(
@@ -285,11 +285,11 @@ type Reply<R extends RouteConfig> = {
     body: NoInfer<JsonBodyOf<R, S>>,
   ): TypedResponse<JSONParsed<JsonBodyOf<R, S>>, S, "json">;
   /**
-   * 想定内の失敗。宣言していないコードを渡すと、引数に「宣言してあるのはこれ」と赤線が付く。
-   * そのとき戻り値は never にして、handler の頭に同じ原因の赤線が重ならないようにする
+   * An expected failure. Passing an undeclared code underlines the argument with "these are the declared ones".
+   * The return type is then never, so the same cause is not underlined again at the top of the handler
    */
   failure<K extends string>(
-    // & string は、エラーメッセージで型の名前ではなく中身（"NOT_FOUND" など）を見せるため
+    // & string makes error messages show the contents ("NOT_FOUND", ...) instead of the type name
     error: [K] extends [DeclaredFailure<R>]
       ? K
       : [DeclaredFailure<R>] extends [never]
@@ -298,7 +298,7 @@ type Reply<R extends RouteConfig> = {
   ): [K] extends [DeclaredFailure<R>] ? FailureResponse<R, K> : never;
 };
 
-/** 宣言の中から、そのコードの失敗を探す。何番で、どの文言で返すかは宣言が知っている */
+/** Finds the failure for that code in the declaration, which knows its status and message */
 const findDeclaredFailure = (route: RouteConfig, code: string) => {
   for (const [status, response] of Object.entries(route.responses)) {
     const declared = (response as Partial<ErrorResponse>)[
@@ -315,7 +315,7 @@ const findDeclaredFailure = (route: RouteConfig, code: string) => {
   );
 };
 
-/** request.param のキー */
+/** The keys of request.param */
 type ParamsKeysOf<C extends RouteConfig> = C extends {
   request: { param: infer S extends AnySchema };
 }
@@ -323,8 +323,8 @@ type ParamsKeysOf<C extends RouteConfig> = C extends {
   : never;
 
 /**
- * path の `:name` と request.param のキーが食い違っているとき、赤線に出る文言。
- * 食い違っていると、実行時に検査が常に失敗するか、値が取れない
+ * The message shown when the path's `:name` and the keys of request.param disagree.
+ * If they disagree, validation always fails at runtime or the value is missing
  */
 type PathMismatch<C extends RouteConfig> = [
   | Exclude<ParamKeys<C["path"]>, ParamsKeysOf<C>>
@@ -333,17 +333,17 @@ type PathMismatch<C extends RouteConfig> = [
   ? never
   : `The path params (${ParamKeys<C["path"]>}) do not match the keys of request.param (${ParamsKeysOf<C>})`;
 
-/** 宣言（config）の型。path と request.param が食い違っていれば、その旨の赤線が出る */
+/** The type of a declaration (config). A mismatch between path and request.param is underlined */
 export type EndpointConfig<C extends RouteConfig> = C &
   ([PathMismatch<C>] extends [never]
     ? unknown
     : { readonly "path and request.param do not match": PathMismatch<C> });
 
-/** hc の応答の型などに使う、自動の失敗を足した後の宣言の型 */
+/** The declaration type after adding automatic failures, used for hc response types and the like */
 export type BuiltRoute<C extends RouteConfig> = Built<C>;
 
 /**
- * handler の型。受け取る（c）、返す（reply）、使う（deps）が、引数の位置で決まる
+ * The handler type. Receive (c), return (reply) and use (deps) are fixed by argument position
  */
 export type EndpointFn<C extends RouteConfig> = (
   c: Parameters<
@@ -354,7 +354,7 @@ export type EndpointFn<C extends RouteConfig> = (
 ) => MaybePromise<RouteConfigToTypedResponse<Built<C>>>;
 
 /**
- * 宣言と handler を組にする。登録は Router の `.endpoint(config, fn)` が使う
+ * Pairs a declaration with a handler. Used for registration by Router's `.endpoint(config, fn)`
  */
 export const buildEndpoint = <const C extends RouteConfig>(
   config: C,
@@ -380,7 +380,7 @@ export const buildEndpoint = <const C extends RouteConfig>(
       );
     const deps = resolve();
 
-    // R が決まっていないここでは TS が照らし合わせきれないので付け替える。使う側では fn の型で守られる
+    // R is not fixed here, so TS cannot match it up and we re-type it. Callers are guarded by the type of fn
     return fn(c as never, reply, deps) as never;
   };
 

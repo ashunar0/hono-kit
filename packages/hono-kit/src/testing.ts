@@ -1,4 +1,4 @@
 /**
- * テストだけが使う。本番のコードは、createWorker と allowSystem から受け取る
+ * For tests only. Production code receives it from createWorker and allowSystem
  */
 export { systemActor } from "./system-value.js";

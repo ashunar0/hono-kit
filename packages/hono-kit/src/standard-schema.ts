@@ -1,6 +1,6 @@
 /**
- * Standard Schema（https://standardschema.dev）の型。hnk はスキーマのライブラリを決め打ちせず、
- * この形を満たすもの（zod、valibot など）を受け取る。型だけなので、依存は増えない
+ * Types for Standard Schema (https://standardschema.dev). hono-kit does not pick a schema library;
+ * it accepts anything that has this shape (zod, valibot, ...). Types only, so no added dependency
  */
 export interface StandardSchema<Input = unknown, Output = Input> {
   readonly "~standard": {
@@ -26,7 +26,7 @@ export type InferOutput<S extends StandardSchema<any, any>> = NonNullable<
   S["~standard"]["types"]
 >["output"];
 
-/** JSON Schema を出せるスキーマ。OpenAPI の文書を作るときだけ要る（Standard JSON Schema） */
+/** A schema that can produce JSON Schema. Needed only for OpenAPI documents (Standard JSON Schema) */
 export type JsonSchemaCapable = {
   readonly "~standard": {
     readonly jsonSchema: {
@@ -38,7 +38,7 @@ export type JsonSchemaCapable = {
 
 export type JsonSchemaOptions = {
   target: string;
-  /** 各ライブラリ固有の指定を渡す口。知らないライブラリは無視する */
+  /** Library-specific options. Libraries that do not know them ignore them */
   libraryOptions?: Record<string, unknown>;
 };
 
@@ -48,8 +48,8 @@ const canEmitJsonSchema = (
   "jsonSchema" in schema["~standard"];
 
 /**
- * スキーマを JSON Schema にする。出せないスキーマなら、何を使えばいいかを添えて throw する。
- * 文書の中に埋め込むので、各スキーマの `$schema` は外す
+ * Converts a schema to JSON Schema. Throws, with what to use instead, if the schema cannot.
+ * Drops each schema's `$schema`, since it is embedded in the document
  */
 export const toJsonSchema = (
   schema: StandardSchema<any, any>,
@@ -68,8 +68,8 @@ export const toJsonSchema = (
 };
 
 /**
- * hnk が自分で持つスキーマを作る。検査と JSON Schema を手で書き、どのライブラリにも依存しない。
- * 型（Input・Output）は、検査の中身と合わせて呼ぶ側が決める
+ * Creates a schema owned by hono-kit. Validation and JSON Schema are written by hand, with no library dependency.
+ * The caller decides the types (Input, Output) to match the validation
  */
 export const hnkSchema = <Input, Output>(
   validate: (
@@ -91,5 +91,5 @@ export const hnkSchema = <Input, Output>(
   },
 });
 
-/** 検査の失敗を 1 つ返す */
+/** Returns a single validation issue */
 export const issue = (message: string) => ({ issues: [{ message }] }) as const;
