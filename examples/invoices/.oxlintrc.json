@@ -1,9 +1,17 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["import"],
+  "plugins": ["import", "typescript", "vitest"],
   "jsPlugins": ["hono-kit/lint"],
   "rules": {
-    "import/no-cycle": "error"
+    "import/no-cycle": "error",
+    "typescript/no-explicit-any": "error",
+    "vitest/no-restricted-vi-methods": [
+      "error",
+      {
+        "mock": "Do not replace modules. Pass a stand-in through deps (buildApp(makeDeps), appAs(user)) or use the real local D1",
+        "doMock": "Do not replace modules. Pass a stand-in through deps (buildApp(makeDeps), appAs(user)) or use the real local D1"
+      }
+    ]
   },
   "overrides": [
     {

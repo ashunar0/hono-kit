@@ -139,6 +139,8 @@ Each file in a module is classified by its name prefix (its role). `layer-import
 
 Runs typecheck, lint, format check and tests in one go, and lists all failures at the end. With AI, "make `pnpm check` pass" is the one instruction you need.
 
+The generated app also includes `AGENTS.md` (and a `CLAUDE.md` that points to it): the commands, the shape and the rules, kept short. Longer guides that are read only when needed ship inside the package (`node_modules/hono-kit/docs/`).
+
 ## Scope
 
 - Cloudflare Workers + D1 + Drizzle for now.

@@ -3,6 +3,7 @@ import {
   type Env,
   type Handler,
   type Input,
+  type MiddlewareHandler,
   type Schema,
   type ToSchema,
 } from "hono";
@@ -38,6 +39,20 @@ const check = (
     return result.value;
   });
 
+/** application/json and application/*+json, with optional parameters (charset, ...) */
+const JSON_CONTENT_TYPE = /^application\/([a-z0-9.-]+\+)?json(\s*;.*)?$/i;
+
+/**
+ * Rejects a body that is not declared as JSON. Without a JSON Content-Type, Hono does not read the body
+ * and hands {} to the validator, so a schema whose fields are all optional would accept any body as {}
+ */
+const requireJsonBody: MiddlewareHandler = async (c, next) => {
+  if (!JSON_CONTENT_TYPE.test(c.req.header("content-type") ?? "")) {
+    throw fail(ValidationError, "Content-Type must be application/json");
+  }
+  await next();
+};
+
 const validatorsOf = (route: RouteConfig) => {
   const { param, query, header, cookie, json } = route.request ?? {};
 
@@ -46,6 +61,7 @@ const validatorsOf = (route: RouteConfig) => {
     query && check("query", query),
     header && check("header", header),
     cookie && check("cookie", cookie),
+    json && requireJsonBody,
     json && check("json", json),
   ].filter((v): v is NonNullable<typeof v> => !!v);
 };

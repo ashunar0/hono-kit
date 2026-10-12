@@ -1,6 +1,6 @@
 {
   "name": "hono-kit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Conventions, a scaffolder and lint rules that keep Hono apps in one shape, whoever writes them (including AI).",
   "license": "MIT",
   "author": "ashunar0",
@@ -70,7 +70,8 @@
     "dist",
     "bin",
     "lint",
-    "templates"
+    "templates",
+    "docs"
   ],
   "peerDependencies": {
     "hono": "^4.13.1"

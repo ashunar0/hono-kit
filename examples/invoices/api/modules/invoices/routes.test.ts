@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
-import { admin, alice, bob, carol, request } from "../../../test/fixtures";
+import { env } from "cloudflare:workers";
+import { admin, alice, appAs, bob, carol, request } from "../../../test/fixtures";
 
 const input = {
   title: "請求書",
@@ -9,7 +10,16 @@ const input = {
   dueAt: "2026-02-01",
 };
 
-const json = async (res: Response) => (await res.json()) as Record<string, any>;
+/** 応答の本文。このファイルで読む欄だけ */
+type Body = {
+  id: string;
+  title: string;
+  status: string;
+  items: { id: string }[];
+  error: { code: string; message: string };
+};
+
+const json = async (res: Response) => (await res.json()) as Body;
 
 /** alice が請求書を 1 件作り、その id を返す */
 const create = async () => {
@@ -27,7 +37,7 @@ it("作って、読めて、一覧に出る。入力が正しくなければ 400
   expect((await json(got)).title).toBe("請求書");
 
   const list = await json(await request(alice, "GET", "/invoices?limit=100"));
-  expect(list.items.map((i: { id: string }) => i.id)).toContain(id);
+  expect(list.items.map((i) => i.id)).toContain(id);
 
   const bad = await request(alice, "POST", "/invoices", { ...input, title: "" });
   expect(bad.status).toBe(400);
@@ -72,4 +82,24 @@ it("他の組織の人には、admin でも 404。送付できるのは自分の
 
 it("ログインしていなければ 401", async () => {
   expect((await request(null, "GET", "/invoices")).status).toBe(401);
+});
+
+it("本文の Content-Type が JSON でなければ 400。JSON なら charset 付きでも通る", async () => {
+  const post = (headers: Record<string, string>) =>
+    appAs(alice).request(
+      "/invoices",
+      { method: "POST", headers, body: JSON.stringify(input) },
+      env,
+    );
+
+  const none = await post({});
+  expect(none.status).toBe(400);
+  // 必須の項目があるので、直す前も {} が検査で落ちて 400 だった。本文を読む前に止まっていることを文言で確かめる
+  expect((await json(none)).error).toEqual({
+    code: "VALIDATION_ERROR",
+    message: "Content-Type must be application/json",
+  });
+
+  expect((await post({ "Content-Type": "text/plain" })).status).toBe(400);
+  expect((await post({ "Content-Type": "application/json; charset=utf-8" })).status).toBe(200);
 });

@@ -115,15 +115,23 @@ it("宣言した失敗を reply.failure で返せる", async () => {
   expect(await res.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
 });
 
-it("OpenAPI の文書に、valibot の schema が出る", () => {
-  const doc = openapiDocument(app, { title: "t", version: "0" }) as any;
-  const op = doc.paths["/items/{id}"].post;
+/** OpenAPI の文書のうち、このファイルで読む所だけ */
+type JsonSchema = { type?: string; properties?: Record<string, JsonSchema>; items?: JsonSchema };
+type Operation = {
+  parameters: { name: string; in: string }[];
+  requestBody?: { content: Record<string, { schema: JsonSchema }> };
+  responses: Record<string, { content?: Record<string, { schema: JsonSchema }> }>;
+};
+type Doc = { paths: Record<string, Record<string, Operation>> };
 
-  expect(op.parameters.map((p: { name: string; in: string }) => `${p.in}:${p.name}`)).toEqual([
-    "path:id",
-    "query:limit",
-  ]);
-  expect(op.requestBody.content["application/json"].schema.properties.title.type).toBe("string");
+it("OpenAPI の文書に、valibot の schema が出る", () => {
+  const doc = openapiDocument(app, { title: "t", version: "0" }) as Doc;
+  const op = doc.paths["/items/{id}"]!.post!;
+
+  expect(op.parameters.map((p) => `${p.in}:${p.name}`)).toEqual(["path:id", "query:limit"]);
+  expect(op.requestBody?.content["application/json"]?.schema.properties?.title?.type).toBe(
+    "string",
+  );
   expect(Object.keys(op.responses)).toEqual(expect.arrayContaining(["200", "400", "404"]));
 });
 
@@ -141,12 +149,12 @@ it("ページ送りの部品は、valibot の絞り込みを包み、limit の�
 });
 
 it("OpenAPI の文書に、ページ送りの query と応答が出る", () => {
-  const doc = openapiDocument(app, { title: "t", version: "0" }) as any;
-  const op = doc.paths["/items"].get;
+  const doc = openapiDocument(app, { title: "t", version: "0" }) as Doc;
+  const op = doc.paths["/items"]!.get!;
 
-  expect(op.parameters.map((p: { name: string }) => p.name)).toEqual(["q", "cursor", "limit"]);
+  expect(op.parameters.map((p) => p.name)).toEqual(["q", "cursor", "limit"]);
   expect(
-    op.responses["200"].content["application/json"].schema.properties.items.items.properties.name
-      .type,
+    op.responses["200"]?.content?.["application/json"]?.schema.properties?.items?.items?.properties
+      ?.name?.type,
   ).toBe("string");
 });

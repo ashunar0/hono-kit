@@ -23,6 +23,8 @@ pnpm db:generate && pnpm check
 
 `pnpm check` は型検査・lint・format の確認・テストを順に回し、途中で落ちても止めずに最後に失敗を一覧で出す。AI には「これを通して」と言う 1 つのコマンド。
 
+生成したアプリには `AGENTS.md`（と、それを読み込むだけの `CLAUDE.md`）が入る。コマンド・形・守ることを短くまとめたもの。必要なときだけ読む長めの手順は、パッケージの中（`node_modules/hono-kit/docs/`）にある。
+
 ## 中身
 
 ```
