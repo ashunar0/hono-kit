@@ -1,5 +1,5 @@
 /**
- * Exposes notes over HTTP. The input/output shapes and the thing → response mapping live here too
+ * /notes. The resource for notes: what a client points at. How a note is shown is in response.ts
  */
 import {
   createRouter,
@@ -11,7 +11,8 @@ import {
 } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import { noteIdSchema, noteInputSchema, type Note } from "./domain";
+import { noteIdSchema, noteInputSchema } from "../../modules/notes/domain";
+import { noteResponse, noteResponseSchema } from "./response";
 
 // What it receives. The body input is noteInputSchema from domain
 const noteParamsSchema = z.object({
@@ -20,33 +21,11 @@ const noteParamsSchema = z.object({
 
 const listNotesQuerySchema = pageQuerySchema();
 
-// What it returns
-const noteResponseSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  body: z.string(),
-  createdAt: z.number(),
-  updatedAt: z.number(),
-});
-
 const listNotesResponseSchema = pageResponseSchema(noteResponseSchema);
 
 const deleteNoteResponseSchema = z.object({
   ok: z.literal(true),
 });
-
-type NoteResponse = z.infer<typeof noteResponseSchema>;
-
-// Thing → response. Do not return the thing as is; map it to what is shown
-function noteResponse(note: Note): NoteResponse {
-  return {
-    id: note.id,
-    title: note.title,
-    body: note.body,
-    createdAt: note.createdAt.getTime(),
-    updatedAt: note.updatedAt.getTime(),
-  };
-}
 
 export const notesRouter = createRouter()
   // List

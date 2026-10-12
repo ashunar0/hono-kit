@@ -5,7 +5,7 @@ import {
   projectOf,
   resolveImport,
 } from "../project.mjs";
-import { HINTS, KINDS, KIND_HINTS, LAYERS } from "../layers.mjs";
+import { HINTS, KINDS, KIND_HINTS, LAYERS, RESOURCE_HINT, RESOURCE_ROLES } from "../layers.mjs";
 
 /** foreign:domain → 他 module の domain */
 const show = (name) => name.replace(/^foreign:/, "another module's ");
@@ -30,6 +30,18 @@ export default {
     if (!project) return {};
     const self = placeOf(file, project.root);
     if (self.role === "test") return {};
+    if (self.role === "resourceOther") {
+      // リソースのディレクトリに、役割の分からないファイルを置かせない
+      return {
+        Program(node) {
+          context.report({
+            node,
+            message:
+              "Files in api/routes/<noun>/ are index.ts (the router) and response.ts (how things are shown). Put rules in a module's domain, steps in its service",
+          });
+        },
+      };
+    }
     const allowed = LAYERS[self.role];
     if (!allowed) {
       if (!self.module) return {};
@@ -60,6 +72,7 @@ export default {
       const targetRole = target.replace(/^foreign:/, "");
       const hint =
         HINTS[`${self.role}→${target}`] ??
+        (self.module && RESOURCE_ROLES[targetRole] ? RESOURCE_HINT : undefined) ??
         (KINDS[targetRole] && !target.startsWith("foreign:")
           ? KIND_HINTS[`${KINDS[self.role]}→${KINDS[targetRole]}`]
           : undefined);

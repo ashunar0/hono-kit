@@ -1,6 +1,7 @@
 /** HTTP の inbound か（routes と webhook）。createRouter の束を書く場所 */
 export const isHttpInbound = (file) =>
-  /[/\\]modules[/\\][^/\\]+[/\\](routes|webhook(\.[^/\\]+)?)\.ts$/.test(file);
+  /[/\\]modules[/\\][^/\\]+[/\\](routes|webhook(\.[^/\\]+)?)\.ts$/.test(file) ||
+  /[/\\]api[/\\]routes[/\\](?:.+[/\\])?index\.ts$/.test(file);
 
 /** `as const` や `satisfies` を剥がす */
 export const unwrap = (node) => {

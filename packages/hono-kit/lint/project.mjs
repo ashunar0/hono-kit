@@ -48,19 +48,36 @@ export const packageOf = (specifier) => {
 };
 
 /**
+ * api/routes/ の中のファイルの役割。リソース（URL の名詞）ごとのディレクトリに、
+ * router（index.ts）と、HTTP での見せ方（response.ts）だけを置く。
+ * import 先は拡張子が無く、`./menus` のようにディレクトリを指すこともある（その index.ts）
+ */
+const resourceRoleOf = (resolved, rest) => {
+  if (/\.(test|typetest|spec)$/.test(rest)) return "test";
+  if (/(^|\/)index$/.test(rest)) return "resource";
+  if (/(^|\/)response$/.test(rest)) return "response";
+  if (!/\.tsx?$/.test(resolved) && fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory())
+    return "resource";
+  return "resourceOther";
+};
+
+/**
  * アプリの中のファイルを、役割で見る。
  * modules/<m>/<role>.ts → { module, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、webhook.stripe → webhook）。
  * modules/<m>/commands/<name>.ts → { module, role: "commands" }。
+ * api/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。module ではない。
  * api 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
  * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ
  */
 export const placeOf = (resolved, root) => {
-  const rel = path
+  const relWithIndex = path
     .relative(root, resolved)
     .replace(/\\/g, "/")
-    .replace(/\.tsx?$/, "")
-    .replace(/\/index$/, "");
+    .replace(/\.tsx?$/, "");
   let m;
+  if ((m = relWithIndex.match(/^api\/routes\/(.+)$/)))
+    return { role: resourceRoleOf(resolved, m[1]) };
+  const rel = relWithIndex.replace(/\/index$/, "");
   if ((m = rel.match(/^api\/modules\/([^/]+)\/(.+)$/))) {
     const [, module, rest] = m;
     // テストは役割の外。何を import してもよい

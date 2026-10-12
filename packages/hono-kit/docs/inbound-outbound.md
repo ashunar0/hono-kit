@@ -2,7 +2,7 @@
 
 ## cron
 
-- Location: the module's `cron.ts` (next to `routes.ts`). It may import only **types** from hono-kit and domain. It receives `{ deps, now }`
+- Location: the module's `cron.ts`. It may import only **types** from hono-kit and domain. It receives `{ deps, now }`
 - `api/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
 - Tests: call the function in `cron.ts` directly instead of going through `scheduled`. Act as `systemActor` from `hono-kit/testing`

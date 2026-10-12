@@ -132,6 +132,8 @@ Each file in a module is classified by its name prefix (its role). `layer-import
 | outbound | gateway  | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
 | outbound | mailer   | hono-kit/result, domain (types only), service (types only)                                                                                                                                                                                                                               |
 | outbound | jobs     | domain (types only), service (types only)                                                                                                                                                                                                                                                |
+| inbound  | resource | hono-kit, zod, errors, middleware, another module's domain, another module's errors, resource, response. `api/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported                                                           |
+| inbound  | response | hono-kit, zod, another module's domain, response. `api/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                        |
 
 <!-- layers:end -->
 

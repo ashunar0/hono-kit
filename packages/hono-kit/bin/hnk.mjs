@@ -2,7 +2,7 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>          アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk g module <name>     module 一式を足し、deps.ts と index.ts につなぐ（templates/module）
+ *   hnk g module <name>     module 一式と、同じ名詞のリソース（api/routes/<name>/）を足し、deps.ts と index.ts につなぐ（templates/module）
  *
  * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g module → check を通す）。
  * 生成器がするのは、コピーと、語の置き換えと、// hnk: の行の上への追記だけ
@@ -106,6 +106,7 @@ const generateModule = (plural) => {
     die("Run this at the app root (where api/deps.ts is)");
   }
   if (fs.existsSync(`api/modules/${plural}`)) die(`api/modules/${plural} already exists`);
+  if (fs.existsSync(`api/routes/${kebab(plural)}`)) die(`api/routes/${kebab(plural)} already exists`);
 
   const from = path.join(root, "templates/module");
   for (const file of listFiles(from)) {
@@ -131,10 +132,12 @@ const generateModule = (plural) => {
 
   // index.ts につなぐ
   const index = "api/index.ts";
-  insertAbove(index, "imports", [`import { ${plural}Router } from "./modules/${plural}/routes";`]);
+  insertAbove(index, "imports", [`import { ${plural}Router } from "./routes/${kebab(plural)}";`]);
   insertAbove(index, "routes", [`.route("/${kebab(plural)}", ${plural}Router)`]);
 
-  console.log(`✓ Added api/modules/${plural}/ and wired it into deps.ts and index.ts (CRUD for ${one})`);
+  console.log(
+    `✓ Added api/modules/${plural}/ and api/routes/${kebab(plural)}/, and wired them into deps.ts and index.ts (CRUD for ${one})`,
+  );
   console.log("  pnpm db:generate && pnpm exec prettier --write . && pnpm check");
 };
 

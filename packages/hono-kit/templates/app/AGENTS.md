@@ -1,12 +1,12 @@
 # AGENTS.md
 
 This is a backend built on [hono-kit](https://github.com/ashunar0/hono-kit): Hono + Cloudflare Workers + D1 + Drizzle + Standard Schema (zod).
-hono-kit fixes where things go and what they look like. **The generator produces the shape; do not invent layers.** When unsure, read an existing module to the end and write the same way.
+hono-kit fixes where things go and what they look like. **The generator produces the shape; do not invent layers.** When unsure, read an existing module and an existing resource under `api/routes/` to the end and write the same way.
 
 ## Commands
 
 ```sh
-pnpm hnk g module <plural camelCase>   # add a resource, e.g. invoices, signupRequests
+pnpm hnk g module <plural camelCase>   # add a module, e.g. invoices, signupRequests
 pnpm db:generate                       # after changing a table; writes migrations/ (tests read them)
 pnpm exec prettier --write .           # once after editing, before check
 pnpm check                             # typecheck, lint, format check, tests
@@ -14,29 +14,50 @@ pnpm check                             # typecheck, lint, format check, tests
 
 **Do not stop until `pnpm check` prints `All checks passed`.** Every lint message says how to fix it. Do not silence lint (the only exception is `route-lists-are-paged`, with a reason).
 
-## Adding a resource
+## Two axes: resources and modules
 
-`pnpm hnk g module <name>` writes `domain / service / repo.d1 / routes / routes.test` under `api/modules/<name>/` and wires it into `api/deps.ts` and `api/index.ts` above the `// hnk:` lines.
+The nouns in the URL (resources) and the nouns of the domain (modules) are different things, so they live apart.
+
+- **Resources** (`api/routes/<noun>/`): what a client points at. Cut by the URL: one directory per noun, always with `index.ts`. Nested resources are nested directories (`/customers/:customerId/invoices` → `routes/customers/invoices/`). No directories for params (`:id`)
+- **Modules** (`api/modules/<name>/`): who keeps which rules. Cut by the rules a thing must keep
+- **One way only**: routes use modules; modules know nothing of routes. A route may use as many modules as it needs. One module's code never uses another module's service or repo
+
+They often share a word (`routes/invoices/` and `modules/invoices/`) and often do not (`/customers/:customerId/invoices` is a customer's invoices, written with the invoices module). Do not bend one to match the other.
+
+## Adding a module
+
+`pnpm hnk g module <name>` writes `domain / service / repo.d1 / routes.test` under `api/modules/<name>/` and the resource of the same noun under `api/routes/<name>/` (`index.ts`, `response.ts`), and wires them into `api/deps.ts` and `api/index.ts` above the `// hnk:` lines.
 The output is a CRUD for something with just `title` and `body`. **Rewrite it into the real thing:**
 
 1. `domain.ts`: types, `…InputSchema` (zod; `trim()` before checking length), `reachOf`, failures (`Failure`)
 2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE)
 3. `service.ts`: the steps. Declare the `…Repository` shape here
-4. `routes.ts`: input/output schemas, `…Response` (thing → response), `responses`
+4. `api/routes/<name>/`: `index.ts` (input schemas, `responses`, handlers) and `response.ts` (`…ResponseSchema`, `…Response`: thing → response). If the URL is not `/<name>` (a child of another noun, or a different noun), move it to where the URL says (see below)
 5. `routes.test.ts`: create, read, list, 400 on bad input, 404 for someone else, 404 for another org, 401 when signed out
 
-## The shape (four files in every module)
+## The shape of a module (three files)
 
 | File         | Side     | Role                                                | May import                                                              |
 | ------------ | -------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
 | `domain.ts`  | core     | The thing (What): types, rules, ID brands, failures | zod, `hono-kit/failures` (types), `hono-kit/system` (types)             |
 | `service.ts` | core     | The steps (How) and the storage shape they need     | `hono-kit/result`, `hono-kit/failures`, `hono-kit/page` (types), domain |
-| `routes.ts`  | inbound  | HTTP input/output, thing → response                 | `hono-kit`, zod, middleware, domain                                     |
 | `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               | drizzle-orm, `hono-kit/page`, domain, service (types)                   |
 
-Every arrow points to domain. routes never imports service; the handler receives it from deps as its third argument (`{ invoices }`). `hnk/layer-imports` enforces this.
+Every arrow points to domain. `hnk/layer-imports` enforces this inside modules.
 
-Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and so on, next to routes), another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`), a write entry point for other modules (`commands/<operation>.ts`). **Do not add them up front.**
+Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and so on), another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
+
+## The shape of a resource
+
+| File          | Role                                                                       | May import                                                      |
+| ------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `index.ts`    | The router: the endpoints of this noun, and `.route(...)` for its children | `hono-kit`, zod, middleware, any module's domain, `response.ts` |
+| `response.ts` | How the thing is shown over HTTP: `…ResponseSchema` and `…Response`        | zod, any module's domain (types)                                |
+
+- **Nesting**: the parent mounts the child (`.route("/:customerId/invoices", customerInvoicesRouter)`); the child's `path` is the rest only (`"/"`, `"/:date"`). `request.param` lists every param the handler validates, the parent's too (`{ customerId, id }`). `api/index.ts` mounts only the top nouns (`.route("/customers", customersRouter)`)
+- **`response.ts`**: a response is how a thing is shown when sent, not a rule of the thing, so it belongs to the resource. A resource that shows a thing has one, even if only `index.ts` uses it. Another resource showing the same thing imports it (`routes/customers/invoices/` uses `routes/invoices/response.ts`). Small one-off shapes (`{ ok: true }`) stay in `index.ts`
+- **IDs**: params use the owner module's `…IdSchema` (`customerIdSchema` from `modules/customers/domain`)
+- Routes never import a service or repo; the handler receives services from deps as its third argument (`{ customers, invoices }`)
 
 ## Rules
 
@@ -47,7 +68,9 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
   - A failure of this thing goes in **domain.ts** as `{ code, kind, message } as const`. `kind` is `unauthenticated / forbidden / notFound / conflict / upstream` (hono-kit decides the status). service returns `err(NotDraft.code)`
   - Declare `...errorResponses(NotFound, NotDraft)` in the route's `responses`; the handler returns `reply.failure(result.error)`
   - What you cannot see is `NOT_FOUND` (its existence is not revealed); what you can see but may not touch is `FORBIDDEN`
-  - Entry-point-only failures (a webhook signature, ...) go in the module's `errors.ts` as `httpError(code, status, message)`
+  - Entry-point-only failures (a webhook signature, ...) go in the module's `errors.ts` as `httpError(code, status, message)` (where they go now that routes left modules is not decided)
+- **Entry checks** (the customer in the URL exists → 404, ...): write them in each handler, in order, as plain calls (`const customer = await customers.get(customerId); if (!customer.ok) return reply.failure(customer.error);`). Do not hide them in middleware, even when the same lines repeat. A handler may take the services of several modules from deps (`{ customers, invoices }`). Ask "is this check needed when cron calls it too?": if not (404 for an ID in the URL), it goes in the handler; if so (permission, a rule across things), it stays in service. When the check itself grows (exists and is not archived), add one function to the owner's service and still call it from each handler
+- **Writes**: a handler may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row (each is its own batch; if the second fails, the first stays half done). Writes that must happen together go inside that one service call, in one batch. The handler gathers the inputs from other modules and passes them as values; the writing service decides with them
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Never `c.json` (lint stops it). Create returns the created thing with 200. Delete returns `{ ok: true }` with 200
 - **IDs**: only the domain's `…Id` function applies the brand with `as`. Inputs use `…IdSchema`. Never write `as …Id` elsewhere (`no-id-cast`)
 - **Input**: only values that passed a schema with zod's `.brand<"…Input">()` reach service
@@ -65,26 +88,35 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 ## Things whose state moves (draft → sent, ...)
 
 - A transition that is not allowed is a domain failure `{ code: "…_NOT_STARTABLE", kind: "conflict", message }`. The code is `<THING>_` + what happened
-- Transitions are `POST /:id/<verb>` on the same module's router. The repo may add `transitionWithin(id, reach, from, changes)`: one statement with `WHERE id AND status = from AND within(reach)`; if it returns null, another request moved first, so return the same conflict
+- Transitions are `POST /:id/<verb>` on the thing's resource router. The repo may add `transitionWithin(id, reach, from, changes)`: one statement with `WHERE id AND status = from AND within(reach)`; if it returns null, another request moved first, so return the same conflict
 - service does `findWithin` (NOT_FOUND if absent) → a check (a pure domain function such as `canStart(x)`) → `transitionWithin`
 
 ## Read before you…
 
-- **use another module**: `node_modules/hono-kit/docs/cross-module.md` (declare → wire in deps → references, why values from other modules cannot be imported, `commands/`, parent/child)
 - **add cron, queue, webhook, mailer or gateway, or replace them in tests**: `node_modules/hono-kit/docs/inbound-outbound.md`
 
-In short: never import another module's service or repo. The using service declares the shape it needs, and `api/deps.ts` wires it. Another module's ID is a plain `string` on the using side; the brand is applied in the repo or in `deps.ts`. Another module's table is used only inside foreign-key `references()` and through the owner's `…Within(db, actor)`.
+## When a request touches several modules
+
+Modules do not call each other, and `api/deps.ts` only builds each module (no shapes wired between them). The handler does the joining:
+
+1. **Read** from as many services as needed (`customers.get`, `products.pick`). A missing thing named in the URL is a 404 returned right there (see Entry checks)
+2. **Pass** what was read to the one writing service as values. That service declares the shape it takes (`type Billed = { customer: { id; organizationId }; items: { id; organizationId; price }[] }`), not another module's types
+3. **The writing service checks that the values belong together** before deciding (every product is of the customer's organization). Rules that must hold from every entry point stay in service, so a wrong value from the handler cannot slip through
+   - Values that came from the client (product ids in the body) and do not match → a domain failure (`PRODUCT_NOT_FOUND`)
+   - Values the handler read from the DB that do not match → a bug: `throw`
+
+Inside a module, another module's ID is a plain `string` (`Invoice.customerId`). Another module's table is used only inside foreign-key `references()`.
 
 ## When unsure
 
-| Question               | Rule                                                                                                                                                                 |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| String input           | Always `trim()` before checking length                                                                                                                               |
-| Foreign key `onDelete` | `cascade` if children go away with the parent                                                                                                                        |
-| Where tests go         | Inside the module if it stays in one module. Cross-module lines and the whole app go in `test/`. Use the real local D1. HTTP via `request(user, method, path, body)` |
-| Route without auth     | `middleware: [allowAnonymous]` (always write it, so it differs from forgetting)                                                                                      |
-| Adding cron / queue    | Pass them to `createWorker({ makeDeps, fetch, scheduled, queue })`. Handlers receive `{ deps, actor, now }`                                                          |
-| Migrations             | `pnpm db:generate`. Do not run prettier on `migrations/meta`                                                                                                         |
+| Question               | Rule                                                                                                                                                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| String input           | Always `trim()` before checking length                                                                                                                                                                   |
+| Foreign key `onDelete` | `cascade` if children go away with the parent                                                                                                                                                            |
+| Where tests go         | HTTP tests for one module's things in `modules/<name>/routes.test.ts` for now. Lines across modules and the whole app go in `test/`. Use the real local D1. HTTP via `request(user, method, path, body)` |
+| Route without auth     | `middleware: [allowAnonymous]` (always write it, so it differs from forgetting)                                                                                                                          |
+| Adding cron / queue    | Pass them to `createWorker({ makeDeps, fetch, scheduled, queue })`. Handlers receive `{ deps, actor, now }`                                                                                              |
+| Migrations             | `pnpm db:generate`. Do not run prettier on `migrations/meta`                                                                                                                                             |
 
 ## Do not
 
@@ -93,4 +125,4 @@ In short: never import another module's service or repo. The using service decla
 - Add layers or ports ahead of time. Wait until the trigger happens
 - Scatter failure codes as strings (take them from a domain `Failure` or a hono-kit standard)
 - Name types after TS built-ins (`Record`, `Map`, `Set`, `Error`). For a module named `records`, call the thing `Entry` or similar (`Record<K, V>` would be shadowed)
-- Change the shape for looks. Keep the generator's shape and rewrite the contents
+- Change the shape for looks. Keep the shapes above and rewrite the contents

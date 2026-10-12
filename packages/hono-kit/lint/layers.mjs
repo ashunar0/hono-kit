@@ -94,7 +94,30 @@ export const LAYERS = {
   gateway: { "hono-kit/result": "value", domain: "type", service: "type" },
   mailer: { "hono-kit/result": "value", domain: "type", service: "type" },
   jobs: { domain: "type", service: "type" },
+
+  // リソース（api/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、module の外にある。
+  // どの module の domain も使ってよい。service は import せず、deps から受け取る
+  resource: {
+    "hono-kit": "value",
+    zod: "value",
+    errors: "value",
+    middleware: "value",
+    "foreign:domain": "value",
+    "foreign:errors": "value",
+    resource: "value",
+    response: "value",
+  },
+  // モノを HTTP でどう見せるか。モノのルールではないので、リソースの側に置く
+  response: {
+    "hono-kit": "value",
+    zod: "value",
+    "foreign:domain": "value",
+    response: "value",
+  },
 };
+
+/** module の外にある、リソースの役割。README の表の「側」に使う */
+export const RESOURCE_ROLES = { resource: "inbound", response: "inbound" };
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
@@ -117,7 +140,19 @@ export const HINTS = {
     "Call another module's operations from the service that owns the flow",
   "repo→foreign:service":
     "Read with a join in your own repo (you may import the table from the other repo)",
+  "resource→foreign:service":
+    "A resource does not import services. The handler receives them from deps as its third argument ({ stores, menus })",
+  "resource→foreign:commands":
+    "A resource does not import services. The handler receives them from deps as its third argument ({ stores, menus })",
+  "resource→foreign:repo":
+    "A resource does not read tables. Read through the owner's service, received from deps",
+  "response→resource":
+    "response.ts only shows things. Import it from index.ts, not the other way",
 };
+
+/** module の中から api/routes/ を見たとき。向きは routes → modules の一方だけ */
+export const RESOURCE_HINT =
+  "Modules do not know routes. api/routes/ uses modules, never the other way";
 
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
@@ -142,4 +177,7 @@ export const NOTES = {
     "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
   cron: "createWorker passes deps, actor and now",
   repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types",
+  resource:
+    "`api/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",
+  response: "`api/routes/<noun>/response.ts`: how a thing is shown over HTTP",
 };
