@@ -70,7 +70,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
   - What you cannot see is `NOT_FOUND` (its existence is not revealed); what you can see but may not touch is `FORBIDDEN`
   - Entry-point-only failures (a webhook signature, ...) go in the module's `errors.ts` as `httpError(code, status, message)` (where they go now that routes left modules is not decided)
 - **Entry checks** (the customer in the URL exists → 404, ...): write them in each handler, in order, as plain calls (`const customer = await customers.get(customerId); if (!customer.ok) return reply.failure(customer.error);`). Do not hide them in middleware, even when the same lines repeat. A handler may take the services of several modules from deps (`{ customers, invoices }`). Ask "is this check needed when cron calls it too?": if not (404 for an ID in the URL), it goes in the handler; if so (permission, a rule across things), it stays in service. When the check itself grows (exists and is not archived), add one function to the owner's service and still call it from each handler
-- **Writes**: a handler may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row (each is its own batch; if the second fails, the first stays half done). Writes that must happen together go inside that one service call, in one batch. The handler gathers the inputs from other modules and passes them as values; the writing service decides with them
+- **Writes**: a handler of a user's request may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row (each is its own batch; if the second fails, the first stays half done). Writes that must happen together go inside that one service call, in one batch. Something that must follow in another module is recorded in your own table in the same batch (an outbox) and delivered later by cron or a queue. Entry points that retry (webhook, queue, cron) may write to several modules in order, if every write gives the same result however many times it runs. Details: `node_modules/hono-kit/docs/cross-module.md`
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Never `c.json` (lint stops it). Create returns the created thing with 200. Delete returns `{ ok: true }` with 200
 - **IDs**: only the domain's `…Id` function applies the brand with `as`. Inputs use `…IdSchema`. Never write `as …Id` elsewhere (`no-id-cast`)
 - **Input**: only values that passed a schema with zod's `.brand<"…Input">()` reach service
@@ -93,6 +93,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 
 ## Read before you…
 
+- **use another module**: `node_modules/hono-kit/docs/cross-module.md` (reading and writing across modules, outbox, entry points that retry, IDs from other modules, things under a parent)
 - **add cron, queue, webhook, mailer or gateway, or replace them in tests**: `node_modules/hono-kit/docs/inbound-outbound.md`
 
 ## When a request touches several modules
