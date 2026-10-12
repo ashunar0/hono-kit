@@ -1,0 +1,30 @@
+{
+  "name": "create-hnk",
+  "version": "0.1.0",
+  "description": "Start a hono-kit app: pnpm create hnk <dir>",
+  "license": "MIT",
+  "author": "ashunar0",
+  "homepage": "https://github.com/ashunar0/hono-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashunar0/hono-kit.git",
+    "directory": "packages/create-hnk"
+  },
+  "bugs": "https://github.com/ashunar0/hono-kit/issues",
+  "keywords": [
+    "hono",
+    "hono-kit",
+    "create"
+  ],
+  "type": "module",
+  "bin": {
+    "create-hnk": "./index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "README.md"
+  ],
+  "dependencies": {
+    "hono-kit": "workspace:^"
+  }
+}

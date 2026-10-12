@@ -1,0 +1,49 @@
+import { invoiceId, invoiceInputSchema } from "./domain";
+import { systemActor } from "hono-kit/testing";
+import type { User } from "../users/domain";
+import type { InvoicesService } from "./service";
+
+// HTTP を通らずに service を呼ぶ場面（cron、CSV の取り込みなど）
+export async function fromCron(invoices: InvoicesService, actor: User, raw: unknown, now: Date) {
+  const unchecked = {
+    title: "t",
+    body: "b",
+    amount: 1000,
+    customerEmail: "a@example.com",
+    dueAt: new Date(),
+  };
+  // @ts-expect-error 検査を通っていない値は渡せない
+  await invoices.create(actor, unchecked, now);
+
+  // 検査を通せば渡せる
+  await invoices.create(actor, invoiceInputSchema.parse(raw), now);
+
+  // Result で受けたいときは safeParse
+  const parsed = invoiceInputSchema.safeParse(raw);
+  if (parsed.success) await invoices.create(actor, parsed.data, now);
+}
+
+// システムは利用者ではないので、請求書の所有者になれない
+export async function systemCannotCreate(invoices: InvoicesService, raw: unknown) {
+  // @ts-expect-error create が受け取るのは User だけ
+  await invoices.create(systemActor, invoiceInputSchema.parse(raw), new Date());
+}
+
+// 印はリテラルでは作れない。システムは systemActor、利用者は認証を通ったときだけ現れる
+export async function cannotForgeActors(invoices: InvoicesService) {
+  // @ts-expect-error { kind: "system" } と書いてもシステムにはなれない
+  await invoices.list({ kind: "system" }, { limit: 10 });
+  // @ts-expect-error { kind: "user", ... } と書いても利用者にはなれない
+  await invoices.list({ kind: "user", id: "x", role: "admin" }, { limit: 10 });
+}
+
+// 請求書の ID は印付き。素の string は渡せない
+export async function idsAreNotInterchangeable(invoices: InvoicesService, actor: User) {
+  // @ts-expect-error 素の string は請求書の ID ではない
+  await invoices.get(actor, "x");
+  // @ts-expect-error 利用者の ID も請求書の ID としては渡せない
+  await invoices.get(actor, actor.id);
+
+  // 印は作る関数で付ける
+  await invoices.get(actor, invoiceId("x"));
+}

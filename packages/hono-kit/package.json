@@ -1,0 +1,97 @@
+{
+  "name": "hono-kit",
+  "version": "0.1.0",
+  "description": "Conventions, a scaffolder and lint rules that keep Hono apps in one shape, whoever writes them (including AI).",
+  "license": "MIT",
+  "author": "ashunar0",
+  "homepage": "https://github.com/ashunar0/hono-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashunar0/hono-kit.git",
+    "directory": "packages/hono-kit"
+  },
+  "bugs": "https://github.com/ashunar0/hono-kit/issues",
+  "keywords": [
+    "hono",
+    "cloudflare-workers",
+    "d1",
+    "conventions",
+    "scaffold",
+    "lint",
+    "ai"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./result": "./src/result.ts",
+    "./failures": "./src/failures.ts",
+    "./openapi": "./src/openapi.ts",
+    "./page": "./src/page.ts",
+    "./system": "./src/system.ts",
+    "./testing": "./src/testing.ts",
+    "./lint": "./lint/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./result": {
+        "types": "./dist/result.d.ts",
+        "default": "./dist/result.js"
+      },
+      "./failures": {
+        "types": "./dist/failures.d.ts",
+        "default": "./dist/failures.js"
+      },
+      "./openapi": {
+        "types": "./dist/openapi.d.ts",
+        "default": "./dist/openapi.js"
+      },
+      "./page": {
+        "types": "./dist/page.d.ts",
+        "default": "./dist/page.js"
+      },
+      "./system": {
+        "types": "./dist/system.d.ts",
+        "default": "./dist/system.js"
+      },
+      "./testing": {
+        "types": "./dist/testing.d.ts",
+        "default": "./dist/testing.js"
+      },
+      "./lint": "./lint/index.mjs",
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist",
+    "bin",
+    "lint",
+    "templates"
+  ],
+  "peerDependencies": {
+    "hono": "^4.13.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261007.1",
+    "hono": "^4.13.1",
+    "oxlint": "^1.80.0",
+    "prettier": "^3.9.6",
+    "typescript": "^7.0.2"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build && cp ../../README.md README.md",
+    "test": "node --test test/*.test.mjs",
+    "readme:layers": "node scripts/readme-layers.mjs",
+    "readme:check": "node scripts/readme-layers.mjs --check",
+    "e2e": "node scripts/e2e-template.mjs",
+    "e2e:packed": "node scripts/e2e-template.mjs --packed"
+  },
+  "bin": {
+    "hnk": "./bin/hnk.mjs"
+  }
+}
