@@ -1,14 +1,19 @@
-# cron, mail, and replacing things in tests
+# cron, queues, mail, and replacing things in tests
 
 ## cron
 
-- Location: the domain's `cron.ts`. It may import only **types** from hono-kit and model. It receives `{ deps, now }`
+- Location: `src/jobs/<name>.ts`, outside domains. It may import only **types** from hono-kit and any domain's model (values too, to brand IDs). It receives `{ deps, actor, now }` and takes services from `deps`
 - `src/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
 - Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due. It hands the job the system actor, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
-- Tests: call the function in `cron.ts` directly instead of going through `scheduled`. Act as `systemActor` from `hono-kit/testing`
+- Tests: call the job in `src/jobs/` directly instead of going through `scheduled`. Act as `systemActor` from `hono-kit/testing`
 - A batch over every user may not fit the `Page` cursor (`at: Date`, `id`); a `GROUP BY` aggregate has no `at`. In that case, put a dedicated read in the repo (`unreadSummaries(after, limit)`) and loop yourself. Never make it an unbounded read
 - Add "already sent" markers to suppress resends when they are needed, not up front
+
+## queue
+
+- Taking messages off: a job in `src/jobs/<name>.ts`, passed as `createWorker({ queue })`. It receives `{ deps, actor, now, body }`; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
+- Putting messages on: the domain's `queue.<tech>.ts` (`queue.cloudflare.ts`) fulfills the shape service declares (`enqueue(jobs)`). `deps.ts` wires it
 
 ## mailer / gateway
 

@@ -4,7 +4,7 @@ import { fileOf, placeOf, projectOf } from "../project.mjs";
 /**
  * 時計を読むのは inbound だけ。core と outbound は、入口が決めた now を引数で受け取る。
  *
- * cron と queue では createWorker が「いつの出来事か」を渡すのに、service が自分で
+ * src/jobs/ の入口（cron、キュー）では createWorker が「いつの出来事か」を渡すのに、service が自分で
  * new Date() を呼ぶと、同じ手順が入口によって違う時計で動く。テストでも時刻を固定できない。
  * 引数の付いた new Date(value) は時計ではなく変換なので止めない
  */
@@ -20,7 +20,7 @@ export default {
     const report = (node, what) =>
       context.report({
         node,
-        message: `${self.role} reads the clock (${what}). The entry point decides the current time. Take now as an argument (HTTP resources in src/routes/: new Date() in the handler; cron and queue: the now that createWorker passes)`,
+        message: `${self.role} reads the clock (${what}). The entry point decides the current time. Take now as an argument (HTTP resources in src/routes/: new Date() in the handler; jobs in src/jobs/: the now that createWorker passes)`,
       });
 
     return {

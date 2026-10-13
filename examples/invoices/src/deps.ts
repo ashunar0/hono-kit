@@ -5,7 +5,7 @@ import { invoicesRepository, invoiceSharesTable, invoicesTable } from "./domains
 import { stripeGateway } from "./domains/payments/gateway.stripe";
 import { paymentsRepository, paymentsTable } from "./domains/payments/repo.d1";
 import { paymentsService } from "./domains/payments/service";
-import { queuesReminderJobs } from "./domains/reminders/jobs.cloudflare";
+import { queuesReminderJobs } from "./domains/reminders/queue.cloudflare";
 import { resendMailer } from "./domains/reminders/mailer.resend";
 import { remindersRepository, remindersTable } from "./domains/reminders/repo.d1";
 import { remindersService } from "./domains/reminders/service";

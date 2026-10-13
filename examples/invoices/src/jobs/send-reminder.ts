@@ -6,8 +6,8 @@
  * now はメッセージが積まれた時刻。再送が日をまたいでも、同じ日の督促として扱える
  */
 import type { QueueContext } from "hono-kit";
-import { invoiceId } from "../invoices/model";
-import type { ReminderJob } from "./model";
+import { invoiceId } from "../domains/invoices/model";
+import type { ReminderJob } from "../domains/reminders/model";
 
 export async function sendReminder({ deps, actor, now, body }: QueueContext<ReminderJob>) {
   const invoice = await deps.invoices.getRemindable(actor, invoiceId(body.invoiceId), now);

@@ -6,12 +6,10 @@ export const KINDS = {
   model: "core",
   service: "core",
   errors: "inbound",
-  cron: "inbound",
-  queue: "inbound",
   repo: "outbound",
   gateway: "outbound",
   mailer: "outbound",
-  jobs: "outbound",
+  queue: "outbound",
 };
 
 /**
@@ -46,11 +44,6 @@ export const LAYERS = {
 
   // その domain だけの失敗を、HTTP でどう返すか。HTTP の入口（src/routes/）が使う
   errors: { "hono-kit": "value" },
-  // inbound（HTTP 以外）。deps と actor と now は createWorker が渡す。
-  // 入口なので、複数の domain の service を deps から受け取ってつなぐ。他の domain の ID の印を付けるため、model の値も使う
-  cron: { "hono-kit": "type", model: "value", "foreign:model": "value" },
-  queue: { "hono-kit": "type", model: "value", "foreign:model": "value" },
-
   // outbound
   repo: {
     "drizzle-orm": "value",
@@ -66,7 +59,8 @@ export const LAYERS = {
   },
   gateway: { "hono-kit/result": "value", model: "type", service: "type" },
   mailer: { "hono-kit/result": "value", model: "type", service: "type" },
-  jobs: { model: "type", service: "type" },
+  // キューに積む。積んだものを受け取るのは src/jobs/ の入口
+  queue: { model: "type", service: "type" },
 
   // リソース（src/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、domain の外にある。
   // どの domain の model も使ってよい。service は import せず、deps から受け取る
@@ -87,6 +81,9 @@ export const LAYERS = {
     "foreign:model": "value",
     response: "value",
   },
+  // HTTP 以外の入口（src/jobs/<名前>.ts。cron、キュー）。deps と actor と now は createWorker が渡す。
+  // リソースと同じく domain の外にあり、service は deps から受け取る。他の domain の ID の印を付けるため、model の値も使う
+  job: { "hono-kit": "type", "foreign:model": "value" },
 
   // 業務を知らない＝別のアプリにそのまま持っていけるもの（src/lib/。日付、時刻、タイムゾーン）。
   // 一番下の層で、domain もリソースも知らない。だから lib を通して domain どうしがつながることはない
@@ -96,8 +93,8 @@ export const LAYERS = {
 // lib は一番下の層なので、どの役割からも値で使える
 for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
-/** domain の外にある、リソースの役割。README の表の「側」に使う */
-export const RESOURCE_ROLES = { resource: "inbound", response: "inbound" };
+/** domain の外にある、入口の役割。README の表の「側」に使う */
+export const ENTRY_ROLES = { resource: "inbound", response: "inbound", job: "inbound" };
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
@@ -107,20 +104,22 @@ export const HINTS = {
   "service→hono-kit":
     "service may only use Result from hono-kit. Import it from hono-kit/result",
   "service→foreign:service":
-    "Domains do not call each other. Join them at the entry point: the handler (or cron / queue) reads from both services and passes values to the one that writes. See node_modules/hono-kit/docs/cross-domain.md",
+    "Domains do not call each other. Join them at the entry point: the handler (or a job) reads from both services and passes values to the one that writes. See node_modules/hono-kit/docs/cross-domain.md",
   "repo→foreign:service":
     "Read with a join in your own repo (you may import the table from the other repo)",
   "resource→foreign:service":
     "A resource does not import services. The handler receives them from deps as its third argument ({ customers, invoices })",
   "resource→foreign:repo":
     "A resource does not read tables. Read through the owner's service, received from deps",
+  "job→foreign:service":
+    "A job does not import services. It receives them from deps ({ deps, actor, now })",
   "response→resource":
     "response.ts only shows things. Import it from index.ts, not the other way",
 };
 
-/** domain の中から src/routes/ を見たとき。向きは routes → domains の一方だけ */
-export const RESOURCE_HINT =
-  "Domains do not know routes. src/routes/ uses domains, never the other way";
+/** domain の中から入口（src/routes/、src/jobs/）を見たとき。向きは入口 → domains の一方だけ */
+export const ENTRY_HINT =
+  "Domains do not know entry points. src/routes/ and src/jobs/ use domains, never the other way";
 
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
@@ -142,12 +141,12 @@ export const KIND_HINTS = {
 export const NOTES = {
   errors:
     "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
-  cron: "createWorker passes deps, actor and now. An entry point: it may join several domains' services from deps",
-  queue: "Same as cron",
   lib:
     "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
   repo: "From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types",
   resource:
     "`src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported",
   response: "`src/routes/<noun>/response.ts`: how a thing is shown over HTTP",
+  job: "`src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps",
+  queue: "Puts jobs on a queue. What takes them off is a job in src/jobs/",
 };

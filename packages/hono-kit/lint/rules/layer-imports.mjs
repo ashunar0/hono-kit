@@ -5,7 +5,7 @@ import {
   projectOf,
   resolveImport,
 } from "../project.mjs";
-import { HINTS, KINDS, KIND_HINTS, LAYERS, RESOURCE_HINT, RESOURCE_ROLES } from "../layers.mjs";
+import { HINTS, KINDS, KIND_HINTS, LAYERS, ENTRY_HINT, ENTRY_ROLES } from "../layers.mjs";
 
 /** foreign:model → 他 domain の model */
 const show = (name) => name.replace(/^foreign:/, "another domain's ");
@@ -72,7 +72,7 @@ export default {
       const targetRole = target.replace(/^foreign:/, "");
       const hint =
         HINTS[`${self.role}→${target}`] ??
-        (self.domain && RESOURCE_ROLES[targetRole] ? RESOURCE_HINT : undefined) ??
+        (self.domain && ENTRY_ROLES[targetRole] ? ENTRY_HINT : undefined) ??
         (KINDS[targetRole] && !target.startsWith("foreign:")
           ? KIND_HINTS[`${KINDS[self.role]}→${KINDS[targetRole]}`]
           : undefined);

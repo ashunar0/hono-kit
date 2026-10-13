@@ -20,7 +20,8 @@ The nouns in the URL (resources) and the nouns of the domain (domains) are diffe
 
 - **Resources** (`src/routes/<noun>/`): what a client points at. Cut by the URL: one directory per noun, always with `index.ts`. Nested resources are nested directories (`/customers/:customerId/invoices` → `routes/customers/invoices/`). No directories for params (`:id`)
 - **Domains** (`src/domains/<name>/`): who keeps which rules. Cut by the rules a thing must keep
-- **One way only**: routes use domains; domains know nothing of routes. A route may use as many domains as it needs. One domain's code never uses another domain's service or repo
+- **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Like resources, they live outside domains and receive services from deps
+- **One way only**: entry points (routes and jobs) use domains; domains know nothing of them. A route may use as many domains as it needs. One domain's code never uses another domain's service or repo
 - **Lib** (`src/lib/<what>.ts`): code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anyone may import it as values; it imports only zod and other lib files. Name the file by what it holds (`time.ts`), never `utils.ts`. Anything that names a thing of this app (a role, a status) belongs to its domain, not here. Move something here when a second copy would appear
 
 They often share a word (`routes/invoices/` and `domains/invoices/`) and often do not (`/customers/:customerId/invoices` is a customer's invoices, written with the invoices domain). Do not bend one to match the other.
@@ -73,7 +74,7 @@ Test it over HTTP (`routes.test.ts`): create, read, list, 400 on bad input, 404 
 
 Every arrow points to model. `hnk/layer-imports` enforces this inside domains.
 
-Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and so on), another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
+Grow only **when a second one appears**: another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.** Entry points other than HTTP (cron, a queue) are not part of a domain: they go in `src/jobs/`
 
 ## The shape of a resource
 
@@ -145,7 +146,7 @@ Inside a domain, another domain's ID is a plain `string` (`Invoice.customerId`).
 | Foreign key `onDelete` | `cascade` if children go away with the parent                                                                                                                                                                                                                                                                                  |
 | Where tests go         | HTTP tests for one domain's things in `domains/<name>/routes.test.ts` for now. Lines across domains and the whole app go in `test/`. Use the real local D1. HTTP via `request(user, method, path, body)`. To act as the system (cron, a check that the system may not do something), use `systemActor` from `hono-kit/testing` |
 | Route without auth     | `middleware: [allowAnonymous]` (always write it, so it differs from forgetting)                                                                                                                                                                                                                                                |
-| Adding cron / queue    | Pass them to `createWorker({ makeDeps, fetch, scheduled, queue })`. Handlers receive `{ deps, actor, now }`                                                                                                                                                                                                                    |
+| Adding cron / queue    | Write the job in `src/jobs/<name>.ts` and pass it to `createWorker({ makeDeps, fetch, scheduled, queue })`. Jobs receive `{ deps, actor, now }`                                                                                                                                                                                                                    |
 | Migrations             | `pnpm db:generate`. Do not run prettier on `migrations/meta`                                                                                                                                                                                                                                                                   |
 
 ## Do not

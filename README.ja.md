@@ -100,10 +100,12 @@ URL の名詞（リソース）と、ドメインの名詞（domain）は別物�
 
 - **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
-- **参照は routes → domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない
+- **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースと同じく domain の外に置き、service は deps から受け取る
+- **参照は入口（routes、jobs）→ domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない
 
 同じ単語になることは多いが（`routes/invoices/` と `domains/invoices/`）、ならないこともある（`/payments` は支払いの domain と請求書の domain を両方使う）。片方に合わせて曲げない。
 route を domain ごとに置くと、`/stores/:storeId/menus` と `/menus/:menuId` のように始まりの名詞が違うパスが 1 つの router に混ざり、Hono の入れ子が使えなくなる。他の domain を使うたびに、宣言して deps.ts でつなぐ例外も増える。それが分けた理由
+jobs を domain の中に置かないのも同じ理由。cron やキューの入口は、きっかけで名前が付き、service を呼ぶ側なので、domain より routes の仲間。中身が 1 つの domain しか使わなくても、名前が一致するのはたまたまで、まとめる理由にならない
 
 ### 出発点: core・inbound・outbound
 
@@ -112,8 +114,8 @@ domain は 3 つの側からなる。ヘキサゴナルアーキテクチャの�
 | 側           | 何か                                                 | 今あるファイル                      |
 | ------------ | ---------------------------------------------------- | ----------------------------------- |
 | **core**     | そのモノが何で、何ができるか。外を何も知らない       | model, service                     |
-| **inbound**  | 外から呼ばれる側。誰として呼ぶかを決めて core に渡す | リソース（src/routes）, cron, queue |
-| **outbound** | 外へ出ていく側。core が宣言した形を満たす            | repo, gateway, mailer, jobs         |
+| **inbound**  | 外から呼ばれる側。誰として呼ぶかを決めて core に渡す | リソース（src/routes）, jobs        |
+| **outbound** | 外へ出ていく側。core が宣言した形を満たす            | repo, gateway, mailer, queue        |
 
 出発点は、domain の 3 ファイルと、同じ名詞のリソース。core は What（model）と How（service）に分けて始める。手順はどの domain にも毎回あるので、最初から分けておく。
 
@@ -140,7 +142,7 @@ outbound のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`g
 
 | 動き         | きっかけ                                           | 足すもの                                                                                                                                                                         |
 | ------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 横に増える   | 2 つ目の inbound（cron、キュー）                   | domain の中に `cron.ts`、`queue.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                             |
+| 横に増える   | 2 つ目の inbound（cron、キュー）                   | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                           |
 | 横に増える   | 2 つ目の outbound（保存先、外部 API、メール）      | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                           |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                               |
 | 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は domain の `errors.ts`（リソースから使う） |
@@ -230,7 +232,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **HTTP 以外の入口は `createWorker` に渡す**（`index.ts` に 1 つ）。deps は呼び出しごとに 1 回組み立て、`actor`（システム）と `now` を渡す。
   `now` は scheduled なら予定の時刻、queue ならメッセージが積まれた時刻（再送が日をまたいでも同じ日の督促になる）。
   queue の handler は Result を返すだけ: ok で ack、err で retry、想定外の throw はそのメッセージだけ retry にして同じバッチの残りは続ける。
-  cron・queue のファイルはシステムを import せず受け取るだけ。システムの値を作る場所は hono-kit の中に 1 つ（テストは `hono-kit/testing`）。
+  `src/jobs/` のファイルはシステムを import せず受け取るだけ。システムの値を作る場所は hono-kit の中に 1 つ（テストは `hono-kit/testing`）。
   署名つき webhook はリソース（`src/routes/webhooks/stripe/`）で、`allowSystem` を宣言して `c.get("actor")` で受け取る（署名を確かめた後に使う）
 - **組織は User が持ち、範囲（Reach）がデータで運ぶ**。システムは全組織、admin は自分の組織の全員分、member は自分の分だけ。
   どの範囲も組織の線を越えない

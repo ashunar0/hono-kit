@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
-import { KINDS, LAYERS, NOTES, RESOURCE_ROLES } from "../lint/layers.mjs";
+import { KINDS, LAYERS, NOTES, ENTRY_ROLES } from "../lint/layers.mjs";
 
 const readme = fileURLToPath(new URL("../../../README.md", import.meta.url));
 const START = "<!-- layers:start";
@@ -21,7 +21,7 @@ const table = () => {
       .map(([k, v]) => (v === "type" ? `${show(k)} (types only)` : show(k)))
       .join(", ");
     const note = NOTES[role] ? `. ${NOTES[role]}` : "";
-    return `| ${KINDS[role] ?? RESOURCE_ROLES[role] ?? "lib"} | ${role} | ${list}${note} |`;
+    return `| ${KINDS[role] ?? ENTRY_ROLES[role] ?? "lib"} | ${role} | ${list}${note} |`;
   });
   return [
     "| Side | Role | May import |",

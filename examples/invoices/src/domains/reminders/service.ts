@@ -32,13 +32,13 @@ export type Mailer = {
   }): Promise<Result<void, "MAIL_FAILED">>;
 };
 
-/** 手順が必要とする積み先の形。jobs.cloudflare.ts が満たす */
+/** 手順が必要とする積み先の形。queue.cloudflare.ts が満たす */
 export type ReminderJobs = {
   enqueue(jobs: ReminderJob[]): Promise<void>;
 };
 
 /**
- * 督促する請求書。入口（cron.ts、queue.ts）が invoices の service から読み、値で渡す。
+ * 督促する請求書。入口（src/jobs/ の 2 つ）が invoices の service から読み、値で渡す。
  * 督促してよいか（期限切れか、範囲の中か）の判定は invoices のルール。reminders は invoices を知らない
  */
 export type RemindableInvoice = {

@@ -35,7 +35,7 @@ const app = buildApp(makeDeps);
 
 /**
  * The Workers entry point. HTTP goes to app.
- * To add cron or a queue, pass scheduled / queue here. Building deps, the actor (the system), now,
+ * To add cron or a queue, write the job in src/jobs/ and pass scheduled / queue here. Building deps, the actor (the system), now,
  * ack and retry are handled by createWorker
  */
 export default createWorker({ makeDeps, fetch: app.fetch });

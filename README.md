@@ -27,14 +27,15 @@ An app has two axes, because the nouns in a URL and the nouns of the domain are 
 
 - **Resources** (`src/routes/<noun>/`): what a client points at, cut by the URL. `/customers/:customerId/invoices` lives in `src/routes/customers/invoices/`.
 - **Domains** (`src/domains/<name>/`): who keeps which rules, cut by the domain. Each domain has three sides, as in hexagonal architecture.
+- **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Like resources, they live outside domains.
 
-Routes use domains, never the other way. A route may use as many domains as it needs; domains never call each other.
+Entry points (routes and jobs) use domains, never the other way. A route may use as many domains as it needs; domains never call each other.
 
-| Side         | What it is                                                     | Files                       |
-| ------------ | -------------------------------------------------------------- | --------------------------- |
-| **core**     | What the thing is and what it can do. Knows nothing outside.   | model, service              |
-| **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, cron, queue      |
-| **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs |
+| Side         | What it is                                                     | Files                        |
+| ------------ | -------------------------------------------------------------- | ---------------------------- |
+| **core**     | What the thing is and what it can do. Knows nothing outside.   | model, service               |
+| **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, jobs              |
+| **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, queue |
 
 `pnpm hnk g domain posts` starts a domain, bare: a thing with only an id and timestamps, wired into `src/deps.ts`. It does not write a resource; you write that where the URL says.
 
@@ -131,14 +132,13 @@ Each file in a domain is classified by its name prefix (its role); each file in 
 | core     | model    | zod, hono-kit/system (types only), hono-kit/failures (types only), another domain's model (types only), lib                                                                                                                                                                                |
 | core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), model, another domain's model (types only), lib                                                                                                                                              |
 | inbound  | errors   | hono-kit, lib. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                      |
-| inbound  | cron     | hono-kit (types only), model, another domain's model, lib. createWorker passes deps, actor and now. An entry point: it may join several domains' services from deps                                                                                                                        |
-| inbound  | queue    | hono-kit (types only), model, another domain's model, lib. Same as cron                                                                                                                                                                                                                    |
 | outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, model, service (types only), another domain's repo, another domain's model, lib. From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types |
 | outbound | gateway  | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
 | outbound | mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
-| outbound | jobs     | model (types only), service (types only), lib                                                                                                                                                                                                                                              |
+| outbound | queue    | model (types only), service (types only), lib. Puts jobs on a queue. What takes them off is a job in src/jobs/                                                                                                                                                                             |
 | inbound  | resource | hono-kit, zod, errors, middleware, another domain's model, another domain's errors, resource, response, lib. `src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported                                                         |
 | inbound  | response | hono-kit, zod, another domain's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                      |
+| inbound  | job      | hono-kit (types only), another domain's model, lib. `src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps                                                          |
 | lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead                                                                       |
 
 <!-- layers:end -->

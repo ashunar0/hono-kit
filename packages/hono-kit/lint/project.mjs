@@ -67,6 +67,7 @@ const resourceRoleOf = (resolved, rest) => {
  * src/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。domain ではない。
  * src 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
  * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ。
+ * src/jobs/ の中は全部 { role: "job" }（HTTP 以外の入口。domain ではない）。
  * src/lib/ の中は全部 { role: "lib" }（業務を知らない＝別のアプリにそのまま持っていけるもの）
  */
 export const placeOf = (resolved, root) => {
@@ -85,6 +86,8 @@ export const placeOf = (resolved, root) => {
     if (!rest.includes("/")) return { domain, role: rest.split(".")[0] };
     return { domain, role: rest };
   }
+  if (rel.startsWith("src/jobs/"))
+    return { role: /\.(test|typetest|spec)$/.test(rel) ? "test" : "job" };
   if (rel.startsWith("src/lib/")) return { role: "lib" };
   if (rel === "src/db/errors") return { role: "dbErrors" };
   if ((m = rel.match(/^src\/(errors|env|deps|db)$/))) return { role: m[1] };
