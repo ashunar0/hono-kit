@@ -103,7 +103,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Never `c.json` (lint stops it). Create returns the created thing with 200. Delete returns `{ ok: true }` with 200
 - **IDs**: only the domain's `…Id` function applies the brand with `as`. Inputs use `…IdSchema`. Never write `as …Id` elsewhere (`no-id-cast`)
 - **Input**: only values that passed a schema with zod's `.brand<"…Input">()` reach service
-- **Lists**: `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)`. The repo takes a `PageQuery`, reads `limit + 1` rows and returns `toPage(...)`. Never write an unbounded list
+- **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. The repo takes a `PageQuery`, reads `limit + 1` rows and returns `toPage(...)` from `hono-kit/page` (types and pure functions only; the HTTP shapes are not there). Never write an unbounded list
   - Filters: service declares `type …ListQuery = PageQuery & { status?: …Status }`, and the repo's `listWithin(reach, query)` takes it. routes accepts `pageQuerySchema(z.object({ status: …StatusSchema.optional() }))` and passes it straight through
 - **Reach**: put "someone else's" into the WHERE and do it in one statement (`updateWithin` / `deleteWithin` / `findWithin`). Never check first and write in a second statement
 - **Enums**: domain holds an `as const` array (`…Statuses`) and a zod enum (`…StatusSchema`); the repo's `text("status", { enum: …Statuses })` and the routes schema use the same ones. `row.status` comes back typed, so no parsing
