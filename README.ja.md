@@ -76,11 +76,11 @@ export const invoicesRouter = createRouter()
 async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promise<Result<Invoice, typeof NotFound.code | typeof Forbidden.code>> {
   const reach = reachOf(actor);
 
-  const found = await repo.findWithin(id, reach);
+  const found = await repo.find(reach, id);
   if (found === null) return err(NotFound.code);
   if (!canEdit(found.access)) return err(Forbidden.code);
 
-  const invoice = await repo.updateWithin(id, reach, { ...input, updatedAt: now });
+  const invoice = await repo.update(reach, id, { ...input, updatedAt: now });
   if (invoice === null) return err(NotFound.code);
 
   return ok(invoice);
@@ -157,7 +157,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 
 - **読みは何本でも**。handler は deps から必要なだけ service を受け取る（`{ invoices, payments }`）。URL の ID が実在しなければ、handler がその場で 404 を返す。同じ 2 行が並んでも middleware にまとめない（Go の `if err != nil` と同じく、明示する）
 - **利用者の HTTP の書き込みは、1 つの service の 1 回の呼び出しだけ**。再送が無いので、2 つ続けて書くと 2 つ目で落ちたときに 1 つ目だけ残る。一緒に書くものは、その 1 回の中で 1 つの batch にする。
-  handler は読んだものを値で渡し、書く service が「噛み合っているか」を確かめてから判断する。cron から呼んでも要るルール（権限、モノをまたぐ決まり）は service に残す。
+  handler は読んだものを値で渡し、書く service が「噛み合っているか」を確かめてから判断する。cron から呼んでも要るルール（行を見る権限、モノをまたぐ決まり）は service に残す。役割だけで決まる権限（司書だけが本を登録できる）は endpoint の guard（`requireRole`）に書く。
   ずれていたら、クライアントが選んだ値なら失敗を返し、handler が DB から読んだ値ならバグとして throw する
 - **他の domain に波及させたいこと**（予約したら通知、など）は、相手の表に書かず、2 つ目の書き込みもしない。自分の表（outbox）に同じ batch で記録し、cron やキューで後から配る
 - **再送のある入口（webhook・queue・cron）は、何回走っても同じ結果になる書き込みなら、複数の domain に順に書いてよい**。途中で落ちても再送でやり直せるから。済んだ印は最後に書く。

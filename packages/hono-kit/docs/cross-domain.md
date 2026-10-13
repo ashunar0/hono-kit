@@ -51,7 +51,7 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 - The handler passes what it read as values. The writing service **checks that they belong together** before deciding, because rules that must hold from every entry point live in the service:
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
   - Values the handler read from the DB that do not match (`member.storeId !== store.id`) → a bug: `throw`
-- Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (permission, a rule across things), it stays in the service
+- Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (a permission that needs the row, a rule across things), it stays in the service. A permission the role alone decides is the endpoint guard (`requireRole`)
 - Writes that must happen together go inside that one call, in one batch (the repo receives `batch`: `wireBatch(db)`, next to its scopes). One repo call writes all or nothing; how is the store's business (D1 sends a fixed batch, a store with transactions could read and decide inside one)
 
 ### When the write must cause something in another domain
@@ -62,7 +62,7 @@ Do not write the other domain's table, and do not make a second write from the h
 
 A failure midway is retried, so the entry point **may write to several domains one after another**, as long as every write gives **the same result however many times it runs**:
 
-- Use a unique key (`insertIfAbsent`), or a transition that only moves from the expected state (`transitionWithin(id, reach, from, changes)`)
+- Use a unique key (`insertIfAbsent`), or a transition that only moves from the expected state (`transition(reach, id, from, changes)`)
 - Write the thing that marks the work done (the outbox row, the webhook event) **last**
 - Each write is still one call to one service; the entry point calls them in order
 
@@ -82,12 +82,12 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 
 ## Reach is the same for reads and writes
 
-`within(reach)` is used in the WHERE of reads and of `updateWithin` / `deleteWithin`. Multiple conditions like "creator or assignee" can be written with `or(...)`, but the same condition also means **once you unassign yourself, you can no longer see it, and can no longer write it**.
+`within(reach)` is used in the WHERE of reads and of `update` / `delete`. Multiple conditions like "creator or assignee" can be written with `or(...)`, but the same condition also means **once you unassign yourself, you can no longer see it, and can no longer write it**.
 
 ## Things that hang under a parent (comments, ...)
 
 - The resource nests under the parent's: `src/routes/issues/comments/index.ts`, mounted by the parent with `.route("/:issueId/comments", issueCommentsRouter)`. The child's paths are the rest only (`"/"`, `"/:id"`), and `request.param` lists the parent's param too (`{ issueId, id }`)
 - The handler asks the parent's service whether the parent is visible (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
-- The child repo filters by **parent ID**, not by reach. Name its methods `listOf(parentId)` / `findOf(parentId, id)` instead of `listWithin` / `findWithin`
+- The child repo filters by **parent ID**, not by reach. Name its methods `listOf(parentId)` / `findOf(parentId, id)` instead of `list(reach)` / `find(reach, id)`
 - The parent ID is a plain `string` inside the child domain. Permission checks ("the author or an admin") are pure functions in model
 - `pnpm hnk g domain comments` writes only the domain. Write the resource in `src/routes/issues/comments/` and mount it from the parent

@@ -1,5 +1,7 @@
 /**
  * The user. For now: who is signed in, which organization, which role.
+ * It holds no ID of a business row (a member, a staff, a patient): that row holds `userId` in its own domain's table,
+ * and "only their own" reaches go through it. A session, once issued, would keep an old ID after the row is deleted
  * Other domains' domains borrow only types from here.
  * The system (a caller with no user) belongs to hono-kit. cron, queues and webhooks receive it
  */

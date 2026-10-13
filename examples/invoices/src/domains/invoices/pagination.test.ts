@@ -21,7 +21,7 @@ describe("一覧のキーセットのページ送り", () => {
     const seen: string[] = [];
     let after: Cursor | undefined;
     for (let pages = 0; pages < 10; pages++) {
-      const page = await repo.listWithin(
+      const page = await repo.list(
         { kind: "member", orgId: alice.orgId, userId: alice.id },
         { after, limit: 2 },
       );
@@ -41,7 +41,7 @@ describe("一覧のキーセットのページ送り", () => {
     ]);
     const repo = invoicesRepo();
 
-    const page = await repo.listWithin(
+    const page = await repo.list(
       { kind: "member", orgId: alice.orgId, userId: alice.id },
       { status: "sent", limit: 10 },
     );

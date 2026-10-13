@@ -1,8 +1,8 @@
 import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthVariables } from "../env";
-import type { User } from "../domains/users/model";
-import { fail, guard, Unauthorized } from "hono-kit";
+import type { Role, User } from "../domains/users/model";
+import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
  * Sets the session user in the context. Lets signed-out requests through.
@@ -32,6 +32,27 @@ export const requireAuth = guard(
     await next();
   }),
 );
+
+/**
+ * Requires sign-in as one of these roles. For a permission the role alone decides
+ * (only an admin adds a member). When the rule needs the row (the author or an admin),
+ * use requireAuth and decide it in service, all of it in one place.
+ * Unauthorized and Forbidden are added to responses automatically
+ */
+export const requireRole = (...roles: Role[]) =>
+  guard(
+    [Unauthorized, Forbidden],
+    createMiddleware<{
+      Variables: AuthVariables & { actor: User };
+    }>(async (c, next) => {
+      const user = c.get("user");
+      if (user === null) throw fail(Unauthorized);
+      if (!roles.includes(user.role)) throw fail(Forbidden);
+
+      c.set("actor", user);
+      await next();
+    }),
+  );
 
 /**
  * Says explicitly that no auth is required. Does nothing.

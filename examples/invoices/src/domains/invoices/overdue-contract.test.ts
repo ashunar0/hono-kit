@@ -22,7 +22,7 @@ it("期限切れの判定が、domain の関数と SQL で一致する", async (
   await insertInvoices(fixtures);
   const repo = invoicesRepo();
 
-  const bySql = (await repo.listOverdueWithin({ kind: "all" }, now)).map((i) => i.id).sort();
+  const bySql = (await repo.listOverdue({ kind: "all" }, now)).map((i) => i.id).sort();
   const byDomain = fixtures
     .filter((i) => isOverdue(i, now))
     .map((i) => i.id)

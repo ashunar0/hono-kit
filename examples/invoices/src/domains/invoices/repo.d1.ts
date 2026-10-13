@@ -124,7 +124,7 @@ export function invoicesRepository(
   shares: Scope<typeof invoiceSharesTable>,
 ): InvoicesRepository {
   return {
-    async listWithin(reach, { status, after, limit }) {
+    async list(reach, { status, after, limit }) {
       // 1 件多く読んで、続きがあるかを知る
       const rows = await scope.reads
         .select()
@@ -150,7 +150,7 @@ export function invoicesRepository(
       }));
     },
 
-    async listOverdueWithin(reach, now) {
+    async listOverdue(reach, now) {
       const rows = await scope.reads
         .select()
         .from(invoicesTable)
@@ -165,7 +165,7 @@ export function invoicesRepository(
       return rows.map(toInvoice);
     },
 
-    async findWithin(id, reach) {
+    async find(reach, id) {
       const [row] = await scope.reads
         .select({ invoice: getTableColumns(invoicesTable), access: accessIn(reach) })
         .from(invoicesTable)
@@ -183,7 +183,7 @@ export function invoicesRepository(
     },
 
     // 範囲（と状態）の条件を WHERE に入れて 1 文で書く。確認と書き込みの間に割り込まれない
-    async updateWithin(id, reach, changes, from) {
+    async update(reach, id, changes, from) {
       const [row] = await scope
         .update(changes)
         .where(
@@ -198,7 +198,7 @@ export function invoicesRepository(
       return row ? toInvoice(row) : null;
     },
 
-    async deleteWithin(id, reach) {
+    async delete(reach, id) {
       const rows = await scope
         .delete()
         .where(and(eq(invoicesTable.id, id), within(reach)))

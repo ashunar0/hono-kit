@@ -95,7 +95,7 @@ export const postsRouter = createRouter().endpoint(
 // src/domains/posts/service.ts
 async update(actor: Actor, id: PostId, input: PostInput, now: Date): Promise<Result<Post, typeof NotFound.code>> {
   const changes = { title: input.title, body: input.body, updatedAt: now };
-  const updated = await repo.updateWithin(id, reachOf(actor), changes);
+  const updated = await repo.update(reachOf(actor), id, changes);
   if (updated === null) return err(NotFound.code);
 
   return ok(updated);
@@ -103,7 +103,7 @@ async update(actor: Actor, id: PostId, input: PostInput, now: Date): Promise<Res
 ```
 
 - Expected failures are returned as `Result`. The service does not know about HTTP status codes.
-- Access is part of the query (`Within`). Things you cannot see are `NOT_FOUND`; their existence is not revealed.
+- Access is part of the query (the reach goes into the WHERE). Things you cannot see are `NOT_FOUND`; their existence is not revealed.
 - The service does not read the clock. It receives `now`.
 
 ## Lint rules
