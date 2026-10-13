@@ -52,7 +52,7 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
   - Values the handler read from the DB that do not match (`member.storeId !== store.id`) → a bug: `throw`
 - Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (permission, a rule across things), it stays in the service
-- Writes that must happen together go inside that one call, in one batch (the repo receives `batch`)
+- Writes that must happen together go inside that one call, in one batch (the repo receives `batch`: `wireBatch(db)`, next to its scopes). One repo call writes all or nothing; how is the store's business (D1 sends a fixed batch, a store with transactions could read and decide inside one)
 
 ### When the write must cause something in another module
 
