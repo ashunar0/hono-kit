@@ -129,7 +129,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 
 Modules do not call each other, and `api/deps.ts` only builds each module (no shapes wired between them). The handler does the joining:
 
-1. **Read** from as many services as needed (`customers.get`, `products.pick`). A missing thing named in the URL is a 404 returned right there (see Entry checks)
+1. **Read** from as many services as needed (`customers.get`, `products.pick`). A missing thing named in the URL is a 404 returned right there (see Entry checks). When the next thing is named by something read rather than by the URL (the customer of an invoice), read the first through its own service, then the next. The writing service still reads its own thing again to decide: what the handler read may have moved since
 2. **Pass** what was read to the one writing service as values. That service declares the shape it takes (`type Billed = { customer: { id; organizationId }; items: { id; organizationId; price }[] }`), not another module's types
 3. **The writing service checks that the values belong together** before deciding (every product is of the customer's organization). Rules that must hold from every entry point stay in service, so a wrong value from the handler cannot slip through
    - Values that came from the client (product ids in the body) and do not match → a domain failure (`PRODUCT_NOT_FOUND`)
