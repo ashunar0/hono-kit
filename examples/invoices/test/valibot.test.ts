@@ -66,13 +66,13 @@ const router = createRouter()
       responses: { 200: pageResponseSchema(item) },
     },
     async (c, reply) => {
-      const { q, cursor, limit } = c.req.valid("query");
+      const { q, after, limit } = c.req.valid("query");
       q satisfies string | undefined;
       const items = Array.from({ length: limit }, (_, i) => ({ name: `${q ?? "item"}${i}` }));
 
       return reply(
         200,
-        pageResponse({ items, next: cursor ?? null }, (x) => x),
+        pageResponse({ items, next: after ?? null }, (x) => x),
       );
     },
   );

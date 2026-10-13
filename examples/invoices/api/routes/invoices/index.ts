@@ -53,9 +53,7 @@ export const invoicesRouter = createRouter()
     },
     async (c, reply, { invoices }) => {
       const actor = c.get("actor");
-      const { status, cursor, limit } = c.req.valid("query");
-
-      const page = await invoices.list(actor, { status, after: cursor, limit });
+      const page = await invoices.list(actor, c.req.valid("query"));
 
       return reply(200, pageResponse(page, invoiceResponse));
     },

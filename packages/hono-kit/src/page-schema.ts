@@ -35,14 +35,17 @@ const decodeCursor = (value: string): Cursor | null => {
 /** A query value. Hono passes an array when a name repeats */
 type QueryValue = string | string[] | undefined;
 
-/** The pagination part: what is received (query strings) and what reaches the handler */
+/**
+ * The pagination part: what is received (query strings) and what reaches the handler. The output is a PageQuery
+ * (`after`, not `cursor`), so the handler passes it to the repo as it is
+ */
 type PageQueryInput = { cursor?: string; limit?: string };
-type PageQueryOutput = { cursor?: Cursor; limit: number };
+type PageQueryOutput = { after?: Cursor; limit: number };
 
 const LIMIT_MESSAGE = `limit must be an integer from 1 to ${PAGE_LIMIT.max}`;
 
 /**
- * The list query. Wraps the filter schema and adds cursor and limit.
+ * The list query. Wraps the filter schema and adds cursor and limit; the cursor arrives decoded as `after`.
  * `request: { query: pageQuerySchema(z.object({ status: ... })) }`, or `pageQuerySchema()` without filters.
  * limit has a default (20) and a cap (100), so the list is never unbounded
  */
@@ -89,7 +92,11 @@ export function pageQuerySchema(
       if (filtered.issues) return filtered;
 
       return {
-        value: { ...filtered.value, cursor: after, limit: count },
+        value: {
+          ...filtered.value,
+          ...(after !== undefined && { after }),
+          limit: count,
+        },
       };
     },
     (io, options) => {
