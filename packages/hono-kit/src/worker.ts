@@ -1,25 +1,7 @@
-import { createMiddleware } from "hono/factory";
-
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
 import { systemActor } from "./system-value.js";
-import type { System } from "./system.js";
-
-/**
- * What an entry point receives. Who is acting (actor) and when it happened (now) are received, not decided, here.
- * What an HTTP handler gets from c.get("actor") and new Date() is passed in by createWorker
- */
-export type CronContext = {
-  deps: RegisteredDeps;
-  /** An entry point with no user, so always the system */
-  actor: System;
-  /** The scheduled time (not when it actually ran) */
-  now: Date;
-};
-
-export type QueueContext<Body> = CronContext & {
-  body: Body;
-};
+import type { CronContext, QueueContext } from "./entry.js";
 
 type Bindings = RegisteredEnv["Bindings"];
 
@@ -79,15 +61,3 @@ export const createWorker = <Body = never>(options: {
     }),
   };
 };
-
-/**
- * Declares an entry point that verifies the caller another way (a signed webhook, ...).
- * Like allowAnonymous, put it first in the route's middleware; the handler reads `c.get("actor")` (the same name as with requireAuth).
- * Verifying the signature is the handler's job: do not use actor before verifying
- */
-export const allowSystem = createMiddleware<{ Variables: { actor: System } }>(
-  async (c, next) => {
-    c.set("actor", systemActor);
-    await next();
-  },
-);

@@ -29,6 +29,7 @@
     "./page": "./src/page.ts",
     "./system": "./src/system.ts",
     "./testing": "./src/testing.ts",
+    "./worker": "./src/worker.ts",
     "./lint": "./lint/index.mjs",
     "./package.json": "./package.json"
   },
@@ -61,6 +62,10 @@
       "./testing": {
         "types": "./dist/testing.d.ts",
         "default": "./dist/testing.js"
+      },
+      "./worker": {
+        "types": "./dist/worker.d.ts",
+        "default": "./dist/worker.js"
       },
       "./lint": "./lint/index.mjs",
       "./package.json": "./package.json"

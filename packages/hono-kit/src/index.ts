@@ -2,7 +2,9 @@
  * Entry point of hono-kit. The contents live in one file per role.
  * - endpoint.ts + router.ts: route declarations and handlers (createRouter, reply, guard, provideDeps)
  * - failure.ts: failures returned over HTTP (httpError, fail, onError)
- * - worker.ts: the Workers entry point (createWorker) and what non-HTTP entry points receive
+ * - entry.ts: what non-HTTP entry points receive (cron, queue, webhook), whatever runs them
+ * - worker.ts: the Cloudflare Workers entry point (createWorker). Imported from "hono-kit/worker", not from here,
+ *   so the rest of hono-kit knows nothing of Workers
  * - page-schema.ts: HTTP input/output shapes for list pagination
  */
 export { err, ok, type Result } from "./result.js";
@@ -27,12 +29,7 @@ export {
   type AnyFailure,
   type HttpError,
 } from "./failure.js";
-export {
-  allowSystem,
-  createWorker,
-  type CronContext,
-  type QueueContext,
-} from "./worker.js";
+export { allowSystem, type CronContext, type QueueContext } from "./entry.js";
 export {
   pageQuerySchema,
   pageResponse,

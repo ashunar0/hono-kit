@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
-import { createRouter, createWorker, onError, provideDeps } from "hono-kit";
+import { createRouter, onError, provideDeps } from "hono-kit";
+import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
