@@ -23,6 +23,8 @@
         "hnk/route-lists-are-paged": "error",
         "hnk/route-replies-through-reply": "error",
         "hnk/route-declares-auth": "error",
+        "hnk/route-responds-200": "error",
+        "hnk/no-new-hono": "error",
         "hnk/no-module-scope-state": "error",
         "hnk/no-id-cast": "error"
       }

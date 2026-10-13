@@ -21,6 +21,10 @@
 - service declares the shape it sends (`send(to, subject, body): Promise<Result<void, "MAIL_FAILED">>`), and `deps.ts` wires it. The failure is a `Failure` with `kind: "upstream"` (502)
 - When a dummy "collects what was sent", **it cannot keep an array at module scope** (`no-module-scope-state`). Take the outbox as an argument, like `dummy(outbox: Mail[])`
 
+## Failures only an entry point has
+
+A failure that belongs to the entry point, not to a thing (a webhook signature that does not match), goes next to that entry point in `src/routes/<noun>/errors.ts` as `httpError(code, status, message)`. A domain has no `errors.ts`.
+
 ## Replacing external services in tests
 
 `buildApp` takes `makeDeps` as an argument. For domains you want to replace, make it `makeDeps(env, overrides?)`: production passes nothing (a dummy or the real thing), tests pass a stand-in. Do not use `vi.mock` (lint stops it).

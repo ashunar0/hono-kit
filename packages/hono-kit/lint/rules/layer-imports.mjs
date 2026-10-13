@@ -5,7 +5,15 @@ import {
   projectOf,
   resolveImport,
 } from "../project.mjs";
-import { HINTS, KINDS, KIND_HINTS, LAYERS, ENTRY_HINT, ENTRY_ROLES, ERRORS_HINT } from "../layers.mjs";
+import {
+  HINTS,
+  KINDS,
+  KIND_HINTS,
+  LAYERS,
+  ENTRY_HINT,
+  ENTRY_ROLES,
+  ERRORS_HINT,
+} from "../layers.mjs";
 
 /** foreign:model → 他 domain の model */
 const show = (name) => name.replace(/^foreign:/, "another domain's ");
@@ -43,7 +51,8 @@ export default {
       };
     }
     // domain の中で使えるのは KINDS の役割だけ（errors や job は domain の外の役割）
-    const allowed = self.domain && !KINDS[self.role] ? undefined : LAYERS[self.role];
+    const allowed =
+      self.domain && !KINDS[self.role] ? undefined : LAYERS[self.role];
     if (!allowed) {
       if (!self.domain) return {};
       // domain の中に、役割の分からないファイルを置かせない
@@ -51,9 +60,10 @@ export default {
         Program(node) {
           context.report({
             node,
-            message: self.role === "errors"
-              ? ERRORS_HINT
-              : `Files in a domain start with their role (${Object.keys(KINDS).join(", ")}). Outbound adapters are named "role.tech.ts" (repo.d1.ts, ...)`,
+            message:
+              self.role === "errors"
+                ? ERRORS_HINT
+                : `Files in a domain start with their role (${Object.keys(KINDS).join(", ")}). Outbound adapters are named "role.tech.ts" (repo.d1.ts, ...)`,
           });
         },
       };

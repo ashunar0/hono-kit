@@ -80,6 +80,41 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 - **Code that knows nothing of this app's business** (calendar dates, times of day, time-zone conversion) goes in `src/lib/` and may be imported as values from anywhere. The test is "could it move to another app as is?": a staff role belongs to staff (copy it or borrow its type), a calendar day is the same in any app (lib). `src/lib/` imports only zod and other lib files, so domains can never reach each other through it
 - Another domain's table: only inside foreign-key `references()`. To read it in your own SQL (a filter or an order that needs it, with paging), use the window its owner's repo exports (`invoicesWithin(db, actor)`), and read the way the foreign key points: the domain that references the other reads it. The other way round makes the imports a cycle
 
+## Reading another domain's table (windows)
+
+When one SQL statement must look at another domain's table (a filter or an order that needs it, together with paging), read it through the window its owner exports: `…Within`, a subquery of the rows the reader may see. When the handler can read each domain and put the answers together (the copies on loan of the one book it shows), do that. But when any variant of a list (one of its filters) needs the other table in one statement, the whole list, every variant, is answered by the domain that reads the window. Do not split one list into two ways of reading.
+
+```ts
+// domains/invoices/repo.d1.ts: the owner decides which rows may be seen
+export const invoicesWithin = (db: ReadDb, actor: Actor) =>
+  db
+    .select()
+    .from(invoicesTable)
+    .where(within(reachOf(actor)))
+    .as("invoices_within");
+
+// domains/payments/repo.d1.ts: the reader joins it like a table
+const invoices = invoicesWithin(scope.reads, actor);
+const rows = await scope.reads
+  .select()
+  .from(paymentsTable)
+  .innerJoin(invoices, eq(invoices.id, paymentsTable.invoiceId));
+```
+
+- **Read the way the foreign key points**: the domain whose table references the other reads it (payments references invoices, so payments reads `invoicesWithin`). The other way round makes the imports a cycle, and `import/no-cycle` stops it. A list under the other's URL is still answered by the referencing domain: `GET /books?available=true` (books with a copy not on loan) is read by loans, which references books, and the books handler calls the loans service
+- The window takes `actor` when the owner has a reach. When every row is visible to everyone, it takes only `db`
+- Conditions whose meaning the owner decides (what a search word matches) are the owner's: the window takes them (`booksWithin(db, { q })`) and applies them inside. The reader adds only conditions on its own table (copies on loan)
+- Another domain's table itself (`invoicesTable`) is used only inside foreign-key `references()` (`hnk/no-foreign-table-reads`)
+
+## Counting (aggregates)
+
+Put a count in the domain that owns the table being counted. Then ask **"should this number change with who is looking?"**
+
+- If so (the loans a member sees as their own), use the owner's reach
+- If not (copies a book has left to lend, a count a rule decides by), use no reach and take no `actor`
+
+A reach narrows what is shown, never what a rule computes.
+
 ## Reach is the same for reads and writes
 
 `within(reach)` is used in the WHERE of reads and of `update` / `delete`. Multiple conditions like "creator or assignee" can be written with `or(...)`, but the same condition also means **once you unassign yourself, you can no longer see it, and can no longer write it**.

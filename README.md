@@ -120,6 +120,8 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 | `no-foreign-table-reads`      | Reading another domain's table directly                       |
 | `no-id-cast`                  | Branding IDs with `as`                                        |
 | `no-module-scope-state`       | Mutable state at module scope                                 |
+| `route-responds-200`          | Success statuses other than 200 (201, 204)                    |
+| `no-new-hono`                 | `new Hono()` instead of `createRouter()`                      |
 
 ### Who may import what
 

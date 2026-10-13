@@ -42,7 +42,8 @@ export const resolveImport = (file, specifier, project) => {
 
 /** パッケージ名。`drizzle-orm/d1` は `drizzle-orm`、`@hono/zod-openapi` はそのまま。hono-kit だけは入口ごとに分ける */
 export const packageOf = (specifier) => {
-  if (specifier === "hono-kit" || specifier.startsWith("hono-kit/")) return specifier;
+  if (specifier === "hono-kit" || specifier.startsWith("hono-kit/"))
+    return specifier;
   const parts = specifier.split("/");
   return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
 };
@@ -57,7 +58,10 @@ const resourceRoleOf = (resolved, rest) => {
   if (/(^|\/)index$/.test(rest)) return "resource";
   if (/(^|\/)response$/.test(rest)) return "response";
   if (/(^|\/)errors$/.test(rest)) return "errors";
-  if (!/\.tsx?$/.test(resolved) && fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory())
+  if (
+    !/\.tsx?$/.test(resolved) &&
+    fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory()
+  )
     return "resource";
   return "resourceOther";
 };

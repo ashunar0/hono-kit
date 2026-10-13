@@ -7,9 +7,11 @@ import noClockOutsideAppEntry from "./rules/no-clock-outside-app-entry.mjs";
 import noForeignTableReads from "./rules/no-foreign-table-reads.mjs";
 import noIdCast from "./rules/no-id-cast.mjs";
 import noModuleScopeState from "./rules/no-module-scope-state.mjs";
+import noNewHono from "./rules/no-new-hono.mjs";
 import routeDeclaresAuth from "./rules/route-declares-auth.mjs";
 import routeListsArePaged from "./rules/route-lists-are-paged.mjs";
 import routeRepliesThroughReply from "./rules/route-replies-through-reply.mjs";
+import routeResponds200 from "./rules/route-responds-200.mjs";
 
 export default {
   meta: { name: "hnk" },
@@ -22,5 +24,7 @@ export default {
     "no-id-cast": noIdCast,
     "no-module-scope-state": noModuleScopeState,
     "route-declares-auth": routeDeclaresAuth,
+    "route-responds-200": routeResponds200,
+    "no-new-hono": noNewHono,
   },
 };

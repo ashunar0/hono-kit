@@ -92,11 +92,17 @@ export const LAYERS = {
 for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
 /** domain の外にある、入口の役割。README の表の「側」に使う */
-export const ENTRY_ROLES = { resource: "inbound", response: "inbound", job: "inbound", errors: "inbound" };
+export const ENTRY_ROLES = {
+  resource: "inbound",
+  response: "inbound",
+  job: "inbound",
+  errors: "inbound",
+};
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
-  "model→service": "model holds only the thing and its rules. Put steps in service",
+  "model→service":
+    "model holds only the thing and its rules. Put steps in service",
   "model→hono-kit/result":
     "model has no steps that return failures. Put steps in service",
   "service→hono-kit":
@@ -143,8 +149,7 @@ export const KIND_HINTS = {
 export const NOTES = {
   errors:
     "`src/routes/<noun>/errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
-  lib:
-    "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
+  lib: "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
   repo: "From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types",
   resource:
     "`src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported",
