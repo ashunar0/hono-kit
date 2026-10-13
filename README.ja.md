@@ -252,10 +252,11 @@ module は互いを呼ばない。つなぐのは入口（handler、cron、queue
 
 ```sh
 pnpm create hnk <dir>                  # 土台（users・db・deps・middleware・check・lint 設定・vitest）
-pnpm hnk g module <複数形の camelCase> # 例: invoices, signupRequests。api/modules/<名前>/ と api/routes/<名前>/ を出し、deps.ts と index.ts の `// hnk:` の行につなぐ
+pnpm hnk g module <複数形の camelCase> # 例: invoices, signupRequests。api/modules/<名前>/ の骨組みを出し、deps.ts の `// hnk:` の行につなぐ
 ```
 
-出るのは `title` と `body` を持つだけの 1 件 CRUD。これを本物のモノに書き換えて、`pnpm db:generate`、`pnpm exec prettier --write .`、`pnpm check` の順に回す。
+出るのは id と日時だけを持つモノと、`get` / `create` だけの骨組み。誰が操作するか（actor）も知らないので、users の形を変えたアプリでもそのまま型が通る。これを本物のモノに育てて、`pnpm db:generate`、`pnpm exec prettier --write .`、`pnpm check` の順に回す。
+リソース（`api/routes/<名詞>/`）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も親のリソースだったりするので、URL を見て手で書く。
 CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/templates/`。雛形が今も `pnpm check` を通ることは `pnpm -C packages/hono-kit e2e`（npm に出す tgz で通すなら `e2e:packed`）で確かめる。
 
 ## 新しい module を足すとき
@@ -264,7 +265,7 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 
 | 迷うこと                               | 決まり                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 置き場所                               | `modules/<名前>/` に `domain / service / repo.d1`、`routes/<名前>/` に `index.ts / response.ts` で始める。URL が `/<名前>` でないなら、URL のとおりの場所へ移す。増やすのは 2 つ目が現れたとき                                                                                                                                                             |
+| 置き場所                               | `modules/<名前>/` に `domain / service / repo.d1` で始める（生成器）。リソースは URL のとおり `routes/<名詞>/` に `index.ts / response.ts` を手で書く。増やすのは 2 つ目が現れたとき                                                                                                                                                                       |
 | 他の module を使う                     | module からは使わない。handler が両方の service を受け取り、読んだものを値で渡す。受け取る service は形を宣言する（使う分だけ。例: `{ id: string; storeId: string }`）                                                                                                                                                                                     |
 | 他の module の表                       | 外部キーの `references()` の中でだけ使う。読むときは、持ち主が出している `〜Within(db, actor)` を使う                                                                                                                                                                                                                                                      |
 | 親の下にぶら下がるもの（コメントなど） | 親が見えるかを、handler が親の service に問い合わせる（`issues.get(actor, issueId)`。見えなければ NOT_FOUND）。子に orgId は持たせない。親が見えれば読める・書ける。もっと厳しい権限が要るなら、親が access を返す問いを宣言する                                                                                                                           |

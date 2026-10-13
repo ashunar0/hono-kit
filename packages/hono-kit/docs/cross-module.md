@@ -89,4 +89,4 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 - The handler asks the parent's service whether the parent is visible (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
 - The child repo filters by **parent ID**, not by reach. Name its methods `listOf(parentId)` / `findOf(parentId, id)` instead of `listWithin` / `findWithin`
 - The parent ID is a plain `string` inside the child module. Permission checks ("the author or an admin") are pure domain functions
-- `pnpm hnk g module comments` produces `api/routes/comments/` mounted at `/comments`. Move it to `api/routes/issues/comments/` and mount it from the parent
+- `pnpm hnk g module comments` writes only the module. Write the resource in `api/routes/issues/comments/` and mount it from the parent

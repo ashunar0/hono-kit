@@ -2,7 +2,10 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>          アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk g module <name>     module 一式と、同じ名詞のリソース（api/routes/<name>/）を足し、deps.ts と index.ts につなぐ（templates/module）
+ *   hnk g module <name>     module の骨組み（domain / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/module）
+ *
+ * リソース（api/routes/<名詞>/）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も
+ * 親のリソースだったりするので、URL を見て書く（書き方は雛形の AGENTS.md）
  *
  * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g module → check を通す）。
  * 生成器がするのは、コピーと、語の置き換えと、// hnk: の行の上への追記だけ
@@ -29,7 +32,6 @@ const singular = (name) => {
 };
 const pascal = (name) => name.charAt(0).toUpperCase() + name.slice(1);
 const snake = (name) => name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-const kebab = (name) => name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 
 /** テンプレートの notes を、渡された複数形の名前に置き換える。長い語から順に */
 const rename = (text, plural) => {
@@ -37,7 +39,6 @@ const rename = (text, plural) => {
 
   return text
     .replaceAll("__snake__", snake(plural))
-    .replaceAll("__kebab__", kebab(plural))
     .replaceAll("Notes", pascal(plural))
     .replaceAll("notes", plural)
     .replaceAll("Note", pascal(one))
@@ -102,11 +103,10 @@ const generateModule = (plural) => {
   if (!plural || !/^[a-z][a-zA-Z0-9]*$/.test(plural)) {
     die("Usage: hnk g module <name> (plural camelCase, e.g. invoices, signupRequests)");
   }
-  if (!fs.existsSync("api/deps.ts") || !fs.existsSync("api/index.ts")) {
+  if (!fs.existsSync("api/deps.ts")) {
     die("Run this at the app root (where api/deps.ts is)");
   }
   if (fs.existsSync(`api/modules/${plural}`)) die(`api/modules/${plural} already exists`);
-  if (fs.existsSync(`api/routes/${kebab(plural)}`)) die(`api/routes/${kebab(plural)} already exists`);
 
   const from = path.join(root, "templates/module");
   for (const file of listFiles(from)) {
@@ -130,14 +130,8 @@ const generateModule = (plural) => {
   ]);
   insertAbove(deps, "returns", [`${plural},`]);
 
-  // index.ts につなぐ
-  const index = "api/index.ts";
-  insertAbove(index, "imports", [`import { ${plural}Router } from "./routes/${kebab(plural)}";`]);
-  insertAbove(index, "routes", [`.route("/${kebab(plural)}", ${plural}Router)`]);
-
-  console.log(
-    `✓ Added api/modules/${plural}/ and api/routes/${kebab(plural)}/, and wired them into deps.ts and index.ts (CRUD for ${one})`,
-  );
+  console.log(`✓ Added api/modules/${plural}/ and wired it into deps.ts (the bare shape of ${one})`);
+  console.log("  Fill in the thing, then write the resource under api/routes/ where the URL says (AGENTS.md)");
   console.log("  pnpm db:generate && pnpm exec prettier --write . && pnpm check");
 };
 

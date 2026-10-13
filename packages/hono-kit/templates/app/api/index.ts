@@ -4,7 +4,6 @@ import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
 import { withUser } from "./middleware/auth";
-// hnk:imports
 
 /**
  * Builds the app. It takes how to build deps and how to decide the signed-in user from outside, so
@@ -18,7 +17,7 @@ export const buildApp = (
   const app = createRouter()
     .use("*", provideDeps(makeDeps))
     .use("*", authenticate)
-    // hnk:routes
+    // Mount the top nouns here, one line each: .route("/invoices", invoicesRouter). Children go in their parent
     .onError(onError);
 
   // Built from the registered route declarations. Read on every request, so registration order does not matter

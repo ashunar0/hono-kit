@@ -1,7 +1,7 @@
 # AGENTS.md
 
 This is a backend built on [hono-kit](https://github.com/ashunar0/hono-kit): Hono + Cloudflare Workers + D1 + Drizzle + Standard Schema (zod).
-hono-kit fixes where things go and what they look like. **The generator produces the shape; do not invent layers.** When unsure, read an existing module and an existing resource under `api/routes/` to the end and write the same way.
+hono-kit fixes where things go and what they look like. **The generator produces the shape of a module; do not invent layers.** When unsure, read an existing module and an existing resource under `api/routes/` to the end and write the same way.
 
 ## Commands
 
@@ -26,14 +26,41 @@ They often share a word (`routes/invoices/` and `modules/invoices/`) and often d
 
 ## Adding a module
 
-`pnpm hnk g module <name>` writes `domain / service / repo.d1 / routes.test` under `api/modules/<name>/` and the resource of the same noun under `api/routes/<name>/` (`index.ts`, `response.ts`), and wires them into `api/deps.ts` and `api/index.ts` above the `// hnk:` lines.
-The output is a CRUD for something with just `title` and `body`. **Rewrite it into the real thing:**
+`pnpm hnk g module <name>` writes the bare shape under `api/modules/<name>/` (`domain / service / repo.d1 / service.test`) and wires it into `api/deps.ts` above the `// hnk:` lines. It is a thing with only `id`, `createdAt` and `updatedAt`, and `get` / `create`. It knows nothing of who is acting. **Grow it into the real thing:**
 
-1. `domain.ts`: types, `…InputSchema` (zod; `trim()` before checking length), `reachOf`, failures (`Failure`)
-2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE)
-3. `service.ts`: the steps. Declare the `…Repository` shape here
-4. `api/routes/<name>/`: `index.ts` (input schemas, `responses`, handlers) and `response.ts` (`…ResponseSchema`, `…Response`: thing → response). If the URL is not `/<name>` (a child of another noun, or a different noun), move it to where the URL says (see below)
-5. `routes.test.ts`: create, read, list, 400 on bad input, 404 for someone else, 404 for another org, 401 when signed out
+1. `domain.ts`: fields, `…InputSchema` (zod; `trim()` before checking length), failures (`Failure`), and `reachOf` when someone may touch only some of them (the reach follows the shape of `api/modules/users/domain.ts`)
+2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE), indexes for the list order
+3. `service.ts`: the steps, `actor` first. Declare the `…Repository` shape here
+4. Run `pnpm db:generate`
+
+The generator writes no resource. Write it where the URL says (next section).
+
+## Adding a resource
+
+Create `api/routes/<noun>/index.ts` by hand. A top noun is mounted in `api/index.ts` (`.route("/invoices", invoicesRouter)`); a child is mounted by its parent (`.route("/:customerId/invoices", customerInvoicesRouter)`). One endpoint looks like this:
+
+```ts
+export const invoicesRouter = createRouter().endpoint(
+  {
+    method: "get",
+    path: "/:id",
+    middleware: [requireAuth],
+    request: { param: z.object({ id: invoiceIdSchema }) },
+    responses: { 200: invoiceResponseSchema, ...errorResponses(NotFound) },
+  },
+  async (c, reply, { invoices }) => {
+    const actor = c.get("actor");
+    const { id } = c.req.valid("param");
+
+    const result = await invoices.get(actor, id);
+    if (!result.ok) return reply.failure(result.error);
+
+    return reply(200, invoiceResponse(result.value));
+  },
+);
+```
+
+Test it over HTTP (`routes.test.ts`): create, read, list, 400 on bad input, 404 for someone else's, 401 when signed out.
 
 ## The shape of a module (three files)
 

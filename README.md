@@ -36,14 +36,14 @@ Routes use modules, never the other way. A route may use as many modules as it n
 | **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, cron, queue      |
 | **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs |
 
-`pnpm hnk g module posts` starts a module and the resource of the same noun:
+`pnpm hnk g module posts` starts a module, bare: a thing with only an id and timestamps, wired into `api/deps.ts`. It does not write a resource; you write that where the URL says.
 
 ```
-api/modules/posts/
+api/modules/posts/          (generated)
 ├─ domain.ts     core: types and rules
 ├─ service.ts    core: steps, and the shape of storage they need
 └─ repo.d1.ts    outbound: table and D1 implementation
-api/routes/posts/
+api/routes/posts/           (written by hand)
 ├─ index.ts      inbound: the router (HTTP input, handlers)
 └─ response.ts   inbound: how a post is shown over HTTP
 ```
