@@ -1,7 +1,7 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
 import { systemActor } from "./system-value.js";
-import type { CronContext, QueueContext } from "./entry.js";
+import { type CronContext, type QueueContext, runScheduled } from "./entry.js";
 
 type Bindings = RegisteredEnv["Bindings"];
 
@@ -31,9 +31,8 @@ export const createWorker = <Body = never>(options: {
     fetch,
     ...(scheduled && {
       async scheduled(controller, env) {
-        await scheduled({
+        await runScheduled(scheduled, {
           deps: makeDeps(env),
-          actor: systemActor,
           now: new Date(controller.scheduledTime),
         });
       },

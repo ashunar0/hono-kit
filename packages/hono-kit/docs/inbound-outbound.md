@@ -4,6 +4,7 @@
 
 - Location: the module's `cron.ts`. It may import only **types** from hono-kit and domain. It receives `{ deps, now }`
 - `api/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
+- Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due. It hands the job the system actor, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
 - Tests: call the function in `cron.ts` directly instead of going through `scheduled`. Act as `systemActor` from `hono-kit/testing`
 - A batch over every user may not fit the `Page` cursor (`at: Date`, `id`); a `GROUP BY` aggregate has no `at`. In that case, put a dedicated read in the repo (`unreadSummaries(after, limit)`) and loop yourself. Never make it an unbounded read

@@ -29,7 +29,7 @@ export {
   type AnyFailure,
   type HttpError,
 } from "./failure.js";
-export { allowSystem, type CronContext, type QueueContext } from "./entry.js";
+export { allowSystem, type CronContext, type QueueContext, runScheduled } from "./entry.js";
 export {
   pageQuerySchema,
   pageResponse,

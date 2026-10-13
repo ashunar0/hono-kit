@@ -22,6 +22,15 @@ export type QueueContext<Body> = CronContext & {
 };
 
 /**
+ * Runs a scheduled job as the system, whatever calls it: createWorker on Workers, a timer or a script elsewhere.
+ * The caller gives the deps and `now` (the time the job was due, not when it ran); the actor is handed here
+ */
+export const runScheduled = (
+  job: (context: CronContext) => Promise<void>,
+  options: { deps: RegisteredDeps; now: Date },
+): Promise<void> => job({ ...options, actor: systemActor });
+
+/**
  * Declares an entry point that verifies the caller another way (a signed webhook, ...).
  * Like allowAnonymous, put it first in the route's middleware; the handler reads `c.get("actor")` (the same name as with requireAuth).
  * Verifying the signature is the handler's job: do not use actor before verifying
