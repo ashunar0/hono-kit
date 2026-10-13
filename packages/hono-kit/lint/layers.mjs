@@ -87,7 +87,14 @@ export const LAYERS = {
     "foreign:domain": "value",
     response: "value",
   },
+
+  // どのドメインにも属さない、純粋な値と計算（api/shared/。日付、時刻、タイムゾーン）。
+  // 一番下の層で、module もリソースも知らない。だから shared を通して module どうしがつながることはない
+  shared: { zod: "value", shared: "value" },
 };
+
+// shared は一番下の層なので、どの役割からも値で使える
+for (const allowed of Object.values(LAYERS)) allowed.shared ??= "value";
 
 /** module の外にある、リソースの役割。README の表の「側」に使う */
 export const RESOURCE_ROLES = { resource: "inbound", response: "inbound" };
@@ -137,6 +144,8 @@ export const NOTES = {
     "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
   cron: "createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps",
   queue: "Same as cron",
+  shared:
+    "Pure values and calculations that belong to no domain (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead",
   repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types",
   resource:
     "`api/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",

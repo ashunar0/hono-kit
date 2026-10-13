@@ -77,6 +77,7 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 
 - **In routes**: use the owner module's `…IdSchema` for params and bodies (`customerIdSchema` from `modules/customers/domain`). Routes may import any module's domain values
 - **Inside a module** (`domain` / `service`): another module's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another module (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another module (`roles`, ...), keep **your own copy** and make types check that the values match
+- **Values that belong to no domain** (calendar dates, times of day, time-zone conversion, the app's time grid) go in `api/shared/` and may be imported as values from anywhere. The test is "does it have an owner?": a staff role belongs to staff (copy it or borrow its type), a calendar day belongs to nobody (shared). `api/shared/` imports only zod and other shared files, so modules can never reach each other through it
 - Another module's table: only inside foreign-key `references()`
 
 ## Reach is the same for reads and writes

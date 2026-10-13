@@ -66,7 +66,8 @@ const resourceRoleOf = (resolved, rest) => {
  * modules/<m>/<role>.ts → { module, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
  * api/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。module ではない。
  * api 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
- * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ
+ * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ。
+ * api/shared/ の中は全部 { role: "shared" }（どのドメインにも属さない値と計算）
  */
 export const placeOf = (resolved, root) => {
   const relWithIndex = path
@@ -84,6 +85,7 @@ export const placeOf = (resolved, root) => {
     if (!rest.includes("/")) return { module, role: rest.split(".")[0] };
     return { module, role: rest };
   }
+  if (rel.startsWith("api/shared/")) return { role: "shared" };
   if (rel === "api/db/errors") return { role: "dbErrors" };
   if ((m = rel.match(/^api\/(errors|env|deps|db)$/))) return { role: m[1] };
   if (rel.startsWith("api/middleware/")) return { role: "middleware" };

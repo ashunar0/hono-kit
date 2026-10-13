@@ -204,7 +204,8 @@ module は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **利用者とシステムには印を付ける**（`unique symbol`）。`{ kind: "system" }` のようなリテラルでは書けず、利用者を作れるのは `authenticatedUser` だけ。システムの型と値は hono-kit が持ち、アプリは作れず受け取るだけ（下の「HTTP 以外の入口」）
 - **module は domain / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は module の外のリソース（`api/routes/`）。
   名前は modules（境界を持ったまとまり）。features は「機能」で、複数のモノにまたがる操作の言葉なので使わない
-- **domain は外を知らない**。import できるのは zod だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
+- **domain は外を知らない**。import できるのは zod と `api/shared/` だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
+- **どのドメインにも属さない値と計算は `api/shared/` に置く**（日付、時刻、タイムゾーンの変換、アプリ全体の時間の目盛り）。どこからでも値で import でき、shared 自身は zod と他の shared しか import しない。だから shared を通して module どうしがつながることはない。見分け方は「持ち主がいるか」で、スタッフの立場は staff のもの（コピーするか型を借りる）、暦の上の日付は誰のものでもない（shared）。ファイルは中身で名前を付け（`time.ts`）、`utils.ts` は作らない。フロントの Feature-Sliced Design の `shared/` と同じ位置づけ。salon で、タイムゾーンの変換が shifts と予約の module に 2 つコピーされたことから足した
 - **ID には印を付ける**（`InvoiceId` / `UserId` / `OrgId`。`string & { [brand]: true }`）。印を付けてよいのは、その module の domain が出す作る関数（`invoiceId(value)`）だけで、他の場所の `as XxxId` は lint `no-id-cast` が止める。素の `string` や別の ID は渡せない。module の中では、他の module の ID は素の `string`（`Payment.invoiceId`）。印を付けるのは入口で、リソースはどの module の domain も使えるので、持ち主の `…IdSchema` で受け取る（`invoiceIdSchema`）。cron・queue も他の module の domain の値を使えるので、`invoiceId(body.invoiceId)` を付けて渡す
 - **入力は検査済みの印（zod の brand）付きでしか service に渡せない**。どの入口から呼んでも、検査を飛ばすと型エラーになる
 - **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
