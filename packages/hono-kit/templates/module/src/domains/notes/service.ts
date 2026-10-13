@@ -3,7 +3,7 @@
  */
 import { err, ok, type Result } from "hono-kit/result";
 import { NotFound } from "hono-kit/failures";
-import { newNoteId, type Note, type NoteId } from "./domain";
+import { newNoteId, type Note, type NoteId } from "./model";
 
 /**
  * The storage shape the steps need. Declared here, by the user of it; repo.d1.ts fulfills it.

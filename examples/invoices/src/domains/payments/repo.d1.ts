@@ -5,8 +5,8 @@ import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { ReadDb, Scope } from "../../db";
 import { invoicesTable, invoicesWithin } from "../invoices/repo.d1";
-import type { Actor } from "../users/domain";
-import { paymentStatuses, type Payment } from "./domain";
+import type { Actor } from "../users/model";
+import { paymentStatuses, type Payment } from "./model";
 import type { PaymentsRepository } from "./service";
 
 /** 列の既定値: 今の時刻（ミリ秒）。SQL の式で、JS の Date ではない */

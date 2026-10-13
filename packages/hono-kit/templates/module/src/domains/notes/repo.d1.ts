@@ -5,7 +5,7 @@
 import { eq, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { Scope } from "../../db";
-import { noteId, type Note } from "./domain";
+import { noteId, type Note } from "./model";
 import type { NotesRepository } from "./service";
 
 /** Column default: the current time (ms). A SQL expression, not a JS Date */

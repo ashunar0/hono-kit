@@ -5,7 +5,7 @@ import type { Page, PageQuery } from "hono-kit/page";
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
-import type { Actor, User } from "../users/domain";
+import type { Actor, User } from "../users/model";
 import {
   canEdit,
   canManage,
@@ -24,7 +24,7 @@ import {
   type InvoiceStatus,
   type ShareLevel,
   NotDraft,
-} from "./domain";
+} from "./model";
 
 /** 一覧の条件。位置と件数は hnk の PageQuery */
 export type InvoiceListQuery = PageQuery & {

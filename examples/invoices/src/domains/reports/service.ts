@@ -3,7 +3,7 @@
  */
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden } from "hono-kit/failures";
-import type { Actor } from "../users/domain";
+import type { Actor } from "../users/model";
 import {
   canViewReports,
   monthsBetween,
@@ -12,7 +12,7 @@ import {
   summarize,
   type Month,
   type MonthlySummary,
-} from "./domain";
+} from "./model";
 
 /**
  * 手順が必要とする読みの形。repo.d1.ts が満たす。

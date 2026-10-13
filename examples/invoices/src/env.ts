@@ -1,4 +1,4 @@
-import type { User } from "./domains/users/domain";
+import type { User } from "./domains/users/model";
 
 /** withUser が積む文脈変数。ハンドラ側で書き写さないための単一定義 */
 export type AuthVariables = {

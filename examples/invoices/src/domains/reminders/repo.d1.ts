@@ -5,7 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { Scope } from "../../db";
 import { invoicesTable } from "../invoices/repo.d1";
-import { reminderStatuses } from "./domain";
+import { reminderStatuses } from "./model";
 import type { RemindersRepository } from "./service";
 
 /** 列の既定値: 今の時刻（ミリ秒）。SQL の式で、JS の Date ではない */

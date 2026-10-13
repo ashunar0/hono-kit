@@ -1,6 +1,6 @@
-import { invoiceId, invoiceInputSchema } from "./domain";
+import { invoiceId, invoiceInputSchema } from "./model";
 import { systemActor } from "hono-kit/testing";
-import type { User } from "../users/domain";
+import type { User } from "../users/model";
 import type { InvoicesService } from "./service";
 
 // HTTP を通らずに service を呼ぶ場面（cron、CSV の取り込みなど）

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { scopeTo } from "../../db";
 import { db } from "../../../test/fixtures";
-import { noteId } from "./domain";
+import { noteId } from "./model";
 import { notesRepository, notesTable } from "./repo.d1";
 import { notesService } from "./service";
 

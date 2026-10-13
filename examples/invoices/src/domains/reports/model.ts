@@ -2,7 +2,7 @@
  * レポートというモノ。請求と入金を、月ごとに並べたもの（What）。
  * 自分では何も保存しない。他の module が保存したものを読んで作る
  */
-import type { Actor } from "../users/domain";
+import type { Actor } from "../users/model";
 
 /** 月を表す文字列（YYYY-MM、UTC） */
 export type Month = `${number}-${number}`;

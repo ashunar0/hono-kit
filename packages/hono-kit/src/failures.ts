@@ -1,7 +1,7 @@
 /**
  * Failure data. It knows no HTTP status, so core (service, commands) may import it too.
  * The three that mean the same in every module (401, 403, 404) are the standards kept here.
- * Failures specific to a module go in that module's domain.ts as a Failure
+ * Failures specific to a module go in that module's model.ts as a Failure
  */
 
 /** Failure kinds. failure.ts alone maps them to HTTP statuses */
@@ -14,7 +14,7 @@ export type FailureKind =
   | "upstream";
 
 /**
- * A failure owned by the thing (domain): a code, a kind and a default message. It knows no HTTP status.
+ * A failure owned by the thing (model): a code, a kind and a default message. It knows no HTTP status.
  * `export const NotDraft = { code: "NOT_DRAFT", kind: "conflict", message: "…" } as const;`
  */
 export type Failure<

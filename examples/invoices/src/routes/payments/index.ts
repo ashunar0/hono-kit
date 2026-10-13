@@ -5,8 +5,8 @@
 import { createRouter, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import { invoiceIdSchema } from "../../domains/invoices/domain";
-import { GatewayFailed, NotPayable, PaymentStarting } from "../../domains/payments/domain";
+import { invoiceIdSchema } from "../../domains/invoices/model";
+import { GatewayFailed, NotPayable, PaymentStarting } from "../../domains/payments/model";
 
 // 受け取る形
 const startPaymentInputSchema = z.object({

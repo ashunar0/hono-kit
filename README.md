@@ -32,7 +32,7 @@ Routes use modules, never the other way. A route may use as many modules as it n
 
 | Side         | What it is                                                     | Files                       |
 | ------------ | -------------------------------------------------------------- | --------------------------- |
-| **core**     | What the thing is and what it can do. Knows nothing outside.   | domain, service             |
+| **core**     | What the thing is and what it can do. Knows nothing outside.   | model, service              |
 | **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, cron, queue      |
 | **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs |
 
@@ -40,7 +40,7 @@ Routes use modules, never the other way. A route may use as many modules as it n
 
 ```
 src/domains/posts/          (generated)
-├─ domain.ts     core: types and rules
+├─ model.ts     core: types and rules
 ├─ service.ts    core: steps, and the shape of storage they need
 └─ repo.d1.ts    outbound: table and D1 implementation
 src/routes/posts/           (written by hand)
@@ -49,7 +49,7 @@ src/routes/posts/           (written by hand)
 ```
 
 ```
-  src/routes ──→ domain ←────── repo.d1
+  src/routes ──→ model ←────── repo.d1
        │           ↑               │
        └──(deps)─→ service ←───────┘
 ```
@@ -126,20 +126,20 @@ Each file in a module is classified by its name prefix (its role); each file in 
 
 <!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
 
-| Side     | Role     | May import                                                                                                                                                                                                                                                                                    |
-| -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| core     | domain   | zod, hono-kit/system (types only), hono-kit/failures (types only), another module's domain (types only), lib                                                                                                                                                                                  |
-| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), domain, another module's domain (types only), lib                                                                                                                                               |
-| inbound  | errors   | hono-kit, lib. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                        |
-| inbound  | cron     | hono-kit (types only), domain, another module's domain, lib. createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps                                                                                                                         |
-| inbound  | queue    | hono-kit (types only), domain, another module's domain, lib. Same as cron                                                                                                                                                                                                                     |
-| outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, domain, service (types only), another module's repo, another module's domain, lib. From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types |
-| outbound | gateway  | hono-kit/result, domain (types only), service (types only), lib                                                                                                                                                                                                                               |
-| outbound | mailer   | hono-kit/result, domain (types only), service (types only), lib                                                                                                                                                                                                                               |
-| outbound | jobs     | domain (types only), service (types only), lib                                                                                                                                                                                                                                                |
-| inbound  | resource | hono-kit, zod, errors, middleware, another module's domain, another module's errors, resource, response, lib. `src/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported                                                           |
-| inbound  | response | hono-kit, zod, another module's domain, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                        |
-| lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead                                                                          |
+| Side     | Role     | May import                                                                                                                                                                                                                                                                                 |
+| -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| core     | model    | zod, hono-kit/system (types only), hono-kit/failures (types only), another module's model (types only), lib                                                                                                                                                                                |
+| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), model, another module's model (types only), lib                                                                                                                                              |
+| inbound  | errors   | hono-kit, lib. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                      |
+| inbound  | cron     | hono-kit (types only), model, another module's model, lib. createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps                                                                                                                        |
+| inbound  | queue    | hono-kit (types only), model, another module's model, lib. Same as cron                                                                                                                                                                                                                    |
+| outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, model, service (types only), another module's repo, another module's model, lib. From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's model, only SQL constants and types |
+| outbound | gateway  | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
+| outbound | mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
+| outbound | jobs     | model (types only), service (types only), lib                                                                                                                                                                                                                                              |
+| inbound  | resource | hono-kit, zod, errors, middleware, another module's model, another module's errors, resource, response, lib. `src/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported                                                         |
+| inbound  | response | hono-kit, zod, another module's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                      |
+| lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead                                                                       |
 
 <!-- layers:end -->
 

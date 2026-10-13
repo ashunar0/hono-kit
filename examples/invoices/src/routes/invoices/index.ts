@@ -17,11 +17,11 @@ import {
   invoiceInputSchema,
   invoiceStatuses,
   NotDraft,
-} from "../../domains/invoices/domain";
+} from "../../domains/invoices/model";
 import { invoiceResponse, invoiceResponseSchema } from "./response";
 import { invoiceSharesRouter } from "./shares";
 
-// 受け取る形。本文の入力は domain の invoiceInputSchema
+// 受け取る形。本文の入力は model の invoiceInputSchema
 const invoiceParamsSchema = z.object({
   id: invoiceIdSchema,
 });

@@ -1,5 +1,5 @@
-import { orgId } from "../src/domains/users/domain";
-import { invoiceId } from "../src/domains/invoices/domain";
+import { orgId } from "../src/domains/users/model";
+import { invoiceId } from "../src/domains/invoices/model";
 import { expect, it } from "vitest";
 import { scopeTo } from "../src/db";
 import { invoicesService } from "../src/domains/invoices/service";

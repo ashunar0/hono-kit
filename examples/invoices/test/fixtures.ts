@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { scopeTo, wireDb } from "../src/db";
-import { invoiceId, type Invoice } from "../src/domains/invoices/domain";
+import { invoiceId, type Invoice } from "../src/domains/invoices/model";
 import {
   invoicesRepository,
   invoiceSharesTable,
@@ -8,7 +8,7 @@ import {
 } from "../src/domains/invoices/repo.d1";
 import { makeDeps } from "../src/deps";
 import { buildApp } from "../src/index";
-import { authenticatedUser, orgId, userId, type User } from "../src/domains/users/domain";
+import { authenticatedUser, orgId, userId, type User } from "../src/domains/users/model";
 
 export const db = () => wireDb(env.DB);
 

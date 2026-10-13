@@ -4,7 +4,7 @@
 import { err, ok, type Result } from "hono-kit/result";
 import { NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
-import { GatewayFailed, isStale, PaymentStarting, type Payment, type PaymentEvent } from "./domain";
+import { GatewayFailed, isStale, PaymentStarting, type Payment, type PaymentEvent } from "./model";
 
 /** 手順が必要とする保存の形。repo.d1.ts が満たす */
 export type PaymentsRepository = {

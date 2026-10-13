@@ -1,7 +1,7 @@
-import { invoiceId } from "./domain";
+import { invoiceId } from "./model";
 import { expect, it } from "vitest";
 import { invoicesService } from "./service";
-import { authenticatedUser, orgId } from "../users/domain";
+import { authenticatedUser, orgId } from "../users/model";
 import {
   admin,
   alice,

@@ -1,4 +1,4 @@
-import { authenticatedUser, orgId, userId, type Actor } from "../src/domains/users/domain";
+import { authenticatedUser, orgId, userId, type Actor } from "../src/domains/users/model";
 import { beforeAll, describe, expect, it } from "vitest";
 import { scopeTo } from "../src/db";
 import { paymentsTable } from "../src/domains/payments/repo.d1";

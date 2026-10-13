@@ -1,6 +1,6 @@
 import { systemActor } from "hono-kit/testing";
-import type { User } from "../users/domain";
-import type { PaymentEvent } from "./domain";
+import type { User } from "../users/model";
+import type { PaymentEvent } from "./model";
 import type { PaymentsService } from "./service";
 
 // 支払いの結果を反映できるのはシステム（webhook）だけ。利用者の route からは呼べない

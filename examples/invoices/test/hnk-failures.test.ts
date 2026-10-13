@@ -40,7 +40,7 @@ it.each([
   expect(await res.json()).toEqual({ error: { code, message } });
 });
 
-it("domain の Failure は、種類から決まった番号と、自分のコードと文言で返る", async () => {
+it("model の Failure は、種類から決まった番号と、自分のコードと文言で返る", async () => {
   const Stale = { code: "STALE", kind: "conflict", message: "古い" } as const;
   const failing = createRouter();
   failing.use(provideDeps(() => ({}) as never));

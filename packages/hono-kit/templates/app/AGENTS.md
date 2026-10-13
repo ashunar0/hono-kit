@@ -27,9 +27,9 @@ They often share a word (`routes/invoices/` and `domains/invoices/`) and often d
 
 ## Adding a module
 
-`pnpm hnk g module <name>` writes the bare shape under `src/domains/<name>/` (`domain / service / repo.d1 / service.test`) and wires it into `src/deps.ts` above the `// hnk:` lines. It is a thing with only `id`, `createdAt` and `updatedAt`, and `get` / `create`. It knows nothing of who is acting. **Grow it into the real thing:**
+`pnpm hnk g module <name>` writes the bare shape under `src/domains/<name>/` (`model / service / repo.d1 / service.test`) and wires it into `src/deps.ts` above the `// hnk:` lines. It is a thing with only `id`, `createdAt` and `updatedAt`, and `get` / `create`. It knows nothing of who is acting. **Grow it into the real thing:**
 
-1. `domain.ts`: fields, `…InputSchema` (zod; `trim()` before checking length), failures (`Failure`), and `reachOf` when someone may touch only some of them (the reach follows the shape of `src/domains/users/domain.ts`)
+1. `model.ts`: fields, `…InputSchema` (zod; `trim()` before checking length), failures (`Failure`), and `reachOf` when someone may touch only some of them (the reach follows the shape of `src/domains/users/model.ts`)
 2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE), indexes for the list order
 3. `service.ts`: the steps, `actor` first. Declare the `…Repository` shape here
 4. Run `pnpm db:generate`
@@ -67,11 +67,11 @@ Test it over HTTP (`routes.test.ts`): create, read, list, 400 on bad input, 404 
 
 | File         | Side     | Role                                                | May import                                                              |
 | ------------ | -------- | --------------------------------------------------- | ----------------------------------------------------------------------- |
-| `domain.ts`  | core     | The thing (What): types, rules, ID brands, failures | zod, `hono-kit/failures` (types), `hono-kit/system` (types)             |
-| `service.ts` | core     | The steps (How) and the storage shape they need     | `hono-kit/result`, `hono-kit/failures`, `hono-kit/page` (types), domain |
-| `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               | drizzle-orm, `hono-kit/page`, domain, service (types)                   |
+| `model.ts`  | core     | The thing (What): types, rules, ID brands, failures | zod, `hono-kit/failures` (types), `hono-kit/system` (types)             |
+| `service.ts` | core     | The steps (How) and the storage shape they need     | `hono-kit/result`, `hono-kit/failures`, `hono-kit/page` (types), model |
+| `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               | drizzle-orm, `hono-kit/page`, model, service (types)                   |
 
-Every arrow points to domain. `hnk/layer-imports` enforces this inside modules.
+Every arrow points to model. `hnk/layer-imports` enforces this inside modules.
 
 Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and so on), another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
 
@@ -79,12 +79,12 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 
 | File          | Role                                                                       | May import                                                      |
 | ------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `index.ts`    | The router: the endpoints of this noun, and `.route(...)` for its children | `hono-kit`, zod, middleware, any module's domain, `response.ts` |
-| `response.ts` | How the thing is shown over HTTP: `…ResponseSchema` and `…Response`        | zod, any module's domain (types)                                |
+| `index.ts`    | The router: the endpoints of this noun, and `.route(...)` for its children | `hono-kit`, zod, middleware, any module's model, `response.ts` |
+| `response.ts` | How the thing is shown over HTTP: `…ResponseSchema` and `…Response`        | zod, any module's model (types)                                |
 
 - **Nesting**: the parent mounts the child (`.route("/:customerId/invoices", customerInvoicesRouter)`); the child's `path` is the rest only (`"/"`, `"/:date"`). `request.param` lists every param the handler validates, the parent's too (`{ customerId, id }`). `src/index.ts` mounts only the top nouns (`.route("/customers", customersRouter)`)
 - **`response.ts`**: a response is how a thing is shown when sent, not a rule of the thing, so it belongs to the resource. A resource that shows a thing has one, even if only `index.ts` uses it. Another resource showing the same thing imports it (`routes/customers/invoices/` uses `routes/invoices/response.ts`). Small one-off shapes (`{ ok: true }`) stay in `index.ts`
-- **IDs**: params use the owner module's `…IdSchema` (`customerIdSchema` from `domains/customers/domain`)
+- **IDs**: params use the owner module's `…IdSchema` (`customerIdSchema` from `domains/customers/model`)
 - Routes never import a service or repo; the handler receives services from deps as its third argument (`{ customers, invoices }`)
 
 ## Rules
@@ -93,7 +93,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 - **actor**: over HTTP, `requireAuth` sets `c.get("actor")`. Routes that need no auth use `allowAnonymous`. Only guards read `user`
 - **Failures**: expected ones (not found, no permission, an external service not answering) are returned as `Result` (`err(NotFound.code)`). Unexpected ones (the DB is down) are thrown
   - 401, 403, 404 are hono-kit standards (`Unauthorized` / `Forbidden` / `NotFound`, imported from `hono-kit`)
-  - A failure of this thing goes in **domain.ts** as `{ code, kind, message } as const`. `kind` is `unauthenticated / forbidden / notFound / conflict / unprocessable / upstream` (hono-kit decides the status). `conflict` (409): it clashes with the thing's current state (taken, already sent, a newer version). `unprocessable` (422): the request itself breaks a rule, whatever the state (past the deadline, outside opening hours). A rule of the clock is 422 even when waiting would let it pass (too early to record a no-show): reading again does not change the answer. service returns `err(NotDraft.code)`
+  - A failure of this thing goes in **model.ts** as `{ code, kind, message } as const`. `kind` is `unauthenticated / forbidden / notFound / conflict / unprocessable / upstream` (hono-kit decides the status). `conflict` (409): it clashes with the thing's current state (taken, already sent, a newer version). `unprocessable` (422): the request itself breaks a rule, whatever the state (past the deadline, outside opening hours). A rule of the clock is 422 even when waiting would let it pass (too early to record a no-show): reading again does not change the answer. service returns `err(NotDraft.code)`
   - Declare `...errorResponses(NotFound, NotDraft)` in the route's `responses`; the handler returns `reply.failure(result.error)`
   - What you cannot see is `NOT_FOUND` (its existence is not revealed); what you can see but may not touch is `FORBIDDEN`
   - Entry-point-only failures (a webhook signature, ...) go in the module's `errors.ts` as `httpError(code, status, message)` (where they go now that routes left modules is not decided)
@@ -101,12 +101,12 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 - **Writes**: a handler of a user's request may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row (each is its own batch; if the second fails, the first stays half done). Writes that must happen together go inside that one service call, in one batch. Something that must follow in another module is recorded in your own table in the same batch (an outbox) and delivered later by cron or a queue. Entry points that retry (webhook, queue, cron) may write to several modules in order, if every write gives the same result however many times it runs. Details: `node_modules/hono-kit/docs/cross-module.md`
 - **One repo call writes all or nothing**: when it writes more than one statement (a thing and its child rows, a state change and its outbox row), pass `batch` (`wireBatch(db)` in `src/deps.ts`) to the repo next to the scopes, and run the statements built by the scopes as one batch. The batch builds nothing itself, so a repo still writes only its own module's tables. Many rows go in with `scope.insertMany(rows)` (D1 binds at most 100 values in a statement, so it splits them into as many statements as needed; spread them into the batch). D1 has no transaction that reads and decides midway: a batch is fixed before it is sent. A condition like "only if the update above won" goes into SQL (`scope.insertFrom(...)` with a `WHERE` on the row the update set)
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Never `c.json` (lint stops it). Create returns the created thing with 200. Delete returns `{ ok: true }` with 200
-- **IDs**: only the domain's `…Id` function applies the brand with `as`. Inputs use `…IdSchema`. Never write `as …Id` elsewhere (`no-id-cast`)
+- **IDs**: only model's `…Id` function applies the brand with `as`. Inputs use `…IdSchema`. Never write `as …Id` elsewhere (`no-id-cast`)
 - **Input**: only values that passed a schema with zod's `.brand<"…Input">()` reach service
 - **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. The repo takes a `PageQuery`, reads `limit + 1` rows and returns `toPage(...)` from `hono-kit/page` (types and pure functions only; the HTTP shapes are not there). Never write an unbounded list
   - Filters: service declares `type …ListQuery = PageQuery & { status?: …Status }`, and the repo's `listWithin(reach, query)` takes it. routes accepts `pageQuerySchema(z.object({ status: …StatusSchema.optional() }))` and passes it straight through
 - **Reach**: put "someone else's" into the WHERE and do it in one statement (`updateWithin` / `deleteWithin` / `findWithin`). Never check first and write in a second statement
-- **Enums**: domain holds an `as const` array (`…Statuses`) and a zod enum (`…StatusSchema`); the repo's `text("status", { enum: …Statuses })` and the routes schema use the same ones. `row.status` comes back typed, so no parsing
+- **Enums**: model holds an `as const` array (`…Statuses`) and a zod enum (`…StatusSchema`); the repo's `text("status", { enum: …Statuses })` and the routes schema use the same ones. `row.status` comes back typed, so no parsing
 - **Check order**: input validation 400 (schema) → NOT_FOUND → FORBIDDEN → unprocessable → conflict. Broken input is a 400 before any state is looked at. A rule that means something only in some states (a cancel deadline means nothing for a finished visit) goes after the state check, so the answer is first that the thing cannot be done at all
 - **Dates without time**: a text column holding `YYYY-MM-DD`. Validate with `z.iso.date()` (it checks the calendar too: `2026-02-30` fails; `new Date("2026-02-30")` would quietly become March 2). Put the schema and date math (`from + 7 days`) in `src/lib/` as pure functions; never read the current time there
 - **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` in service. PUT replaces everything, so omitted optional fields are overwritten with null
@@ -118,7 +118,7 @@ Grow only **when a second one appears**: cron / queue / webhook (`cron.ts` and s
 
 - A transition that is not allowed is a domain failure `{ code: "…_NOT_STARTABLE", kind: "conflict", message }`. When the docs do not name the code, make it `<THING>_` + what happened; a name the docs give is the API's contract, so use it as is
 - Transitions are `POST /:id/<verb>` on the thing's resource router. The repo may add `transitionWithin(id, reach, from, changes)`: one statement with `WHERE id AND status = from AND within(reach)`; if it returns null, another request moved first, so return the same conflict
-- service does `findWithin` (NOT_FOUND if absent) → a check (a pure domain function such as `canStart(x)`) → `transitionWithin`
+- service does `findWithin` (NOT_FOUND if absent) → a check (a pure function in model such as `canStart(x)`) → `transitionWithin`
 
 ## Read before you…
 

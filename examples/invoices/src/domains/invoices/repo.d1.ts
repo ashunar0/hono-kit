@@ -6,7 +6,7 @@ import { and, desc, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { toPage } from "hono-kit/page";
 import type { ReadDb, Scope } from "../../db";
-import { orgId, userId, type Actor } from "../users/domain";
+import { orgId, userId, type Actor } from "../users/model";
 import {
   invoiceId,
   invoiceStatuses,
@@ -16,7 +16,7 @@ import {
   type Invoice,
   type InvoiceAccess,
   type InvoiceReach,
-} from "./domain";
+} from "./model";
 import type { InvoicesRepository } from "./service";
 
 /** 列の既定値: 今の時刻（ミリ秒）。SQL の式で、JS の Date ではない */

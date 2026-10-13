@@ -1,4 +1,4 @@
-import type { User } from "./domains/users/domain";
+import type { User } from "./domains/users/model";
 
 /** Context variables set by withUser. Defined once so handlers do not copy them */
 export type AuthVariables = {

@@ -6,7 +6,7 @@ import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
 import { withUser } from "./middleware/auth";
 import { enqueueOverdueReminders } from "./domains/reminders/cron";
-import type { ReminderJob } from "./domains/reminders/domain";
+import type { ReminderJob } from "./domains/reminders/model";
 import { sendReminder } from "./domains/reminders/queue";
 import { invoicesRouter } from "./routes/invoices";
 import { paymentsRouter } from "./routes/payments";

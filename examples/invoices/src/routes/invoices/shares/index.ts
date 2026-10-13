@@ -4,7 +4,7 @@
 import { createRouter, errorResponses, Forbidden, NotFound } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../../middleware/auth";
-import { invoiceIdSchema, shareLevels } from "../../../domains/invoices/domain";
+import { invoiceIdSchema, shareLevels } from "../../../domains/invoices/model";
 
 // 親のパスの :id も、ここで検査する
 const invoiceParamsSchema = z.object({

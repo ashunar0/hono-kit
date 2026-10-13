@@ -9,7 +9,7 @@ import {
   type Reminder,
   type ReminderJob,
   type ReminderStatus,
-} from "./domain";
+} from "./model";
 
 /** 手順が必要とする保存の形。repo.d1.ts が満たす */
 export type RemindersRepository = {

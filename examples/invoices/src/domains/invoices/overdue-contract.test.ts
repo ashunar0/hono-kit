@@ -3,7 +3,7 @@
  * 同じ固定データを両方に通し、同じ答えになることを確かめる
  */
 import { expect, it } from "vitest";
-import { isOverdue } from "./domain";
+import { isOverdue } from "./model";
 import { insertInvoices, invoice, invoicesRepo } from "../../../test/fixtures";
 
 const now = new Date("2026-05-15T12:00:00Z");

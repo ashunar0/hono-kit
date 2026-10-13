@@ -7,7 +7,7 @@ import {
 } from "../project.mjs";
 import { HINTS, KINDS, KIND_HINTS, LAYERS, RESOURCE_HINT, RESOURCE_ROLES } from "../layers.mjs";
 
-/** foreign:domain → 他 module の domain */
+/** foreign:model → 他 module の model */
 const show = (name) => name.replace(/^foreign:/, "another module's ");
 
 /** 他の module の repo から借りてよい名前。外部キーの表と、読ませる窓口 */
@@ -37,7 +37,7 @@ export default {
           context.report({
             node,
             message:
-              "Files in src/routes/<noun>/ are index.ts (the router) and response.ts (how things are shown). Put rules in a module's domain, steps in its service",
+              "Files in src/routes/<noun>/ are index.ts (the router) and response.ts (how things are shown). Put rules in a module's model, steps in its service",
           });
         },
       };

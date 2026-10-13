@@ -1,7 +1,7 @@
 import { createRouter } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import { thing } from "../../domains/a/domain";
+import { thing } from "../../domains/a/model";
 import { childRouter } from "./child";
 import { thingResponse } from "./response";
 

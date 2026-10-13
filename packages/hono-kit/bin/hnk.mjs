@@ -2,7 +2,7 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>          アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk g module <name>     module の骨組み（domain / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/module）
+ *   hnk g module <name>     module の骨組み（model / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/module）
  *
  * リソース（src/routes/<名詞>/）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も
  * 親のリソースだったりするので、URL を見て書く（書き方は雛形の AGENTS.md）

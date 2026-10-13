@@ -3,7 +3,7 @@
 // expect: hnk(route-lists-are-paged) | This list route has no limit
 import { createRouter } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
-import { importedQuery } from "../../domains/r10/domain";
+import { importedQuery } from "../../domains/r10/model";
 
 declare const pageQuerySchema: (filters?: unknown) => object;
 declare const z: { object: (shape: object) => object };

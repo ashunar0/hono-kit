@@ -1,4 +1,4 @@
-import { authenticatedUser, orgId, userId } from "./domain";
+import { authenticatedUser, orgId, userId } from "./model";
 
 // 利用者の ID と組織の ID は、どちらも文字列だが、取り違えると型エラーになる
 export function idsAreNotInterchangeable() {

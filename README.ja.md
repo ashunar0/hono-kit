@@ -90,7 +90,7 @@ async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promi
 - 引数は「誰として（actor）→ 何を → どうする → いつ（now）」の順。service は時計を読まない
 - 想定内の失敗は Result で返す。service は HTTP のステータスを知らない
 - 所有者の条件は repo の WHERE に入れて 1 文で書く。他人のものは在ることも知らせず NOT_FOUND
-- `Invoice` は domain が宣言するモノの型。repo は DB の行をこれに詰め替えて返す
+- `Invoice` は model が宣言するモノの型。repo は DB の行をこれに詰め替えて返す
 
 ## 出発点と育ち方
 
@@ -111,15 +111,15 @@ module は 3 つの側からなる。ヘキサゴナルアーキテクチャの�
 
 | 側           | 何か                                                 | 今あるファイル                      |
 | ------------ | ---------------------------------------------------- | ----------------------------------- |
-| **core**     | そのモノが何で、何ができるか。外を何も知らない       | domain, service                     |
+| **core**     | そのモノが何で、何ができるか。外を何も知らない       | model, service                     |
 | **inbound**  | 外から呼ばれる側。誰として呼ぶかを決めて core に渡す | リソース（src/routes）, cron, queue |
 | **outbound** | 外へ出ていく側。core が宣言した形を満たす            | repo, gateway, mailer, jobs         |
 
-出発点は、module の 3 ファイルと、同じ名詞のリソース。core は What（domain）と How（service）に分けて始める。手順はどの module にも毎回あるので、最初から分けておく。
+出発点は、module の 3 ファイルと、同じ名詞のリソース。core は What（model）と How（service）に分けて始める。手順はどの module にも毎回あるので、最初から分けておく。
 
 ```
 src/domains/invoices/
-├─ domain.ts      core（What）: 型・ルール（検査済みの印付き）。外を何も知らない
+├─ model.ts      core（What）: 型・ルール（検査済みの印付き）。外を何も知らない
 ├─ service.ts     core（How）: 手順と、手順が必要とする outbound の形の宣言
 └─ repo.d1.ts     outbound: テーブルと、D1 での実装。行 → モノの詰め替え
 src/routes/invoices/
@@ -128,7 +128,7 @@ src/routes/invoices/
 ```
 
 ```
-  src/routes ──→ domain ←────── repo.d1
+  src/routes ──→ model ←────── repo.d1
        │           ↑               │
        └─(deps)──→ service ←───────┘ （service が宣言した形を、型だけ借りて満たす）
 ```
@@ -143,11 +143,11 @@ outbound のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`g
 | 横に増える   | 2 つ目の inbound（cron、キュー）                   | module の中に `cron.ts`、`queue.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                             |
 | 横に増える   | 2 つ目の outbound（保存先、外部 API、メール）      | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                           |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                               |
-| 中で割れる   | その module だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。domain.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は module の `errors.ts`（リソースから使う） |
+| 中で割れる   | その module だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は module の `errors.ts`（リソースから使う） |
 | 窓口を開く   | 他の module が SQL で読みに来る（集計など）        | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                           |
 | （足さない） | 他の module を読む・書く                           | module には何も足さない。入口（handler、cron、queue）が両方の service を呼び、値で渡す                                                                                           |
 
-どの動きでも、矢印は domain に向かったまま変わらない。
+どの動きでも、矢印は model に向かったまま変わらない。
 
 ### module をまたぐとき
 
@@ -189,24 +189,24 @@ module は互いを呼ばない。つなぐのは入口（handler、cron、queue
   外が冪等キーを受けるなら渡す（Stripe には paymentId、Resend には督促の日付入りのキー）。
   途中で落ちたときに「重複してもよい」か「欠けてもよい」かは業務の判断なので、service のコメントに書く
 - **module は互いを呼ばない**。つなぐのは入口（上の「module をまたぐとき」）。deps.ts は module を 1 行ずつ組み立てるだけで、module の間に何もつながない。
-  型の上でだけ、他の module の domain の型を借りてよい（`import type`）。外部キーの `references()` と、読ませる窓口（`〜Within`）は repo どうしの話で、下の「読みの窓口」にある。
+  型の上でだけ、他の module の model の型を借りてよい（`import type`）。外部キーの `references()` と、読ませる窓口（`〜Within`）は repo どうしの話で、下の「読みの窓口」にある。
   getter で遅延する案は外した（組み立ては関数を返すだけで軽い）。deps.ts は何を import してもよい場所で、lint の表には入れていない
 - **route は `router.endpoint(設定, handler)` 1 つで書く**（素の Hono の上）。設定の `request` のキーは、handler で読む `c.req.valid("…")` の名前と同じ（`param` を宣言したら `valid("param")`）。`method` は小文字、`path` は Hono の `/:id`、応答はスキーマをそのまま書く（書き方は 1 つ。失敗の応答だけは `errorResponses` が失敗の文言を説明として付ける）。guard が持つ失敗と ValidationError を hono-kit が足す。`c.json` だとずれたときの赤線が handler の頭に付くので、`reply` で返す。`createRoute` は公開しない（書き方を 1 つにするため）。`path` の `:name` が `request.param` のキーに無いと型エラーになる（逆向きの余分なキーは許す。入れ子でマウントしたとき、親のパスの `:name` が来るから）
 - **スキーマは Standard Schema を満たすものなら何でも**（zod、valibot で確かめた）。hono-kit は検証のライブラリを決め打ちせず、**hono-kit 自身の依存は hono だけ**。hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書いている。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。**OpenAPI は別の部品**（`hono-kit/openapi` の `openapiDocument(app, info)`）で、登録された宣言から文書を作る。JSON Schema への変換はスキーマのライブラリ自身が持つ（Standard JSON Schema）。valibot は単体では出せないので、文書に出したいものだけ `toStandardJsonSchema` で包む。要らないなら使わない
-- **失敗は値で、番号と文言を持つ**（`httpError("NOT_FOUND", 404, "…")`）。モノの失敗は domain に `Failure`（`{ code, kind, message }`、HTTP を知らない）として置き、種類（`conflict` など）から番号を決める表は hono-kit が 1 か所で持つ（Go の errors.go、gRPC のステータスコードと同じ考え方）。`errorResponses` は `Failure` も `httpError` も受け取る。guard が持つ失敗と ValidationError は自動で宣言する。
+- **失敗は値で、番号と文言を持つ**（`httpError("NOT_FOUND", 404, "…")`）。モノの失敗は model に `Failure`（`{ code, kind, message }`、HTTP を知らない）として置き、種類（`conflict` など）から番号を決める表は hono-kit が 1 か所で持つ（Go の errors.go、gRPC のステータスコードと同じ考え方）。`errorResponses` は `Failure` も `httpError` も受け取る。guard が持つ失敗と ValidationError は自動で宣言する。
   `reply.failure` が受け取れるのは、route に手で書いたドメインの失敗だけ。同じ番号の失敗が複数あっても 1 つの応答にまとめ、コードごとの文言で返す
 - **誰として操作するかは `Actor`（利用者かシステム）で、引数の先頭に置く**（Go の `ctx` と同じ位置）。
   HTTP では guard が `c.get("actor")` に決め（`requireAuth` なら `User`、`allowSystem` ならシステム）、cron とキューでは `createWorker` が渡す。
   入口に関わらず、handler・cron・queue が読む名前は `actor` 1 つ。セッションの `user`（未ログインは null）は guard だけが読む
 - **時計を読むのは入口だけ**。service・repo は `now` を引数で受け取り、`new Date()` を呼ばない（lint `no-clock-outside-inbound`）。
   HTTP の handler は `new Date()`、cron は予定の時刻、queue は積まれた時刻を `now` にする。同じ手順がどの入口から呼ばれても、入口の時計で動く。
-  モノの時刻（`createdAt`・`updatedAt`）も `now` から入れる。DB の既定値は、domain に出ない列の記録だけに使う
+  モノの時刻（`createdAt`・`updatedAt`）も `now` から入れる。DB の既定値は、model に出ない列の記録だけに使う
 - **利用者とシステムには印を付ける**（`unique symbol`）。`{ kind: "system" }` のようなリテラルでは書けず、利用者を作れるのは `authenticatedUser` だけ。システムの型と値は hono-kit が持ち、アプリは作れず受け取るだけ（下の「HTTP 以外の入口」）
-- **module は domain / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は module の外のリソース（`src/routes/`）。
+- **module は model / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は module の外のリソース（`src/routes/`）。
   名前は modules（境界を持ったまとまり）。features は「機能」で、複数のモノにまたがる操作の言葉なので使わない
-- **domain は外を知らない**。import できるのは zod と `src/lib/` だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
+- **model は外を知らない**。import できるのは zod と `src/lib/` だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
 - **業務を知らないものは `src/lib/` に置く**（日付、時刻、タイムゾーンの変換）。見分け方は「別のアプリにそのまま持っていけるか」で、スタッフの立場は staff のもの（コピーするか型を借りる）、暦の上の日付はどのアプリでも同じ（lib）。どこからでも値で import でき、lib 自身は zod と他の lib しか import しない。だから lib を通して module どうしがつながることはない。ファイルは中身で名前を付け（`time.ts`）、`utils.ts` は作らない。salon で、タイムゾーンの変換が shifts と予約の module に 2 つコピーされたことから足した
-- **ID には印を付ける**（`InvoiceId` / `UserId` / `OrgId`。`string & { [brand]: true }`）。印を付けてよいのは、その module の domain が出す作る関数（`invoiceId(value)`）だけで、他の場所の `as XxxId` は lint `no-id-cast` が止める。素の `string` や別の ID は渡せない。module の中では、他の module の ID は素の `string`（`Payment.invoiceId`）。印を付けるのは入口で、リソースはどの module の domain も使えるので、持ち主の `…IdSchema` で受け取る（`invoiceIdSchema`）。cron・queue も他の module の domain の値を使えるので、`invoiceId(body.invoiceId)` を付けて渡す
+- **ID には印を付ける**（`InvoiceId` / `UserId` / `OrgId`。`string & { [brand]: true }`）。印を付けてよいのは、その module の model が出す作る関数（`invoiceId(value)`）だけで、他の場所の `as XxxId` は lint `no-id-cast` が止める。素の `string` や別の ID は渡せない。module の中では、他の module の ID は素の `string`（`Payment.invoiceId`）。印を付けるのは入口で、リソースはどの module の model も使えるので、持ち主の `…IdSchema` で受け取る（`invoiceIdSchema`）。cron・queue も他の module の model の値を使えるので、`invoiceId(body.invoiceId)` を付けて渡す
 - **入力は検査済みの印（zod の brand）付きでしか service に渡せない**。どの入口から呼んでも、検査を飛ばすと型エラーになる
 - **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
@@ -266,13 +266,13 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 
 | 迷うこと                               | 決まり                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 置き場所                               | `domains/<名前>/` に `domain / service / repo.d1` で始める（生成器）。リソースは URL のとおり `routes/<名詞>/` に `index.ts / response.ts` を手で書く。増やすのは 2 つ目が現れたとき                                                                                                                                                                       |
+| 置き場所                               | `domains/<名前>/` に `model / service / repo.d1` で始める（生成器）。リソースは URL のとおり `routes/<名詞>/` に `index.ts / response.ts` を手で書く。増やすのは 2 つ目が現れたとき                                                                                                                                                                       |
 | 他の module を使う                     | module からは使わない。handler が両方の service を受け取り、読んだものを値で渡す。受け取る service は形を宣言する（使う分だけ。例: `{ id: string; storeId: string }`）                                                                                                                                                                                     |
 | 他の module の表                       | 外部キーの `references()` の中でだけ使う。読むときは、持ち主が出している `〜Within(db, actor)` を使う                                                                                                                                                                                                                                                      |
 | 親の下にぶら下がるもの（コメントなど） | 親が見えるかを、handler が親の service に問い合わせる（`issues.get(actor, issueId)`。見えなければ NOT_FOUND）。子に orgId は持たせない。親が見えれば読める・書ける。もっと厳しい権限が要るなら、親が access を返す問いを宣言する                                                                                                                           |
 | 子の router                            | 入れ子のリソース（`routes/issues/comments/`）。親が `.route("/:issueId/comments", issueCommentsRouter)` でマウントし、子の path は残りだけ（`"/"`、`"/:id"`）。`request.param` には親の param も書く                                                                                                                                                       |
 | 失敗の使い分け                         | 見えないものは `NOT_FOUND`（在ることも知らせない）、見えるが権限が足りないものは `FORBIDDEN`。確認の順は 入力検査 400 → NOT_FOUND → FORBIDDEN → unprocessable → conflict                                                                                                                                                                                   |
-| 状態が進むモノ                         | 遷移できない失敗は domain に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の domain の `NotPayable` と同じ code                                                     |
+| 状態が進むモノ                         | 遷移できない失敗は model に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の model の `NotPayable` と同じ code                                                     |
 | 状態コード                             | 作成は 200 で作ったものを返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                                                                |
 | 入力の文字列                           | `trim()` してから長さを数える。空白だけは通さない                                                                                                                                                                                                                                                                                                          |
 | 一覧                                   | 必ず `pageQuerySchema` / `pageResponseSchema` / `pageResponse` を使う。repo は `PageQuery` を受け取って `Page` を返す（`toPage`）。上限の無い一覧を書かない。応答は `{ items, nextCursor }`（nextCursor は文字列。続きが無ければ null）。並びが昇順なら、cursor の比較は `gt`（invoices の降順は `lt`）。親が見えないときの一覧は `NOT_FOUND` を返してよい |
@@ -286,7 +286,7 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 
 - 共有の相手が同じ組織かは確かめていない（利用者の一覧が無い）。違う組織でも、範囲が組織で絞るので見えないだけ
 - 共有の取り消しと書き込みの間の競合: access を見てから書くまでの間に取り消されると、1 回は書ける（書き込みは組織の範囲に留まる）。
-  SQL に access の判定を持たせるとルールが 2 か所になるので、domain の 1 か所を取った
+  SQL に access の判定を持たせるとルールが 2 か所になるので、model の 1 か所を取った
 - 閲覧だけを共有された人も、支払いを始められる（`getPayable` は access を見ない）
 - D1 には対話的なトランザクションが無い（`batch` が基本）。マルチテナントを考えるときに効く
 - テストは、本物のローカル D1 を使い、1 つの module で閉じるものは module の中に置くところまで決めた。service が返す失敗コードごとにテストがあるかを機械で見張るかは未定

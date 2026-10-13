@@ -5,7 +5,7 @@
  */
 import { and, eq, gte, inArray, lt, sql, type AnyColumn } from "drizzle-orm";
 import type { ReadDb } from "../../db";
-import { billedStatuses } from "../invoices/domain";
+import { billedStatuses } from "../invoices/model";
 import { invoicesWithin } from "../invoices/repo.d1";
 import { paymentsWithin } from "../payments/repo.d1";
 import type { ReportsRepository } from "./service";

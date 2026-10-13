@@ -4,7 +4,7 @@
 import { createRouter, errorResponses, Forbidden } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import { monthsBetween, type Month } from "../../domains/reports/domain";
+import { monthsBetween, type Month } from "../../domains/reports/model";
 
 /** 1 回に出せる月の数。重い集計で詰まらないように */
 const MAX_MONTHS = 24;

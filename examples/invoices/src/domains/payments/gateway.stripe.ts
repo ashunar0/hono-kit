@@ -3,7 +3,7 @@
  * Stripe の API の形と認証はこのファイルの外に出さない
  */
 import { err, ok } from "hono-kit/result";
-import type { PaymentEvent } from "./domain";
+import type { PaymentEvent } from "./model";
 import type { PaymentGateway } from "./service";
 
 type StripeCheckoutSession = { id: string; url: string };
