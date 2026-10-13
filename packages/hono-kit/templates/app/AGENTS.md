@@ -21,7 +21,7 @@ The nouns in the URL (resources) and the nouns of the domain (domains) are diffe
 - **Resources** (`src/routes/<noun>/`): what a client points at. Cut by the URL: one directory per noun, always with `index.ts`. Nested resources are nested directories (`/customers/:customerId/invoices` → `routes/customers/invoices/`). No directories for params (`:id`)
 - **Domains** (`src/domains/<name>/`): who keeps which rules. Cut by the rules a thing must keep
 - **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Named by what starts them, as a resource is named by its URL (`daily.ts`, `reminders-queue.ts`); more work on the same trigger goes in the same file. Like resources, they live outside domains and receive services from deps
-- **One way only**: entry points (routes and jobs) use domains; domains know nothing of them. A route may use as many domains as it needs. One domain's code never uses another domain's service or repo
+- **One way only**: entry points (routes and jobs) use domains; domains know nothing of them. A route may use as many domains as it needs. One domain's code never uses another domain's service. From another domain's repo it takes only the table for a foreign key and the read window `…Within` (see "Reading another domain's table")
 - **Lib** (`src/lib/<what>.ts`): code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anyone may import it as values; it imports only zod and other lib files. Name the file by what it holds (`time.ts`), never `utils.ts`. Anything that names a thing of this app (a role, a status) belongs to its domain, not here. Move something here when a second copy would appear
 
 They often share a word (`routes/invoices/` and `domains/invoices/`) and often do not (`/customers/:customerId/invoices` is a customer's invoices, written with the invoices domain). Do not bend one to match the other.
@@ -66,11 +66,11 @@ Test it over HTTP next to the resource (`src/routes/<noun>/index.test.ts`): crea
 
 ## The shape of a domain (three files)
 
-| File         | Side     | Role                                                | May import                                                             |
-| ------------ | -------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
-| `model.ts`   | core     | The thing (What): types, rules, ID brands, failures | zod, `hono-kit/failures` (types), `hono-kit/system` (types)            |
-| `service.ts` | core     | The steps (How) and the storage shape they need     | `hono-kit/result`, `hono-kit/failures`, `hono-kit/page` (types), model |
-| `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               | drizzle-orm, `hono-kit/page`, model, service (types)                   |
+| File         | Side     | Role                                                | May import                                                                                        |
+| ------------ | -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `model.ts`   | core     | The thing (What): types, rules, ID brands, failures | zod, `hono-kit/failures` (types), `hono-kit/system` (types)                                       |
+| `service.ts` | core     | The steps (How) and the storage shape they need     | `hono-kit/result`, `hono-kit/failures`, `hono-kit/page` (types), model                            |
+| `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               | drizzle-orm, `hono-kit/page`, model, service (types), another domain's repo (`…Table`, `…Within`) |
 
 Every arrow points to model. `hnk/layer-imports` enforces this inside domains.
 
@@ -92,7 +92,7 @@ Grow only **when a second one appears**: another store or external API (`gateway
 ## Rules
 
 - **service**: arguments go "as whom (`actor`) → what → how → when (`now`)". Never call `new Date()` (only routes read the clock). Never import hono. Knows no HTTP status
-- **actor**: over HTTP, `requireAuth` sets `c.get("actor")`. Routes that need no auth use `allowAnonymous`. Only guards read `user`
+- **actor**: over HTTP, `requireAuth` sets `c.get("actor")`. Routes that need no auth use `allowAnonymous`. Only guards read `user`. When no rule of the app depends on who is acting (no sign-in, no reach), services take no `actor`, as the generator writes them; add it when sign-in arrives
 - **Failures**: expected ones (not found, no permission, an external service not answering) are returned as `Result` (`err(NotFound.code)`). Unexpected ones (the DB is down) are thrown
   - 401, 403, 404 are hono-kit standards (`Unauthorized` / `Forbidden` / `NotFound`, imported from `hono-kit`)
   - A failure of this thing goes in **model.ts** as `{ code, kind, message } as const`. `kind` is `unauthenticated / forbidden / notFound / conflict / unprocessable / upstream` (hono-kit decides the status). `conflict` (409): it clashes with the thing's current state (taken, already sent, a newer version). `unprocessable` (422): the request itself breaks a rule, whatever the state (past the deadline, outside opening hours). A rule of the clock is 422 even when waiting would let it pass (too early to record a no-show): reading again does not change the answer. service returns `err(NotDraft.code)`
@@ -137,18 +137,44 @@ Domains do not call each other, and `src/deps.ts` only builds each domain (no sh
    - Values that came from the client (product ids in the body) and do not match → a domain failure (`PRODUCT_NOT_FOUND`)
    - Values the handler read from the DB that do not match → a bug: `throw`
 
-Inside a domain, another domain's ID is a plain `string` (`Invoice.customerId`). Another domain's table is used only inside foreign-key `references()`.
+Inside a domain, another domain's ID is a plain `string` (`Invoice.customerId`).
+
+## Reading another domain's table
+
+When one SQL statement must look at another domain's table (a filter or an order that needs it, together with paging), read it through the window its owner exports: `…Within`, a subquery of the rows the reader may see. When the handler can read each domain and put the answers together, do that instead.
+
+```ts
+// domains/invoices/repo.d1.ts: the owner decides which rows may be seen
+export const invoicesWithin = (db: ReadDb, actor: Actor) =>
+  db
+    .select()
+    .from(invoicesTable)
+    .where(within(reachOf(actor)))
+    .as("invoices_within");
+
+// domains/payments/repo.d1.ts: the reader joins it like a table
+const invoices = invoicesWithin(scope.reads, actor);
+const rows = await scope.reads
+  .select()
+  .from(paymentsTable)
+  .innerJoin(invoices, eq(invoices.id, paymentsTable.invoiceId));
+```
+
+- **Read the way the foreign key points**: the domain whose table references the other reads it (payments references invoices, so payments reads `invoicesWithin`). The other way round makes the imports a cycle, and `import/no-cycle` stops it. A list under the other's URL is still answered by the referencing domain: `GET /books?available=true` (books with a copy not on loan) is read by loans, which references books, and the books handler calls the loans service
+- The window takes `actor` when the owner has a reach. When every row is visible to everyone, it takes only `db`
+- Another domain's table itself (`invoicesTable`) is used only inside foreign-key `references()` (`hnk/no-foreign-table-reads`)
 
 ## When unsure
 
-| Question               | Rule                                                                                                                                                                                                                                                                                                                                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| String input           | Always `trim()` before checking length                                                                                                                                                                                                                                                                                                                                                            |
-| Foreign key `onDelete` | `cascade` if children go away with the parent                                                                                                                                                                                                                                                                                                                                                     |
-| Where tests go         | HTTP tests next to the resource they test (`src/routes/<noun>/index.test.ts`). Tests of model and service stay in the domain (`service.test.ts`). Lines across domains and the whole app go in `test/`. Use the real local D1. HTTP via `request(user, method, path, body)`. To act as the system (cron, a check that the system may not do something), use `systemActor` from `hono-kit/testing` |
-| Route without auth     | `middleware: [allowAnonymous]` (always write it, so it differs from forgetting)                                                                                                                                                                                                                                                                                                                   |
-| Adding cron / queue    | Write the job in `src/jobs/<name>.ts` and pass it to `createWorker({ makeDeps, fetch, scheduled, queue })`. Jobs receive `{ deps, actor, now }`                                                                                                                                                                                                                                                   |
-| Migrations             | `pnpm db:generate`. Do not run prettier on `migrations/meta`                                                                                                                                                                                                                                                                                                                                      |
+| Question               | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| String input           | Always `trim()` before checking length                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Foreign key `onDelete` | `cascade` if children go away with the parent                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Where tests go         | HTTP tests next to the resource they test (`src/routes/<noun>/index.test.ts`). Tests of model and service stay in the domain (`service.test.ts`). Lines across domains and the whole app go in `test/`, and so do tests of `src/lib/` (lib may import only zod and lib, so vitest cannot sit next to it). Use the real local D1. HTTP via `request(user, method, path, body)`. To act as the system (cron, a check that the system may not do something), use `systemActor` from `hono-kit/testing` |
+| Route without auth     | `middleware: [allowAnonymous]` (always write it, so it differs from forgetting)                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Adding cron / queue    | Write the job in `src/jobs/<name>.ts` and pass it to `createWorker({ makeDeps, fetch, scheduled, queue })`. Jobs receive `{ deps, actor, now }`                                                                                                                                                                                                                                                                                                                                                     |
+| Counting rows per row  | Count another table's rows for each row (copies on loan per book) with `leftJoin` + `groupBy`, and narrow by the count with `having`. Do not write the subquery inside `sql`: when a query reads one table, drizzle drops the table name from columns, so the outer `${booksTable.id}` becomes a bare `"id"` that the subquery reads as its own                                                                                                                                                     |
+| Migrations             | `pnpm db:generate`. Do not run prettier on `migrations/meta`                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ## Do not
 

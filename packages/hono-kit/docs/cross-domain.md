@@ -78,7 +78,7 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 - **In routes**: use the owner domain's `…IdSchema` for params and bodies (`customerIdSchema` from `domains/customers/model`). Routes may import any domain's model values
 - **Inside a domain** (`model` / `service`): another domain's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another domain (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another domain (`roles`, ...), keep **your own copy** and make types check that the values match
 - **Code that knows nothing of this app's business** (calendar dates, times of day, time-zone conversion) goes in `src/lib/` and may be imported as values from anywhere. The test is "could it move to another app as is?": a staff role belongs to staff (copy it or borrow its type), a calendar day is the same in any app (lib). `src/lib/` imports only zod and other lib files, so domains can never reach each other through it
-- Another domain's table: only inside foreign-key `references()`
+- Another domain's table: only inside foreign-key `references()`. To read it in your own SQL (a filter or an order that needs it, with paging), use the window its owner's repo exports (`invoicesWithin(db, actor)`), and read the way the foreign key points: the domain that references the other reads it. The other way round makes the imports a cycle
 
 ## Reach is the same for reads and writes
 
