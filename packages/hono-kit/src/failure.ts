@@ -22,6 +22,7 @@ const FAILURE_STATUS = {
   forbidden: 403,
   notFound: 404,
   conflict: 409,
+  unprocessable: 422,
   upstream: 502,
 } as const satisfies Record<FailureKind, ContentfulStatusCode>;
 

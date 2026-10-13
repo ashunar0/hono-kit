@@ -6,7 +6,12 @@
 
 /** Failure kinds. failure.ts alone maps them to HTTP statuses */
 export type FailureKind =
-  "unauthenticated" | "forbidden" | "notFound" | "conflict" | "upstream";
+  | "unauthenticated"
+  | "forbidden"
+  | "notFound"
+  | "conflict"
+  | "unprocessable"
+  | "upstream";
 
 /**
  * A failure owned by the thing (domain): a code, a kind and a default message. It knows no HTTP status.
