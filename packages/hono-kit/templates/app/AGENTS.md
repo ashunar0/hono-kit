@@ -142,7 +142,7 @@ Inside a domain, another domain's ID is a plain `string` (`Invoice.customerId`).
 
 ## Reading another domain's table
 
-When one SQL statement must look at another domain's table (a filter or an order that needs it, together with paging), read it through the window its owner exports: `…Within`, a subquery of the rows the reader may see. When the handler can read each domain and put the answers together, do that instead.
+When one SQL statement must look at another domain's table (a filter or an order that needs it, together with paging), read it through the window its owner exports: `…Within`, a subquery of the rows the reader may see. When the handler can read each domain and put the answers together (the copies on loan of the one book it shows), do that. But when any variant of a list (one of its filters) needs the other table in one statement, the whole list, every variant, is answered by the domain that reads the window. Do not split one list into two ways of reading.
 
 ```ts
 // domains/invoices/repo.d1.ts: the owner decides which rows may be seen
@@ -163,6 +163,7 @@ const rows = await scope.reads
 
 - **Read the way the foreign key points**: the domain whose table references the other reads it (payments references invoices, so payments reads `invoicesWithin`). The other way round makes the imports a cycle, and `import/no-cycle` stops it. A list under the other's URL is still answered by the referencing domain: `GET /books?available=true` (books with a copy not on loan) is read by loans, which references books, and the books handler calls the loans service
 - The window takes `actor` when the owner has a reach. When every row is visible to everyone, it takes only `db`
+- Conditions whose meaning the owner decides (what a search word matches) are the owner's: the window takes them (`booksWithin(db, { q })`) and applies them inside. The reader adds only conditions on its own table (copies on loan)
 - Another domain's table itself (`invoicesTable`) is used only inside foreign-key `references()` (`hnk/no-foreign-table-reads`)
 
 ## When unsure
