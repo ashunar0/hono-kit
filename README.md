@@ -76,7 +76,7 @@ export const postsRouter = createRouter().endpoint(
     const actor = c.get("actor");
     const { id } = c.req.valid("param");
     const input = c.req.valid("json");
-    const now = new Date();
+    const now = c.get("now");
 
     const result = await posts.update(actor, id, input, now);
     if (!result.ok) return reply.failure(result.error);
@@ -116,7 +116,7 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 | `route-declares-auth`         | Endpoints that do not declare who may call them               |
 | `route-replies-through-reply` | `c.json` that bypasses the `responses` contract               |
 | `route-lists-are-paged`       | List endpoints without a page limit                           |
-| `no-clock-outside-inbound`    | `new Date()` / `Date.now()` in core and outbound              |
+| `no-clock-outside-app-entry`  | `new Date()` / `Date.now()` outside where the app is built    |
 | `no-foreign-table-reads`      | Reading another domain's table directly                       |
 | `no-id-cast`                  | Branding IDs with `as`                                        |
 | `no-module-scope-state`       | Mutable state at module scope                                 |

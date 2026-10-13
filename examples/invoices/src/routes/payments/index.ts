@@ -36,7 +36,7 @@ export const paymentsRouter = createRouter()
     async (c, reply, { invoices, payments }) => {
       const actor = c.get("actor");
       const { invoiceId } = c.req.valid("json");
-      const now = new Date();
+      const now = c.get("now");
 
       // 支払えるのは、範囲の中で送付済みの請求書だけ（invoices のルール）
       const invoice = await invoices.getPayable(actor, invoiceId);

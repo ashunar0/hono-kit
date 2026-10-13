@@ -6,9 +6,14 @@ export type AuthVariables = {
   user: User | null;
 };
 
+/** buildApp が 1 リクエストに 1 回だけ積む今の時刻。handler は new Date() ではなくこれを使うので、テストで固定できる */
+export type ClockVariables = {
+  now: Date;
+};
+
 export type AppEnv = {
   Bindings: Env;
-  Variables: AuthVariables;
+  Variables: AuthVariables & ClockVariables;
 };
 
 declare module "hono-kit" {

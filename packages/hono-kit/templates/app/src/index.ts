@@ -7,15 +7,21 @@ import type { AppEnv } from "./env";
 import { withUser } from "./middleware/auth";
 
 /**
- * Builds the app. It takes how to build deps and how to decide the signed-in user from outside, so
+ * Builds the app. It takes how to build deps, how to decide the signed-in user and the clock from outside, so
  * production passes makeDeps and withUser, and tests pass stand-ins.
- * authenticate is the middleware that sets the session user (null when signed out). This is where an auth provider plugs in
+ * authenticate is the middleware that sets the session user (null when signed out). This is where an auth provider plugs in.
+ * clock is read once per request into c.get("now"). Tests pass a fixed time
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
   authenticate: MiddlewareHandler<AppEnv> = withUser,
+  clock: () => Date = () => new Date(),
 ) => {
   const app = createRouter()
+    .use("*", async (c, next) => {
+      c.set("now", clock());
+      await next();
+    })
     .use("*", provideDeps(makeDeps))
     .use("*", authenticate)
     // Mount the top nouns here, one line each: .route("/invoices", invoicesRouter). Children go in their parent

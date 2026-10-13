@@ -94,7 +94,7 @@ export const invoicesRouter = createRouter()
     async (c, reply, { invoices }) => {
       const actor = c.get("actor");
       const input = c.req.valid("json");
-      const now = new Date();
+      const now = c.get("now");
 
       const row = await invoices.create(actor, input, now);
 
@@ -117,7 +117,7 @@ export const invoicesRouter = createRouter()
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
       const input = c.req.valid("json");
-      const now = new Date();
+      const now = c.get("now");
 
       const result = await invoices.update(actor, id, input, now);
       if (!result.ok) return reply.failure(result.error);
@@ -140,7 +140,7 @@ export const invoicesRouter = createRouter()
     async (c, reply, { invoices }) => {
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
-      const now = new Date();
+      const now = c.get("now");
 
       const result = await invoices.send(actor, id, now);
       if (!result.ok) return reply.failure(result.error);

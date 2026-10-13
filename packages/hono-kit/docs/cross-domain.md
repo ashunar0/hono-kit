@@ -10,7 +10,7 @@ async (c, reply, { customers, products, invoices }) => {
   const actor = c.get("actor");
   const { customerId } = c.req.valid("param");
   const input = c.req.valid("json");
-  const now = new Date();
+  const now = c.get("now");
 
   // Entry check: the customer in the URL exists (404 here, not in a service)
   const customer = await customers.get(actor, customerId);

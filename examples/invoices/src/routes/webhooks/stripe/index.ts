@@ -29,7 +29,7 @@ export const stripeWebhookRouter = createRouter().endpoint(
     // 署名は受け取ったままの本文に対して確かめるので、JSON として読まない
     const payload = await c.req.text();
     const signature = c.req.header("Stripe-Signature") ?? "";
-    const now = new Date();
+    const now = c.get("now");
 
     const event = await payments.verifyEvent(payload, signature);
     if (!event.ok) return reply.failure(event.error);

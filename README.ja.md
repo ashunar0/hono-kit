@@ -56,7 +56,7 @@ export const invoicesRouter = createRouter()
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
       const input = c.req.valid("json");
-      const now = new Date();
+      const now = c.get("now");
 
       const result = await invoices.update(actor, id, input, now);
       if (!result.ok) return reply.failure(result.error);
@@ -200,8 +200,8 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **誰として操作するかは `Actor`（利用者かシステム）で、引数の先頭に置く**（Go の `ctx` と同じ位置）。
   HTTP では guard が `c.get("actor")` に決め（`requireAuth` なら `User`、`allowSystem` ならシステム）、cron とキューでは `createWorker` が渡す。
   入口に関わらず、handler・cron・queue が読む名前は `actor` 1 つ。セッションの `user`（未ログインは null）は guard だけが読む
-- **時計を読むのは入口だけ**。service・repo は `now` を引数で受け取り、`new Date()` を呼ばない（lint `no-clock-outside-inbound`）。
-  HTTP の handler は `new Date()`、cron は予定の時刻、queue は積まれた時刻を `now` にする。同じ手順がどの入口から呼ばれても、入口の時計で動く。
+- **時計を読むのはアプリを組み立てる所だけ**。HTTP は `buildApp` が 1 リクエストに 1 回だけ読んで `c.get("now")` に積み、handler はそれを使う。cron は予定の時刻、queue は積まれた時刻を `now` として受け取る。service・repo は `now` を引数で受け取る（lint `no-clock-outside-app-entry`）。
+  テストは `request(user, method, path, body, at)` で時刻を固定できる。同じ手順がどの入口から呼ばれても、入口の時計で動く。
   モノの時刻（`createdAt`・`updatedAt`）も `now` から入れる。DB の既定値は、model に出ない列の記録だけに使う
 - **利用者とシステムには印を付ける**（`unique symbol`）。`{ kind: "system" }` のようなリテラルでは書けず、利用者を作れるのは `authenticatedUser` だけ。システムの型と値は hono-kit が持ち、アプリは作れず受け取るだけ（下の「HTTP 以外の入口」）
 - **domain は model / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は domain の外のリソース（`src/routes/`）。
@@ -217,7 +217,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
-  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、core と outbound で時計を読まない（`no-clock-outside-inbound`）、上限の無い一覧を書かない（`route-lists-are-paged`）も、lint で止める
+  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）も、lint で止める
 
 役割ごとに import してよい相手の表は、英語の [README の「Who may import what」](README.md#who-may-import-what) にある（`packages/hono-kit/lint/layers.mjs` から生成）。
 

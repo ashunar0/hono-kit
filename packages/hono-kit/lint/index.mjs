@@ -3,7 +3,7 @@
  * `"jsPlugins": ["hono-kit/lint"]` として読み込む
  */
 import layerImports from "./rules/layer-imports.mjs";
-import noClockOutsideInbound from "./rules/no-clock-outside-inbound.mjs";
+import noClockOutsideAppEntry from "./rules/no-clock-outside-app-entry.mjs";
 import noForeignTableReads from "./rules/no-foreign-table-reads.mjs";
 import noIdCast from "./rules/no-id-cast.mjs";
 import noModuleScopeState from "./rules/no-module-scope-state.mjs";
@@ -16,7 +16,7 @@ export default {
   rules: {
     "layer-imports": layerImports,
     "no-foreign-table-reads": noForeignTableReads,
-    "no-clock-outside-inbound": noClockOutsideInbound,
+    "no-clock-outside-app-entry": noClockOutsideAppEntry,
     "route-lists-are-paged": routeListsArePaged,
     "route-replies-through-reply": routeRepliesThroughReply,
     "no-id-cast": noIdCast,

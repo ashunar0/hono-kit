@@ -25,15 +25,21 @@ const dateAsString = (ctx: {
 /**
  * アプリを組み立てる。依存の組み立て方と、ログイン状態の決め方を外から受け取るので、
  * 本番は makeDeps と withUser を、テストは偽物を渡す。
- * authenticate はセッションの user（ログインしていなければ null）を文脈に積む middleware。認証の提供元を差し込む場所
+ * authenticate はセッションの user（ログインしていなければ null）を文脈に積む middleware。認証の提供元を差し込む場所。
+ * clock は 1 リクエストに 1 回だけ読み、c.get("now") に積む。テストは固定の時刻を渡す
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
   authenticate: MiddlewareHandler<AppEnv> = withUser,
+  clock: () => Date = () => new Date(),
 ) => {
   const root = createRouter();
 
   const app = root
+    .use("*", async (c, next) => {
+      c.set("now", clock());
+      await next();
+    })
     .use("*", provideDeps(makeDeps))
     .use("*", authenticate)
     .route("/invoices", invoicesRouter)

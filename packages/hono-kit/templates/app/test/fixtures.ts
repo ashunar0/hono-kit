@@ -14,17 +14,28 @@ export const carol = authenticatedUser(userId("carol"), orgId("org2"), "member")
 
 /**
  * The app, signed in as this user (real deps and D1).
- * null means signed out. Instead of an auth provider it just sets the session user; everything else is as in production
+ * null means signed out. Instead of an auth provider it just sets the session user; everything else is as in production.
+ * at fixes c.get("now") (the real clock when omitted)
  */
-export const appAs = (user: User | null) =>
-  buildApp(makeDeps, async (c, next) => {
-    c.set("user", user);
-    await next();
-  });
+export const appAs = (user: User | null, at?: Date) =>
+  buildApp(
+    makeDeps,
+    async (c, next) => {
+      c.set("user", user);
+      await next();
+    },
+    at ? () => at : undefined,
+  );
 
-/** Send JSON through appAs. env points to the real D1 */
-export const request = (user: User | null, method: string, path: string, body?: unknown) =>
-  appAs(user).request(
+/** Send JSON through appAs. env points to the real D1. at fixes the request's now */
+export const request = (
+  user: User | null,
+  method: string,
+  path: string,
+  body?: unknown,
+  at?: Date,
+) =>
+  appAs(user, at).request(
     path,
     {
       method,

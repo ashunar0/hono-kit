@@ -1,2 +1,2 @@
-// 入口（src/jobs/）は時計を読んでよい（入口が now を決める）
+// expect: hnk(no-clock-outside-app-entry) | job reads the clock (new Date())
 export const now = () => new Date();

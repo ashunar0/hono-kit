@@ -48,15 +48,25 @@ export const insertInvoices = async (invoices: Invoice[]) => {
  * この利用者としてログインした状態のアプリ（本物の deps と D1）。
  * null ならログインしていない。認証の提供元の代わりにセッションの user を積むだけで、あとは本番と同じ
  */
-export const appAs = (user: User | null) =>
-  buildApp(makeDeps, async (c, next) => {
-    c.set("user", user);
-    await next();
-  });
+export const appAs = (user: User | null, at?: Date) =>
+  buildApp(
+    makeDeps,
+    async (c, next) => {
+      c.set("user", user);
+      await next();
+    },
+    at ? () => at : undefined,
+  );
 
 /** appAs で JSON を送る。env は本物の D1 を指す */
-export const request = (user: User | null, method: string, path: string, body?: unknown) =>
-  appAs(user).request(
+export const request = (
+  user: User | null,
+  method: string,
+  path: string,
+  body?: unknown,
+  at?: Date,
+) =>
+  appAs(user, at).request(
     path,
     {
       method,
