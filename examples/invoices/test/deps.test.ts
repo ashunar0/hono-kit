@@ -1,6 +1,6 @@
 /**
  * 配線のスモークテスト。全部を組み上げて、必要な service が揃っていることだけを確かめる。
- * module の依存の輪は、makeDeps が const を上から順に並べているので、tsc が止める
+ * domain の依存の輪は、makeDeps が const を上から順に並べているので、tsc が止める
  * （宣言の前に使うとコンパイルが通らない）。ここでは実行時の確認だけをする
  */
 import { env } from "cloudflare:workers";

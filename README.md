@@ -17,7 +17,7 @@ It is not a framework or a platform. It sits thinly on top of plain Hono, and it
 ```sh
 pnpm create hnk my-app
 cd my-app && pnpm install
-pnpm hnk g module posts
+pnpm hnk g domain posts
 pnpm db:generate && pnpm check
 ```
 
@@ -26,9 +26,9 @@ pnpm db:generate && pnpm check
 An app has two axes, because the nouns in a URL and the nouns of the domain are different things.
 
 - **Resources** (`src/routes/<noun>/`): what a client points at, cut by the URL. `/customers/:customerId/invoices` lives in `src/routes/customers/invoices/`.
-- **Modules** (`src/domains/<name>/`): who keeps which rules, cut by the domain. Each module has three sides, as in hexagonal architecture.
+- **Domains** (`src/domains/<name>/`): who keeps which rules, cut by the domain. Each domain has three sides, as in hexagonal architecture.
 
-Routes use modules, never the other way. A route may use as many modules as it needs; modules never call each other.
+Routes use domains, never the other way. A route may use as many domains as it needs; domains never call each other.
 
 | Side         | What it is                                                     | Files                       |
 | ------------ | -------------------------------------------------------------- | --------------------------- |
@@ -36,7 +36,7 @@ Routes use modules, never the other way. A route may use as many modules as it n
 | **inbound**  | Called from outside. Decides who is acting and calls the core. | resources, cron, queue      |
 | **outbound** | Goes outside. Fulfills the shapes the core declares.           | repo, gateway, mailer, jobs |
 
-`pnpm hnk g module posts` starts a module, bare: a thing with only an id and timestamps, wired into `src/deps.ts`. It does not write a resource; you write that where the URL says.
+`pnpm hnk g domain posts` starts a domain, bare: a thing with only an id and timestamps, wired into `src/deps.ts`. It does not write a resource; you write that where the URL says.
 
 ```
 src/domains/posts/          (generated)
@@ -88,7 +88,7 @@ export const postsRouter = createRouter().endpoint(
 - `responses` is the contract. If the handler returns something else, the wrong value gets the red squiggle.
 - The 401 from `requireAuth` and the 400 from input validation are declared for you. You only write domain failures.
 - Who is acting (`actor`) and when (`now`) are decided at the entry point and passed down as arguments.
-- When a request touches several modules, the handler reads from as many services as it needs and writes through one call to one service ([cross-module.md](packages/hono-kit/docs/cross-module.md)).
+- When a request touches several domains, the handler reads from as many services as it needs and writes through one call to one service ([cross-domain.md](packages/hono-kit/docs/cross-domain.md)).
 
 ```ts
 // src/domains/posts/service.ts
@@ -116,30 +116,30 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 | `route-replies-through-reply` | `c.json` that bypasses the `responses` contract               |
 | `route-lists-are-paged`       | List endpoints without a page limit                           |
 | `no-clock-outside-inbound`    | `new Date()` / `Date.now()` in core and outbound              |
-| `no-foreign-table-reads`      | Reading another module's table directly                       |
+| `no-foreign-table-reads`      | Reading another domain's table directly                       |
 | `no-id-cast`                  | Branding IDs with `as`                                        |
 | `no-module-scope-state`       | Mutable state at module scope                                 |
 
 ### Who may import what
 
-Each file in a module is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`) or a `response` (`response.ts`). `layer-imports` allows only the imports below; everything else is an error.
+Each file in a domain is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`) or a `response` (`response.ts`). `layer-imports` allows only the imports below; everything else is an error.
 
 <!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
 
 | Side     | Role     | May import                                                                                                                                                                                                                                                                                 |
 | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| core     | model    | zod, hono-kit/system (types only), hono-kit/failures (types only), another module's model (types only), lib                                                                                                                                                                                |
-| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), model, another module's model (types only), lib                                                                                                                                              |
-| inbound  | errors   | hono-kit, lib. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                      |
-| inbound  | cron     | hono-kit (types only), model, another module's model, lib. createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps                                                                                                                        |
-| inbound  | queue    | hono-kit (types only), model, another module's model, lib. Same as cron                                                                                                                                                                                                                    |
-| outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, model, service (types only), another module's repo, another module's model, lib. From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's model, only SQL constants and types |
+| core     | model    | zod, hono-kit/system (types only), hono-kit/failures (types only), another domain's model (types only), lib                                                                                                                                                                                |
+| core     | service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), model, another domain's model (types only), lib                                                                                                                                              |
+| inbound  | errors   | hono-kit, lib. Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)                                                                      |
+| inbound  | cron     | hono-kit (types only), model, another domain's model, lib. createWorker passes deps, actor and now. An entry point: it may join several domains' services from deps                                                                                                                        |
+| inbound  | queue    | hono-kit (types only), model, another domain's model, lib. Same as cron                                                                                                                                                                                                                    |
+| outbound | repo     | drizzle-orm, hono-kit/page, db (types only), dbErrors, model, service (types only), another domain's repo, another domain's model, lib. From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types |
 | outbound | gateway  | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
 | outbound | mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                             |
 | outbound | jobs     | model (types only), service (types only), lib                                                                                                                                                                                                                                              |
-| inbound  | resource | hono-kit, zod, errors, middleware, another module's model, another module's errors, resource, response, lib. `src/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported                                                         |
-| inbound  | response | hono-kit, zod, another module's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                      |
-| lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead                                                                       |
+| inbound  | resource | hono-kit, zod, errors, middleware, another domain's model, another domain's errors, resource, response, lib. `src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported                                                         |
+| inbound  | response | hono-kit, zod, another domain's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                      |
+| lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead                                                                       |
 
 <!-- layers:end -->
 
@@ -158,7 +158,7 @@ The generated app also includes `AGENTS.md` (and a `CLAUDE.md` that points to it
 ## More
 
 - All conventions and the reasons behind them: [README.ja.md](README.ja.md) (Japanese)
-- Example app: [examples/invoices](examples/invoices) — invoices with payments across modules, cron, queue, webhook, organizations and sharing
+- Example app: [examples/invoices](examples/invoices) — invoices with payments across domains, cron, queue, webhook, organizations and sharing
 
 ## License
 

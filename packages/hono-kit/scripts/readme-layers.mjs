@@ -13,7 +13,7 @@ const START_LINE =
   "<!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->";
 const END = "<!-- layers:end -->";
 
-const show = (name) => name.replace(/^foreign:/, "another module's ");
+const show = (name) => name.replace(/^foreign:/, "another domain's ");
 
 const table = () => {
   const rows = Object.entries(LAYERS).map(([role, allowed]) => {

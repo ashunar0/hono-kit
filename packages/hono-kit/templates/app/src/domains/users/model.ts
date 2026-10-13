@@ -1,6 +1,6 @@
 /**
  * The user. For now: who is signed in, which organization, which role.
- * Other modules' domains borrow only types from here.
+ * Other domains' domains borrow only types from here.
  * The system (a caller with no user) belongs to hono-kit. cron, queues and webhooks receive it
  */
 import type { System } from "hono-kit/system";

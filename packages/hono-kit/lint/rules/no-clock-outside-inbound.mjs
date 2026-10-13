@@ -15,7 +15,7 @@ export default {
     if (!project) return {};
     const self = placeOf(file, project.root);
     const kind = KINDS[self.role];
-    if (!self.module || (kind !== "core" && kind !== "outbound")) return {};
+    if (!self.domain || (kind !== "core" && kind !== "outbound")) return {};
 
     const report = (node, what) =>
       context.report({

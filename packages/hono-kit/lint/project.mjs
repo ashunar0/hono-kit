@@ -63,8 +63,8 @@ const resourceRoleOf = (resolved, rest) => {
 
 /**
  * アプリの中のファイルを、役割で見る。
- * src/domains/<m>/<role>.ts → { module, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
- * src/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。module ではない。
+ * src/domains/<m>/<role>.ts → { domain, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
+ * src/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。domain ではない。
  * src 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
  * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ。
  * src/lib/ の中は全部 { role: "lib" }（業務を知らない＝別のアプリにそのまま持っていけるもの）
@@ -79,11 +79,11 @@ export const placeOf = (resolved, root) => {
     return { role: resourceRoleOf(resolved, m[1]) };
   const rel = relWithIndex.replace(/\/index$/, "");
   if ((m = rel.match(/^src\/domains\/([^/]+)\/(.+)$/))) {
-    const [, module, rest] = m;
+    const [, domain, rest] = m;
     // テストは役割の外。何を import してもよい
-    if (/\.(test|typetest|spec)$/.test(rest)) return { module, role: "test" };
-    if (!rest.includes("/")) return { module, role: rest.split(".")[0] };
-    return { module, role: rest };
+    if (/\.(test|typetest|spec)$/.test(rest)) return { domain, role: "test" };
+    if (!rest.includes("/")) return { domain, role: rest.split(".")[0] };
+    return { domain, role: rest };
   }
   if (rel.startsWith("src/lib/")) return { role: "lib" };
   if (rel === "src/db/errors") return { role: "dbErrors" };

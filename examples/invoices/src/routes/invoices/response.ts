@@ -1,5 +1,5 @@
 /**
- * 請求書を HTTP でどう見せるか。モノのルールではなく、送るときの見せ方なので、module ではなくリソースの側に置く
+ * 請求書を HTTP でどう見せるか。モノのルールではなく、送るときの見せ方なので、domain ではなくリソースの側に置く
  */
 import { z } from "zod";
 import { invoiceStatuses, type Invoice } from "../../domains/invoices/model";

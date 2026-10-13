@@ -1,7 +1,7 @@
 import { fileOf, placeOf, projectOf, resolveImport } from "../project.mjs";
 
 /**
- * 他の module の表（xxxTable）は、外部キーの references() の中でだけ使う。
+ * 他の domain の表（xxxTable）は、外部キーの references() の中でだけ使う。
  * 読むときは、持ち主が出している範囲付きの読み（invoicesWithin など）を通す。
  * 表を直接 from に書けると、範囲（組織）の条件を付け忘れる書き方ができてしまう
  */
@@ -11,7 +11,7 @@ export default {
     const project = projectOf(file);
     if (!project) return {};
     const self = placeOf(file, project.root);
-    if (!self.module || self.role === "test") return {};
+    if (!self.domain || self.role === "test") return {};
 
     /** 外部キーの references(...) の引数の中か */
     const insideReferences = (ancestors) =>
@@ -24,7 +24,7 @@ export default {
 
     return {
       Program(program) {
-        // 他 module の repo から import した、表の名前
+        // 他 domain の repo から import した、表の名前
         const tables = new Map();
         for (const node of program.body) {
           if (node.type !== "ImportDeclaration") continue;
@@ -32,8 +32,8 @@ export default {
           if (resolved === null) continue;
           const place = placeOf(resolved, project.root);
           if (
-            !place.module ||
-            place.module === self.module ||
+            !place.domain ||
+            place.domain === self.domain ||
             place.role !== "repo"
           )
             continue;
@@ -42,7 +42,7 @@ export default {
               spec.type === "ImportSpecifier" &&
               /Table$/.test(spec.local.name)
             ) {
-              tables.set(spec.local.name, place.module);
+              tables.set(spec.local.name, place.domain);
             }
           }
         }
@@ -58,7 +58,7 @@ export default {
           ) {
             context.report({
               node,
-              message: `Reads another module's table ${node.name}. Use tables only inside foreign-key references(). To read, use the scoped read (…Within) that ${tables.get(node.name)} exports`,
+              message: `Reads another domain's table ${node.name}. Use tables only inside foreign-key references(). To read, use the scoped read (…Within) that ${tables.get(node.name)} exports`,
             });
           }
           for (const [key, value] of Object.entries(node)) {

@@ -1,11 +1,11 @@
-# When a request touches several modules
+# When a request touches several domains
 
-Modules do not call each other. `src/deps.ts` builds each module on its own line, with nothing wired between them. The joining happens at the entry point: the handler of a resource (`src/routes/<noun>/index.ts`), a webhook, a queue consumer or a cron job.
+Domains do not call each other. `src/deps.ts` builds each domain on its own line, with nothing wired between them. The joining happens at the entry point: the handler of a resource (`src/routes/<noun>/index.ts`), a webhook, a queue consumer or a cron job.
 
 A complete example (a customer's invoices, billed from products):
 
 ```ts
-// src/routes/customers/invoices/index.ts: read from as many modules as needed, write once
+// src/routes/customers/invoices/index.ts: read from as many domains as needed, write once
 async (c, reply, { customers, products, invoices }) => {
   const actor = c.get("actor");
   const { customerId } = c.req.valid("param");
@@ -31,7 +31,7 @@ async (c, reply, { customers, products, invoices }) => {
   return reply(200, invoiceResponse(result.value));
 };
 
-// domains/invoices/service.ts: declare the shape you take, not another module's types
+// domains/invoices/service.ts: declare the shape you take, not another domain's types
 export type Billed = {
   customer: { id: string; organizationId: string };
   items: { id: string; organizationId: string; price: number }[];
@@ -54,13 +54,13 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 - Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (permission, a rule across things), it stays in the service
 - Writes that must happen together go inside that one call, in one batch (the repo receives `batch`: `wireBatch(db)`, next to its scopes). One repo call writes all or nothing; how is the store's business (D1 sends a fixed batch, a store with transactions could read and decide inside one)
 
-### When the write must cause something in another module
+### When the write must cause something in another domain
 
-Do not write the other module's table, and do not make a second write from the handler. **Record it in your own table in the same batch** (an outbox: `reservation_events`, `invoice_notifications`, ...), and deliver it later from an entry point that retries (your module's `cron.ts` or `queue.ts`). The delivery is then a write from a retrying entry point (next section).
+Do not write the other domain's table, and do not make a second write from the handler. **Record it in your own table in the same batch** (an outbox: `reservation_events`, `invoice_notifications`, ...), and deliver it later from an entry point that retries (your domain's `cron.ts` or `queue.ts`). The delivery is then a write from a retrying entry point (next section).
 
 ## Writing from an entry point that retries (webhook, queue, cron)
 
-A failure midway is retried, so the entry point **may write to several modules one after another**, as long as every write gives **the same result however many times it runs**:
+A failure midway is retried, so the entry point **may write to several domains one after another**, as long as every write gives **the same result however many times it runs**:
 
 - Use a unique key (`insertIfAbsent`), or a transition that only moves from the expected state (`transitionWithin(id, reach, from, changes)`)
 - Write the thing that marks the work done (the outbox row, the webhook event) **last**
@@ -73,12 +73,12 @@ if (!recorded.ok) return reply.failure(recorded.error);
 await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sent"; a retry finds it paid and does nothing
 ```
 
-## IDs and values from other modules
+## IDs and values from other domains
 
-- **In routes**: use the owner module's `…IdSchema` for params and bodies (`customerIdSchema` from `domains/customers/model`). Routes may import any module's model values
-- **Inside a module** (`model` / `service`): another module's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another module (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another module (`roles`, ...), keep **your own copy** and make types check that the values match
-- **Code that knows nothing of this app's business** (calendar dates, times of day, time-zone conversion) goes in `src/lib/` and may be imported as values from anywhere. The test is "could it move to another app as is?": a staff role belongs to staff (copy it or borrow its type), a calendar day is the same in any app (lib). `src/lib/` imports only zod and other lib files, so modules can never reach each other through it
-- Another module's table: only inside foreign-key `references()`
+- **In routes**: use the owner domain's `…IdSchema` for params and bodies (`customerIdSchema` from `domains/customers/model`). Routes may import any domain's model values
+- **Inside a domain** (`model` / `service`): another domain's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another domain (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another domain (`roles`, ...), keep **your own copy** and make types check that the values match
+- **Code that knows nothing of this app's business** (calendar dates, times of day, time-zone conversion) goes in `src/lib/` and may be imported as values from anywhere. The test is "could it move to another app as is?": a staff role belongs to staff (copy it or borrow its type), a calendar day is the same in any app (lib). `src/lib/` imports only zod and other lib files, so domains can never reach each other through it
+- Another domain's table: only inside foreign-key `references()`
 
 ## Reach is the same for reads and writes
 
@@ -89,5 +89,5 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 - The resource nests under the parent's: `src/routes/issues/comments/index.ts`, mounted by the parent with `.route("/:issueId/comments", issueCommentsRouter)`. The child's paths are the rest only (`"/"`, `"/:id"`), and `request.param` lists the parent's param too (`{ issueId, id }`)
 - The handler asks the parent's service whether the parent is visible (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
 - The child repo filters by **parent ID**, not by reach. Name its methods `listOf(parentId)` / `findOf(parentId, id)` instead of `listWithin` / `findWithin`
-- The parent ID is a plain `string` inside the child module. Permission checks ("the author or an admin") are pure functions in model
-- `pnpm hnk g module comments` writes only the module. Write the resource in `src/routes/issues/comments/` and mount it from the parent
+- The parent ID is a plain `string` inside the child domain. Permission checks ("the author or an admin") are pure functions in model
+- `pnpm hnk g domain comments` writes only the domain. Write the resource in `src/routes/issues/comments/` and mount it from the parent

@@ -14,7 +14,7 @@ export type Db = ReturnType<typeof wireDb>;
 
 /**
  * Runs the statements built by scopes as one all-or-nothing batch (D1 rolls the whole batch back if one fails).
- * It takes statements, not a db, so what can go in is only what a scope could build: writes to the module's own tables.
+ * It takes statements, not a db, so what can go in is only what a scope could build: writes to the domain's own tables.
  * The results come back one per statement, in order
  */
 export const wireBatch =
@@ -24,17 +24,17 @@ export const wireBatch =
 
 export type Batch = ReturnType<typeof wireBatch>;
 
-/** A read-only db. It can read other modules' tables too (for joins) */
+/** A read-only db. It can read other domains' tables too (for joins) */
 export type ReadDb = Pick<Db, "select">;
 
 /** D1 allows this many bound values (`?`) in one statement */
 const maxBoundValues = 100;
 
 /**
- * Takes out only what this module may touch.
+ * Takes out only what this domain may touch.
  *
- * Reads may cross modules, writes are limited to this table: the asymmetry in the convention becomes the type.
- * The repository never gets db, so writing to another module's table cannot be written
+ * Reads may cross domains, writes are limited to this table: the asymmetry in the convention becomes the type.
+ * The repository never gets db, so writing to another domain's table cannot be written
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({
   reads: db as ReadDb,

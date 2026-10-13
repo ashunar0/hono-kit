@@ -108,7 +108,7 @@ const accessIn = (reach: InvoiceReach): SQL<InvoiceAccess> =>
     : sql<InvoiceAccess>`'manage'`;
 
 /**
- * 他の module に読ませる窓口。その人が触れる請求書だけが入った副問い合わせを返す。
+ * 他の domain に読ませる窓口。その人が触れる請求書だけが入った副問い合わせを返す。
  * 誰として読むか（actor）が必須なので、範囲を付けずに読む書き方が存在しない。
  * 範囲の決め方（reachOf）は invoices の中に閉じていて、読む側は知らなくていい
  */

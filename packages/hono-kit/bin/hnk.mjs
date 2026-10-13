@@ -2,12 +2,12 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>          アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk g module <name>     module の骨組み（model / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/module）
+ *   hnk g domain <name>     domain の骨組み（model / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/domain）
  *
- * リソース（src/routes/<名詞>/）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も
+ * リソース（src/routes/<名詞>/）は生成しない。中身はどの domain を使うかで毎回違い、つなぐ先も
  * 親のリソースだったりするので、URL を見て書く（書き方は雛形の AGENTS.md）
  *
- * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g module → check を通す）。
+ * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g domain → check を通す）。
  * 生成器がするのは、コピーと、語の置き換えと、// hnk: の行の上への追記だけ
  */
 import fs from "node:fs";
@@ -62,7 +62,7 @@ const write = (file, text) => {
 const insertAbove = (file, marker, lines) => {
   const source = fs.readFileSync(file, "utf8").split("\n");
   const at = source.findIndex((line) => line.trim() === `// hnk:${marker}`);
-  if (at < 0) die(`${file} has no // hnk:${marker} line, so the generator cannot wire the module`);
+  if (at < 0) die(`${file} has no // hnk:${marker} line, so the generator cannot wire the domain`);
 
   const indent = source[at].match(/^\s*/)[0];
   const fresh = lines.filter((line) => !source.some((s) => s.trim() === line.trim()));
@@ -94,21 +94,21 @@ const init = (target) => {
 
   console.log(`✓ Created an app in ${dir}`);
   console.log(`  cd ${target} && pnpm install && pnpm check`);
-  console.log("  Add a module: pnpm hnk g module <plural name>");
+  console.log("  Add a domain: pnpm hnk g domain <plural name>");
 };
 
-// ---- g module ----
+// ---- g domain ----
 
-const generateModule = (plural) => {
+const generateDomain = (plural) => {
   if (!plural || !/^[a-z][a-zA-Z0-9]*$/.test(plural)) {
-    die("Usage: hnk g module <name> (plural camelCase, e.g. invoices, signupRequests)");
+    die("Usage: hnk g domain <name> (plural camelCase, e.g. invoices, signupRequests)");
   }
   if (!fs.existsSync("src/deps.ts")) {
     die("Run this at the app root (where src/deps.ts is)");
   }
   if (fs.existsSync(`src/domains/${plural}`)) die(`src/domains/${plural} already exists`);
 
-  const from = path.join(root, "templates/module");
+  const from = path.join(root, "templates/domain");
   for (const file of listFiles(from)) {
     const text = fs.readFileSync(path.join(from, file), "utf8");
     write(rename(file, plural), rename(text, plural));
@@ -140,5 +140,5 @@ const generateModule = (plural) => {
 const [command, ...args] = process.argv.slice(2);
 
 if (command === "init") init(args[0]);
-else if (command === "g" && args[0] === "module") generateModule(args[1]);
-else die("Usage: hnk init <dir> / hnk g module <name>");
+else if (command === "g" && args[0] === "domain") generateDomain(args[1]);
+else die("Usage: hnk init <dir> / hnk g domain <name>");

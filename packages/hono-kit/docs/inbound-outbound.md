@@ -2,7 +2,7 @@
 
 ## cron
 
-- Location: the module's `cron.ts`. It may import only **types** from hono-kit and model. It receives `{ deps, now }`
+- Location: the domain's `cron.ts`. It may import only **types** from hono-kit and model. It receives `{ deps, now }`
 - `src/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
 - Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due. It hands the job the system actor, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
@@ -18,7 +18,7 @@
 
 ## Replacing external services in tests
 
-`buildApp` takes `makeDeps` as an argument. For modules you want to replace, make it `makeDeps(env, overrides?)`: production passes nothing (a dummy or the real thing), tests pass a stand-in. Do not use `vi.mock` (lint stops it).
+`buildApp` takes `makeDeps` as an argument. For domains you want to replace, make it `makeDeps(env, overrides?)`: production passes nothing (a dummy or the real thing), tests pass a stand-in. Do not use `vi.mock` (lint stops it).
 
 ```ts
 export const makeDeps = (

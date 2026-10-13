@@ -5,15 +5,15 @@ import { paymentsTable } from "../src/domains/payments/repo.d1";
 import { db, insertInvoices, invoice } from "./fixtures";
 
 /**
- * 他の module に公開している読み（〜Within）の契約。
+ * 他の domain に公開している読み（〜Within）の契約。
  * repo の export から名前で拾うので、読みを足すと登録しなくても自動でここに入る。
  * 足した読みの表に行が無いと「空では確かめられない」で落ちるので、下の seed に足す
  */
-const modules = import.meta.glob("../src/domains/*/repo.*.ts", { eager: true });
+const domains = import.meta.glob("../src/domains/*/repo.*.ts", { eager: true });
 
 type Read = (db: ReturnType<typeof import("./fixtures").db>, actor: Actor) => never;
 
-const reads = Object.entries(modules).flatMap(([path, exports]) =>
+const reads = Object.entries(domains).flatMap(([path, exports]) =>
   Object.entries(exports)
     .filter(([name, value]) => name.endsWith("Within") && typeof value === "function")
     .map(([name, value]) => ({ name: `${path.split("/")[3]}/${name}`, read: value as Read })),

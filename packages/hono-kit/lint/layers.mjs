@@ -1,6 +1,6 @@
 /**
- * module の中の役割と、それが core / inbound / outbound のどれか。
- * ここに無い名前のファイルは module の中に置けない（layer-imports が止める）
+ * domain の中の役割と、それが core / inbound / outbound のどれか。
+ * ここに無い名前のファイルは domain の中に置けない（layer-imports が止める）
  */
 export const KINDS = {
   model: "core",
@@ -24,7 +24,7 @@ export const KINDS = {
  *
  * 相手の書き方:
  *   パッケージ名（hono-kit, hono-kit/result, zod, drizzle-orm）
- *   自分の module の役割（model, service, ...）。他の module のものは "foreign:<role>"
+ *   自分の domain の役割（model, service, ...）。他の domain のものは "foreign:<role>"
  *   アプリの決めごと（errors, middleware, db, dbErrors, deps）
  */
 export const LAYERS = {
@@ -44,10 +44,10 @@ export const LAYERS = {
     "foreign:model": "type",
   },
 
-  // その module だけの失敗を、HTTP でどう返すか。HTTP の入口（src/routes/）が使う
+  // その domain だけの失敗を、HTTP でどう返すか。HTTP の入口（src/routes/）が使う
   errors: { "hono-kit": "value" },
   // inbound（HTTP 以外）。deps と actor と now は createWorker が渡す。
-  // 入口なので、複数の module の service を deps から受け取ってつなぐ。他の module の ID の印を付けるため、model の値も使う
+  // 入口なので、複数の domain の service を deps から受け取ってつなぐ。他の domain の ID の印を付けるため、model の値も使う
   cron: { "hono-kit": "type", model: "value", "foreign:model": "value" },
   queue: { "hono-kit": "type", model: "value", "foreign:model": "value" },
 
@@ -61,15 +61,15 @@ export const LAYERS = {
     model: "value",
     service: "type",
     "foreign:repo": "value",
-    // 集計の SQL で、他 module の状態の集合（billedStatuses など）を使う
+    // 集計の SQL で、他 domain の状態の集合（billedStatuses など）を使う
     "foreign:model": "value",
   },
   gateway: { "hono-kit/result": "value", model: "type", service: "type" },
   mailer: { "hono-kit/result": "value", model: "type", service: "type" },
   jobs: { model: "type", service: "type" },
 
-  // リソース（src/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、module の外にある。
-  // どの module の model も使ってよい。service は import せず、deps から受け取る
+  // リソース（src/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、domain の外にある。
+  // どの domain の model も使ってよい。service は import せず、deps から受け取る
   resource: {
     "hono-kit": "value",
     zod: "value",
@@ -89,14 +89,14 @@ export const LAYERS = {
   },
 
   // 業務を知らない＝別のアプリにそのまま持っていけるもの（src/lib/。日付、時刻、タイムゾーン）。
-  // 一番下の層で、module もリソースも知らない。だから lib を通して module どうしがつながることはない
+  // 一番下の層で、domain もリソースも知らない。だから lib を通して domain どうしがつながることはない
   lib: { zod: "value", lib: "value" },
 };
 
 // lib は一番下の層なので、どの役割からも値で使える
 for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
-/** module の外にある、リソースの役割。README の表の「側」に使う */
+/** domain の外にある、リソースの役割。README の表の「側」に使う */
 export const RESOURCE_ROLES = { resource: "inbound", response: "inbound" };
 
 /** よくある間違いには、どうすればいいかを添える */
@@ -107,7 +107,7 @@ export const HINTS = {
   "service→hono-kit":
     "service may only use Result from hono-kit. Import it from hono-kit/result",
   "service→foreign:service":
-    "Modules do not call each other. Join them at the entry point: the handler (or cron / queue) reads from both services and passes values to the one that writes. See node_modules/hono-kit/docs/cross-module.md",
+    "Domains do not call each other. Join them at the entry point: the handler (or cron / queue) reads from both services and passes values to the one that writes. See node_modules/hono-kit/docs/cross-domain.md",
   "repo→foreign:service":
     "Read with a join in your own repo (you may import the table from the other repo)",
   "resource→foreign:service":
@@ -118,9 +118,9 @@ export const HINTS = {
     "response.ts only shows things. Import it from index.ts, not the other way",
 };
 
-/** module の中から src/routes/ を見たとき。向きは routes → modules の一方だけ */
+/** domain の中から src/routes/ を見たとき。向きは routes → domains の一方だけ */
 export const RESOURCE_HINT =
-  "Modules do not know routes. src/routes/ uses modules, never the other way";
+  "Domains do not know routes. src/routes/ uses domains, never the other way";
 
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
@@ -141,13 +141,13 @@ export const KIND_HINTS = {
  */
 export const NOTES = {
   errors:
-    "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
-  cron: "createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps",
+    "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
+  cron: "createWorker passes deps, actor and now. An entry point: it may join several domains' services from deps",
   queue: "Same as cron",
   lib:
-    "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead",
-  repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's model, only SQL constants and types",
+    "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
+  repo: "From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types",
   resource:
-    "`src/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",
+    "`src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported",
   response: "`src/routes/<noun>/response.ts`: how a thing is shown over HTTP",
 };

@@ -13,7 +13,7 @@ import { reportsRepository } from "./domains/reports/repo.d1";
 import { reportsService } from "./domains/reports/service";
 
 /**
- * module の組み立て方を集める唯一の場所（composition root）。
+ * domain の組み立て方を集める唯一の場所（composition root）。
  *
  * 組み立てた結果ではなく、組み立て方を buildApp に渡す。hnk の provideDeps が
  * リクエストごとに（handler が初めて受け取るときに 1 回）呼ぶ。HTTP 以外の inbound は createWorker が呼ぶ。
@@ -21,10 +21,10 @@ import { reportsService } from "./domains/reports/service";
  * リクエストをまたいで共有されてしまう。
  *
  * 上から順に const で組み立てる。依存する相手を先に書かないと、tsc が「宣言の前に使っている」で止める。
- * なので、module の依存の輪はコンパイルが通らない（Go の main と同じ）。
- * module どうしは何もつながない。複数の module にまたがる処理は、入口（routes の handler、webhook、
+ * なので、domain の依存の輪はコンパイルが通らない（Go の main と同じ）。
+ * domain どうしは何もつながない。複数の domain にまたがる処理は、入口（routes の handler、webhook、
  * cron、queue）が両方を受け取って、読んだものを値で渡す。
- * 遅延（getter）で「使う module だけ組み立てる」ことをやめた代わりに、宣言順の保証を取った。
+ * 遅延（getter）で「使う domain だけ組み立てる」ことをやめた代わりに、宣言順の保証を取った。
  * 組み立ては関数を返すだけで、env の検証も接続もしないので軽い。
  * db そのものは返さない。inbound が書き込み先を選べてしまうので
  */

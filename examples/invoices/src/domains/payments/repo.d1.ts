@@ -52,7 +52,7 @@ const toPayment = (row: PaymentRow): Payment => ({
 });
 
 /**
- * 他の module が読むための入口。範囲の中の請求書に結ばれた支払いだけが入った副問い合わせを返す。
+ * 他の domain が読むための入口。範囲の中の請求書に結ばれた支払いだけが入った副問い合わせを返す。
  * 支払いは組織を持たないので、範囲は請求書を通して決まる
  */
 export const paymentsWithin = (db: ReadDb, actor: Actor) => {
