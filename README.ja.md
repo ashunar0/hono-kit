@@ -100,7 +100,7 @@ URL の名詞（リソース）と、ドメインの名詞（domain）は別物�
 
 - **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
-- **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースと同じく domain の外に置き、service は deps から受け取る
+- **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースが URL で名前を付けるのと同じく、きっかけで名前を付ける（`daily.ts`、`reminders-queue.ts`）。同じきっかけで動く仕事は同じファイルに並べる。domain の外に置き、service は deps から受け取る
 - **参照は入口（routes、jobs）→ domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない
 
 同じ単語になることは多いが（`routes/invoices/` と `domains/invoices/`）、ならないこともある（`/payments` は支払いの domain と請求書の domain を両方使う）。片方に合わせて曲げない。

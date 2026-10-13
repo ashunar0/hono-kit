@@ -1,6 +1,6 @@
 /**
  * キューへの積み込み。service.ts が宣言した ReminderJobs を、Cloudflare Queues で満たす。
- * 積んだものを受け取る側は src/jobs/send-reminder.ts（入口）
+ * 積んだものを受け取る側は src/jobs/reminders-queue.ts（入口）
  */
 import type { ReminderJob } from "./model";
 import type { ReminderJobs } from "./service";

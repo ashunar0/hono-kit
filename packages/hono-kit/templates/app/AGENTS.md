@@ -20,7 +20,7 @@ The nouns in the URL (resources) and the nouns of the domain (domains) are diffe
 
 - **Resources** (`src/routes/<noun>/`): what a client points at. Cut by the URL: one directory per noun, always with `index.ts`. Nested resources are nested directories (`/customers/:customerId/invoices` → `routes/customers/invoices/`). No directories for params (`:id`)
 - **Domains** (`src/domains/<name>/`): who keeps which rules. Cut by the rules a thing must keep
-- **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Like resources, they live outside domains and receive services from deps
+- **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Named by what starts them, as a resource is named by its URL (`daily.ts`, `reminders-queue.ts`); more work on the same trigger goes in the same file. Like resources, they live outside domains and receive services from deps
 - **One way only**: entry points (routes and jobs) use domains; domains know nothing of them. A route may use as many domains as it needs. One domain's code never uses another domain's service or repo
 - **Lib** (`src/lib/<what>.ts`): code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anyone may import it as values; it imports only zod and other lib files. Name the file by what it holds (`time.ts`), never `utils.ts`. Anything that names a thing of this app (a role, a status) belongs to its domain, not here. Move something here when a second copy would appear
 
