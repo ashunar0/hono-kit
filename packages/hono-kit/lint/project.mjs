@@ -49,13 +49,14 @@ export const packageOf = (specifier) => {
 
 /**
  * src/routes/ の中のファイルの役割。リソース（URL の名詞）ごとのディレクトリに、
- * router（index.ts）と、HTTP での見せ方（response.ts）だけを置く。
+ * router（index.ts）と、HTTP での見せ方（response.ts）と、その入口だけの失敗（errors.ts）だけを置く。
  * import 先は拡張子が無く、`./menus` のようにディレクトリを指すこともある（その index.ts）
  */
 const resourceRoleOf = (resolved, rest) => {
   if (/\.(test|typetest|spec)$/.test(rest)) return "test";
   if (/(^|\/)index$/.test(rest)) return "resource";
   if (/(^|\/)response$/.test(rest)) return "response";
+  if (/(^|\/)errors$/.test(rest)) return "errors";
   if (!/\.tsx?$/.test(resolved) && fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory())
     return "resource";
   return "resourceOther";

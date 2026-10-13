@@ -1,5 +1,5 @@
 /**
- * webhook の入口だけの失敗。モノの失敗（NotPayable など）は model.ts にある。
+ * Stripe の webhook の入口だけの失敗。モノの失敗（NotPayable など）は model.ts にある。
  * どの domain でも同じ意味のものは hnk の標準（NotFound など）にある
  */
 import { httpError } from "hono-kit";

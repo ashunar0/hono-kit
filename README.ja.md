@@ -98,7 +98,7 @@ async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promi
 
 URL の名詞（リソース）と、ドメインの名詞（domain）は別物なので、置き場所を分ける。
 
-- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
+- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）、要るときだけ `errors.ts`（その入口だけの失敗）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
 - **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースが URL で名前を付けるのと同じく、きっかけで名前を付ける（`daily.ts`、`reminders-queue.ts`）。同じきっかけで動く仕事は同じファイルに並べる。domain の外に置き、service は deps から受け取る
 - **参照は入口（routes、jobs）→ domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない
@@ -145,7 +145,7 @@ outbound のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`g
 | 横に増える   | 2 つ目の inbound（cron、キュー）                   | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                           |
 | 横に増える   | 2 つ目の outbound（保存先、外部 API、メール）      | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                           |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                               |
-| 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は domain の `errors.ts`（リソースから使う） |
+| 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
 | 窓口を開く   | 他の domain が SQL で読みに来る（集計など）        | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                           |
 | （足さない） | 他の domain を読む・書く                           | domain には何も足さない。入口（handler、cron、queue）が両方の service を呼び、値で渡す                                                                                           |
 
@@ -214,7 +214,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
   `provideDeps` がリクエストごとに、使うときに 1 回だけ組み立てる
 - **outbound の形は service が宣言する**（Go の「interface は使う側が決める」）
-- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）だけ。
+- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
   他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、core と outbound で時計を読まない（`no-clock-outside-inbound`）、上限の無い一覧を書かない（`route-lists-are-paged`）も、lint で止める

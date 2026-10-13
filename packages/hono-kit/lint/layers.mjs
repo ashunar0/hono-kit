@@ -5,7 +5,6 @@
 export const KINDS = {
   model: "core",
   service: "core",
-  errors: "inbound",
   repo: "outbound",
   gateway: "outbound",
   mailer: "outbound",
@@ -42,8 +41,6 @@ export const LAYERS = {
     "foreign:model": "type",
   },
 
-  // その domain だけの失敗を、HTTP でどう返すか。HTTP の入口（src/routes/）が使う
-  errors: { "hono-kit": "value" },
   // outbound
   repo: {
     "drizzle-orm": "value",
@@ -70,7 +67,6 @@ export const LAYERS = {
     errors: "value",
     middleware: "value",
     "foreign:model": "value",
-    "foreign:errors": "value",
     resource: "value",
     response: "value",
   },
@@ -84,6 +80,8 @@ export const LAYERS = {
   // HTTP 以外の入口（src/jobs/<名前>.ts。cron、キュー）。deps と actor と now は createWorker が渡す。
   // リソースと同じく domain の外にあり、service は deps から受け取る。他の domain の ID の印を付けるため、model の値も使う
   job: { "hono-kit": "type", "foreign:model": "value" },
+  // 入口だけの失敗（webhook の署名など）を、HTTP でどう返すか。入口の隣（src/routes/<名詞>/errors.ts）に置く
+  errors: { "hono-kit": "value" },
 
   // 業務を知らない＝別のアプリにそのまま持っていけるもの（src/lib/。日付、時刻、タイムゾーン）。
   // 一番下の層で、domain もリソースも知らない。だから lib を通して domain どうしがつながることはない
@@ -94,7 +92,7 @@ export const LAYERS = {
 for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
 /** domain の外にある、入口の役割。README の表の「側」に使う */
-export const ENTRY_ROLES = { resource: "inbound", response: "inbound", job: "inbound" };
+export const ENTRY_ROLES = { resource: "inbound", response: "inbound", job: "inbound", errors: "inbound" };
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
@@ -121,6 +119,10 @@ export const HINTS = {
 export const ENTRY_HINT =
   "Domains do not know entry points. src/routes/ and src/jobs/ use domains, never the other way";
 
+/** domain の中に errors.ts を置いたとき。モノの失敗は model、入口だけの失敗は入口の隣 */
+export const ERRORS_HINT =
+  "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/errors.ts";
+
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
   "core→outbound":
@@ -140,7 +142,7 @@ export const KIND_HINTS = {
  */
 export const NOTES = {
   errors:
-    "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
+    "`src/routes/<noun>/errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
   lib:
     "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
   repo: "From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types",
