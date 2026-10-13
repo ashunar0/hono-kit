@@ -48,7 +48,7 @@ export const packageOf = (specifier) => {
 };
 
 /**
- * api/routes/ の中のファイルの役割。リソース（URL の名詞）ごとのディレクトリに、
+ * src/routes/ の中のファイルの役割。リソース（URL の名詞）ごとのディレクトリに、
  * router（index.ts）と、HTTP での見せ方（response.ts）だけを置く。
  * import 先は拡張子が無く、`./menus` のようにディレクトリを指すこともある（その index.ts）
  */
@@ -63,11 +63,11 @@ const resourceRoleOf = (resolved, rest) => {
 
 /**
  * アプリの中のファイルを、役割で見る。
- * modules/<m>/<role>.ts → { module, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
- * api/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。module ではない。
- * api 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
+ * src/domains/<m>/<role>.ts → { module, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
+ * src/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。module ではない。
+ * src 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
  * db/errors は db とは別の役割（dbErrors）。repo が値で使えるのは、これだけ。
- * api/shared/ の中は全部 { role: "shared" }（どのドメインにも属さない値と計算）
+ * src/lib/ の中は全部 { role: "lib" }（業務を知らない＝別のアプリにそのまま持っていけるもの）
  */
 export const placeOf = (resolved, root) => {
   const relWithIndex = path
@@ -75,19 +75,19 @@ export const placeOf = (resolved, root) => {
     .replace(/\\/g, "/")
     .replace(/\.tsx?$/, "");
   let m;
-  if ((m = relWithIndex.match(/^api\/routes\/(.+)$/)))
+  if ((m = relWithIndex.match(/^src\/routes\/(.+)$/)))
     return { role: resourceRoleOf(resolved, m[1]) };
   const rel = relWithIndex.replace(/\/index$/, "");
-  if ((m = rel.match(/^api\/modules\/([^/]+)\/(.+)$/))) {
+  if ((m = rel.match(/^src\/domains\/([^/]+)\/(.+)$/))) {
     const [, module, rest] = m;
     // テストは役割の外。何を import してもよい
     if (/\.(test|typetest|spec)$/.test(rest)) return { module, role: "test" };
     if (!rest.includes("/")) return { module, role: rest.split(".")[0] };
     return { module, role: rest };
   }
-  if (rel.startsWith("api/shared/")) return { role: "shared" };
-  if (rel === "api/db/errors") return { role: "dbErrors" };
-  if ((m = rel.match(/^api\/(errors|env|deps|db)$/))) return { role: m[1] };
-  if (rel.startsWith("api/middleware/")) return { role: "middleware" };
+  if (rel.startsWith("src/lib/")) return { role: "lib" };
+  if (rel === "src/db/errors") return { role: "dbErrors" };
+  if ((m = rel.match(/^src\/(errors|env|deps|db)$/))) return { role: m[1] };
+  if (rel.startsWith("src/middleware/")) return { role: "middleware" };
   return { role: rel };
 };

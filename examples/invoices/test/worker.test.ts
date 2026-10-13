@@ -2,7 +2,7 @@ import { err, ok } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { systemActor } from "hono-kit/testing";
 import { expect, it, vi } from "vitest";
-import { makeDeps } from "../api/deps";
+import { makeDeps } from "../src/deps";
 
 type Message = {
   body: string;

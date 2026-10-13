@@ -44,7 +44,7 @@ export const LAYERS = {
     "foreign:domain": "type",
   },
 
-  // その module だけの失敗を、HTTP でどう返すか。HTTP の入口（api/routes/）が使う
+  // その module だけの失敗を、HTTP でどう返すか。HTTP の入口（src/routes/）が使う
   errors: { "hono-kit": "value" },
   // inbound（HTTP 以外）。deps と actor と now は createWorker が渡す。
   // 入口なので、複数の module の service を deps から受け取ってつなぐ。他の module の ID の印を付けるため、domain の値も使う
@@ -68,7 +68,7 @@ export const LAYERS = {
   mailer: { "hono-kit/result": "value", domain: "type", service: "type" },
   jobs: { domain: "type", service: "type" },
 
-  // リソース（api/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、module の外にある。
+  // リソース（src/routes/<名詞>/）。URL の名詞で切った HTTP の入口で、module の外にある。
   // どの module の domain も使ってよい。service は import せず、deps から受け取る
   resource: {
     "hono-kit": "value",
@@ -88,13 +88,13 @@ export const LAYERS = {
     response: "value",
   },
 
-  // どのドメインにも属さない、純粋な値と計算（api/shared/。日付、時刻、タイムゾーン）。
-  // 一番下の層で、module もリソースも知らない。だから shared を通して module どうしがつながることはない
-  shared: { zod: "value", shared: "value" },
+  // 業務を知らない＝別のアプリにそのまま持っていけるもの（src/lib/。日付、時刻、タイムゾーン）。
+  // 一番下の層で、module もリソースも知らない。だから lib を通して module どうしがつながることはない
+  lib: { zod: "value", lib: "value" },
 };
 
-// shared は一番下の層なので、どの役割からも値で使える
-for (const allowed of Object.values(LAYERS)) allowed.shared ??= "value";
+// lib は一番下の層なので、どの役割からも値で使える
+for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
 /** module の外にある、リソースの役割。README の表の「側」に使う */
 export const RESOURCE_ROLES = { resource: "inbound", response: "inbound" };
@@ -118,9 +118,9 @@ export const HINTS = {
     "response.ts only shows things. Import it from index.ts, not the other way",
 };
 
-/** module の中から api/routes/ を見たとき。向きは routes → modules の一方だけ */
+/** module の中から src/routes/ を見たとき。向きは routes → modules の一方だけ */
 export const RESOURCE_HINT =
-  "Modules do not know routes. api/routes/ uses modules, never the other way";
+  "Modules do not know routes. src/routes/ uses modules, never the other way";
 
 /** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
 export const KIND_HINTS = {
@@ -144,10 +144,10 @@ export const NOTES = {
     "Entry-point-only failures (webhook signatures, ...). Failures of the thing go in domain.ts as a Failure. Ones that mean the same in every module (401, 403, 404) are hono-kit standards (NotFound, ...)",
   cron: "createWorker passes deps, actor and now. An entry point: it may join several modules' services from deps",
   queue: "Same as cron",
-  shared:
-    "Pure values and calculations that belong to no domain (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead",
+  lib:
+    "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its module instead",
   repo: "From another module's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another module's domain, only SQL constants and types",
   resource:
-    "`api/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",
-  response: "`api/routes/<noun>/response.ts`: how a thing is shown over HTTP",
+    "`src/routes/<noun>/index.ts`, outside modules. Services come from deps (the handler's third argument), never imported",
+  response: "`src/routes/<noun>/response.ts`: how a thing is shown over HTTP",
 };

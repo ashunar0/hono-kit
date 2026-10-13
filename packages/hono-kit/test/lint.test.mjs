@@ -50,7 +50,7 @@ const expectations = (file) =>
   }));
 
 const diagnostics = run();
-const files = walk(path.join(app, "api")).filter((f) => f.endsWith(".ts"));
+const files = walk(path.join(app, "src")).filter((f) => f.endsWith(".ts"));
 
 for (const file of files) {
   const rel = path.relative(app, file);

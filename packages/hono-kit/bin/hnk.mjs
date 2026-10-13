@@ -4,7 +4,7 @@
  *   hnk init <dir>          アプリの土台を <dir> に出す（templates/app をコピーするだけ）
  *   hnk g module <name>     module の骨組み（domain / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/module）
  *
- * リソース（api/routes/<名詞>/）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も
+ * リソース（src/routes/<名詞>/）は生成しない。中身はどの module を使うかで毎回違い、つなぐ先も
  * 親のリソースだったりするので、URL を見て書く（書き方は雛形の AGENTS.md）
  *
  * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g module → check を通す）。
@@ -103,10 +103,10 @@ const generateModule = (plural) => {
   if (!plural || !/^[a-z][a-zA-Z0-9]*$/.test(plural)) {
     die("Usage: hnk g module <name> (plural camelCase, e.g. invoices, signupRequests)");
   }
-  if (!fs.existsSync("api/deps.ts")) {
-    die("Run this at the app root (where api/deps.ts is)");
+  if (!fs.existsSync("src/deps.ts")) {
+    die("Run this at the app root (where src/deps.ts is)");
   }
-  if (fs.existsSync(`api/modules/${plural}`)) die(`api/modules/${plural} already exists`);
+  if (fs.existsSync(`src/domains/${plural}`)) die(`src/domains/${plural} already exists`);
 
   const from = path.join(root, "templates/module");
   for (const file of listFiles(from)) {
@@ -115,23 +115,23 @@ const generateModule = (plural) => {
   }
 
   // deps.ts につなぐ。db の import に scopeTo が要る
-  const deps = "api/deps.ts";
+  const deps = "src/deps.ts";
   fs.writeFileSync(
     deps,
     fs.readFileSync(deps, "utf8").replace('import { wireDb } from "./db";', 'import { scopeTo, wireDb } from "./db";'),
   );
   const one = singular(plural);
   insertAbove(deps, "imports", [
-    `import { ${plural}Repository, ${plural}Table } from "./modules/${plural}/repo.d1";`,
-    `import { ${plural}Service } from "./modules/${plural}/service";`,
+    `import { ${plural}Repository, ${plural}Table } from "./domains/${plural}/repo.d1";`,
+    `import { ${plural}Service } from "./domains/${plural}/service";`,
   ]);
   insertAbove(deps, "deps", [
     `const ${plural} = ${plural}Service(${plural}Repository(scopeTo(db, ${plural}Table)));`,
   ]);
   insertAbove(deps, "returns", [`${plural},`]);
 
-  console.log(`✓ Added api/modules/${plural}/ and wired it into deps.ts (the bare shape of ${one})`);
-  console.log("  Fill in the thing, then write the resource under api/routes/ where the URL says (AGENTS.md)");
+  console.log(`✓ Added src/domains/${plural}/ and wired it into deps.ts (the bare shape of ${one})`);
+  console.log("  Fill in the thing, then write the resource under src/routes/ where the URL says (AGENTS.md)");
   console.log("  pnpm db:generate && pnpm exec prettier --write . && pnpm check");
 };
 

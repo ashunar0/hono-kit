@@ -5,7 +5,7 @@
 import { createRouter, errorResponses, httpError, provideDeps } from "hono-kit";
 import { z } from "zod";
 import { expect, it } from "vitest";
-import { allowAnonymous } from "../api/middleware/auth";
+import { allowAnonymous } from "../src/middleware/auth";
 
 const First = httpError("FIRST", 409, "1 つ目の失敗");
 const Second = httpError("SECOND", 409, "2 つ目の失敗");

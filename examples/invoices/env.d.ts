@@ -14,7 +14,7 @@ declare global {
     STRIPE_WEBHOOK_SECRET: string;
     RESEND_API_KEY: string;
     MAIL_FROM: string;
-    REMINDER_QUEUE: Queue<import("./api/modules/reminders/domain").ReminderJob>;
+    REMINDER_QUEUE: Queue<import("./src/domains/reminders/domain").ReminderJob>;
     /** 支払い画面から戻ってくる先 */
     APP_URL: string;
   }

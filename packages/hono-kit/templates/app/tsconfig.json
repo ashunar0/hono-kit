@@ -15,5 +15,5 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["api", "test", "env.d.ts"]
+  "include": ["src", "test", "env.d.ts"]
 }

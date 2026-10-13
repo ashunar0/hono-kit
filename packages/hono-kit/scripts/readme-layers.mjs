@@ -21,7 +21,7 @@ const table = () => {
       .map(([k, v]) => (v === "type" ? `${show(k)} (types only)` : show(k)))
       .join(", ");
     const note = NOTES[role] ? `. ${NOTES[role]}` : "";
-    return `| ${KINDS[role] ?? RESOURCE_ROLES[role] ?? "shared"} | ${role} | ${list}${note} |`;
+    return `| ${KINDS[role] ?? RESOURCE_ROLES[role] ?? "lib"} | ${role} | ${list}${note} |`;
   });
   return [
     "| Side | Role | May import |",

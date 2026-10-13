@@ -15,7 +15,7 @@
   },
   "overrides": [
     {
-      "files": ["api/**/*.ts"],
+      "files": ["src/**/*.ts"],
       "rules": {
         "hnk/layer-imports": "error",
         "hnk/no-foreign-table-reads": "error",

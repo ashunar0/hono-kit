@@ -1,7 +1,7 @@
-import { authenticatedUser, orgId, userId, type Actor } from "../api/modules/users/domain";
+import { authenticatedUser, orgId, userId, type Actor } from "../src/domains/users/domain";
 import { beforeAll, describe, expect, it } from "vitest";
-import { scopeTo } from "../api/db";
-import { paymentsTable } from "../api/modules/payments/repo.d1";
+import { scopeTo } from "../src/db";
+import { paymentsTable } from "../src/domains/payments/repo.d1";
 import { db, insertInvoices, invoice } from "./fixtures";
 
 /**
@@ -9,7 +9,7 @@ import { db, insertInvoices, invoice } from "./fixtures";
  * repo の export から名前で拾うので、読みを足すと登録しなくても自動でここに入る。
  * 足した読みの表に行が無いと「空では確かめられない」で落ちるので、下の seed に足す
  */
-const modules = import.meta.glob("../api/modules/*/repo.*.ts", { eager: true });
+const modules = import.meta.glob("../src/domains/*/repo.*.ts", { eager: true });
 
 type Read = (db: ReturnType<typeof import("./fixtures").db>, actor: Actor) => never;
 

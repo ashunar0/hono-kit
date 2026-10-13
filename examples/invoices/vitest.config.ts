@@ -11,9 +11,6 @@ export default defineConfig({
       miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
     }),
   ],
-  resolve: {
-    alias: { "@api": new URL("./api", import.meta.url).pathname },
-  },
   test: {
     setupFiles: ["./test/apply-migrations.ts"],
   },

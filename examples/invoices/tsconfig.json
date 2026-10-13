@@ -15,9 +15,8 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "paths": {
-      "@/*": ["./web/*"],
-      "@api/*": ["./api/*"]
+      "@/*": ["./web/*"]
     }
   },
-  "include": ["api", "web", "test", "env.d.ts"]
+  "include": ["src", "web", "test", "env.d.ts"]
 }

@@ -37,7 +37,7 @@ export default {
           context.report({
             node,
             message:
-              "Files in api/routes/<noun>/ are index.ts (the router) and response.ts (how things are shown). Put rules in a module's domain, steps in its service",
+              "Files in src/routes/<noun>/ are index.ts (the router) and response.ts (how things are shown). Put rules in a module's domain, steps in its service",
           });
         },
       };

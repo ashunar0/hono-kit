@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "hnk-invoices",
-  "main": "api/index.ts",
+  "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "d1_databases": [
     {
