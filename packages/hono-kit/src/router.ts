@@ -8,7 +8,7 @@ import {
   type ToSchema,
 } from "hono";
 import { validator } from "hono/validator";
-import type { MergePath } from "hono/types";
+import type { MergePath, MergeSchemaPath } from "hono/types";
 import {
   buildEndpoint,
   type BuiltRoute,
@@ -106,6 +106,22 @@ export class Router<
     );
 
     return this as never;
+  }
+
+  /**
+   * Mounts a child router (`.route("/:customerId/invoices", customerInvoicesRouter)`).
+   * Hono's route returns a plain Hono; this returns the Router, so `.endpoint` may follow in any order
+   */
+  override route<
+    SubPath extends string,
+    SubEnv extends Env,
+    SubSchema extends Schema,
+    SubBasePath extends string,
+  >(
+    path: SubPath,
+    app: Hono<SubEnv, SubSchema, SubBasePath>,
+  ): Router<E, MergeSchemaPath<SubSchema, MergePath<BasePath, SubPath>> | S, BasePath> {
+    return super.route(path, app) as never;
   }
 }
 
