@@ -116,6 +116,22 @@ const rows = await db
 - If so (the loans a member sees as their own), count through the window that takes the actor
 - If not (copies a book has left to lend), the owner exports a window that takes no actor (`onLoanByBookWithin(db)`), so what "on loan" means stays in the owner. A domain's repo counting for a rule counts its own table as it is, so it takes no reach
 
+Windows join like tables. A count window has no row for what has none, so use `leftJoin` and `coalesce`:
+
+```ts
+// routes/books/queries.d1.ts: each book with the copies on loan
+const books = booksWithin(db, { q });
+const onLoan = onLoanByBookWithin(db);
+const rows = await db
+  .select({
+    id: books.id,
+    stock: books.stock,
+    onLoan: sql<number>`coalesce(${onLoan.onLoan}, 0)`,
+  })
+  .from(books)
+  .leftJoin(onLoan, eq(onLoan.bookId, books.id));
+```
+
 A reach narrows what is shown, never what a rule computes.
 
 ## Reach is the same for reads and writes

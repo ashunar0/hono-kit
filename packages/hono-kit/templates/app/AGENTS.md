@@ -48,6 +48,7 @@ What a GET returns is the resource's business, so the read lives next to the res
 - Return the screen's row type (`InvoiceRow`). Make no rules; borrow them from model when needed (`todayOf`)
 - Reads before a write (an entry check, materials for the decision) go through services. The read after a write, to show the result, goes through queries: a POST or PATCH returns what the GET of that thing returns. If it is gone right after the write, throw
 - A read a rule needs (counting before deciding) stays in the domain's repo
+- A handler may use any queries from deps, not only its own noun's: `GET /customers/:customerId/invoices` reads through `invoiceQueries` and shows them with `routes/invoices/response.ts`
 
 ## Adding a domain
 
