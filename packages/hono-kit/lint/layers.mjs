@@ -77,6 +77,8 @@ export const LAYERS = {
     zod: "value",
     "foreign:model": "value",
     response: "value",
+    // 見せるのは queries が返す画面の 1 行（書いた後も queries で読み直して返す）
+    queries: "type",
   },
   // 画面のための読み取り（src/routes/<名詞>/queries.ts）。返す形は画面が決めるので、domain の外にある。
   // SELECT だけの db を受け取り、domain の範囲付きの読み（…Within）を通して画面の 1 行を返す。

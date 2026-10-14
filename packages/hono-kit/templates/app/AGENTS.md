@@ -46,7 +46,7 @@ What a GET returns is the resource's business, so the read lives next to the res
 - queries take db as `ReadDb` (SELECT only). Build them in `src/deps.ts` (`invoiceQueries: invoicesQueries(db)`); the handler receives them from deps
 - Never read a table directly. Read through the `…Within` its owner's repo exports (`hnk/no-foreign-table-reads`). When what is seen depends on who looks, take `actor` and pass it on (`invoicesWithin(db, actor)`): who sees what stays inside the owner. A number that is the same whoever looks comes from a window that takes no actor
 - Return the screen's row type (`InvoiceRow`). Make no rules; borrow them from model when needed (`todayOf`)
-- A write handler that reads (an entry check, materials for the decision) reads through services
+- Reads before a write (an entry check, materials for the decision) go through services. The read after a write, to show the result, goes through queries: a POST or PATCH returns what the GET of that thing returns. If it is gone right after the write, throw
 - A read a rule needs (counting before deciding) stays in the domain's repo
 
 ## Adding a domain
@@ -98,7 +98,7 @@ export const invoicesRouter = createRouter().endpoint(
 | `errors.ts`     | Failures only this entry point has (a webhook signature, ...). Only when needed |
 | `queries.d1.ts` | The reads of the GET endpoints (see "Reads and writes")                         |
 
-- **`response.ts`**: a response is how a thing is shown when sent, not a rule of the thing, so it belongs to the resource. A resource that shows a thing has one, even if only `index.ts` uses it. Another resource showing the same thing imports it. Small one-off shapes (`{ ok: true }`) stay in `index.ts`
+- **`response.ts`**: a response is how a thing is shown when sent, not a rule of the thing, so it belongs to the resource. It takes the row type of queries (`InvoiceRow`), not the domain thing. A resource that shows a thing has one, even if only `index.ts` uses it. Another resource showing the same thing imports it. Small one-off shapes (`{ ok: true }`) stay in `index.ts`
 - **IDs** in params and bodies use the owner domain's `…IdSchema` (`customerIdSchema` from `domains/customers/model`)
 - **Tests** go over HTTP next to the resource (`src/routes/<noun>/index.test.ts`): create, read, list, 400 on bad input, 404 for someone else's, 403 for a role that may not, 401 when signed out
 
@@ -117,7 +117,7 @@ export const invoicesRouter = createRouter().endpoint(
 - **Writes**: a handler of a user's request may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row: if the second fails, the first stays half done. One repo call writes all or nothing (the repo receives `batch` from `wireBatch(db)` when it writes several statements)
 - **Reach**: put "someone else's" into the WHERE and do it in one statement (`find(reach, id)` / `update(reach, id, changes)` / `delete(reach, id)`). Never check first and write in a second statement. Repo methods take `reach` first
 - **Unique constraints**: the table's `uniqueIndex` decides, never a check you wrote first (two requests can interleave). Wrap the repo's `insert` / `update` in `try/catch`; `uniqueViolationOf(error)` from `hono-kit/sqlite` returns the column it hit (`"members.email"`) or null. Return a failure value per column (rethrow on null), and service turns each into the domain's conflict `Failure`. So every column the docs call unique gets its own `uniqueIndex`
-- **Returning**: `reply(200, body)` and `reply.failure(...)`. Create returns the created thing with 200; delete returns `{ ok: true }` with 200
+- **Returning**: `reply(200, body)` and `reply.failure(...)`. Create and update return the thing as its GET shows it, read again through queries, with 200; delete returns `{ ok: true }` with 200
 - **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. queries take a `PageQuery` (and declare `type …ListQuery = PageQuery & { status?: …Status }`), read `limit + 1` rows and return `toPage(...)` from `hono-kit/page`
 - **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` in service
 

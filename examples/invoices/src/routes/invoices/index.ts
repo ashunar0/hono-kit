@@ -91,14 +91,18 @@ export const invoicesRouter = createRouter()
         200: invoiceResponseSchema,
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoices, invoiceQueries }) => {
       const actor = c.get("actor");
       const input = c.req.valid("json");
       const now = c.get("now");
 
-      const row = await invoices.create(actor, input, now);
+      const created = await invoices.create(actor, input, now);
 
-      return reply(200, invoiceResponse(row));
+      // 書いた後は、GET と同じ道で読み直して返す。書けた直後に無いのは想定外
+      const invoice = await invoiceQueries.get(actor, created.id);
+      if (invoice === null) throw new Error(`invoice ${created.id} is gone right after the write`);
+
+      return reply(200, invoiceResponse(invoice));
     },
   )
   // 更新
@@ -113,7 +117,7 @@ export const invoicesRouter = createRouter()
         ...errorResponses(NotFound, Forbidden),
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoices, invoiceQueries }) => {
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
       const input = c.req.valid("json");
@@ -122,7 +126,10 @@ export const invoicesRouter = createRouter()
       const result = await invoices.update(actor, id, input, now);
       if (!result.ok) return reply.failure(result.error);
 
-      return reply(200, invoiceResponse(result.value));
+      const invoice = await invoiceQueries.get(actor, id);
+      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
+
+      return reply(200, invoiceResponse(invoice));
     },
   )
   // 送付
@@ -137,7 +144,7 @@ export const invoicesRouter = createRouter()
         ...errorResponses(NotFound, Forbidden, NotDraft),
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoices, invoiceQueries }) => {
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
       const now = c.get("now");
@@ -145,7 +152,10 @@ export const invoicesRouter = createRouter()
       const result = await invoices.send(actor, id, now);
       if (!result.ok) return reply.failure(result.error);
 
-      return reply(200, invoiceResponse(result.value));
+      const invoice = await invoiceQueries.get(actor, id);
+      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
+
+      return reply(200, invoiceResponse(invoice));
     },
   )
   // 削除

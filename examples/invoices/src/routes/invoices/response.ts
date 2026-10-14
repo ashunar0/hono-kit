@@ -2,7 +2,8 @@
  * 請求書を HTTP でどう見せるか。モノのルールではなく、送るときの見せ方なので、domain ではなくリソースの側に置く
  */
 import { z } from "zod";
-import { invoiceStatuses, type InvoiceStatus } from "../../domains/invoices/model";
+import { invoiceStatuses } from "../../domains/invoices/model";
+import type { InvoiceRow } from "./queries.d1";
 
 export const invoiceResponseSchema = z.object({
   id: z.string(),
@@ -18,21 +19,8 @@ export const invoiceResponseSchema = z.object({
 
 type InvoiceResponse = z.infer<typeof invoiceResponseSchema>;
 
-/** 見せる請求書。invoices の Invoice も、queries の InvoiceRow も当てはまる */
-type Shown = {
-  id: string;
-  title: string;
-  body: string;
-  amount: number;
-  customerEmail: string;
-  dueAt: Date;
-  status: InvoiceStatus;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-// モノ → 応答。モノをそのまま返さず、見せる形に詰め替える
-export function invoiceResponse(invoice: Shown): InvoiceResponse {
+// 画面の 1 行 → 応答。書いた後も queries で読み直したものを渡す
+export function invoiceResponse(invoice: InvoiceRow): InvoiceResponse {
   return {
     id: invoice.id,
     title: invoice.title,

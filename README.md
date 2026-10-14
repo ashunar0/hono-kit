@@ -38,7 +38,7 @@ write (POST, PATCH, DELETE): route → service → model → repo    keeps the r
 read (GET):                  route → queries → …Within          keeps the reach
 ```
 
-What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out.
+What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns.
 
 | Side         | What it is                                                     | Files                        |
 | ------------ | -------------------------------------------------------------- | ---------------------------- |
@@ -82,7 +82,7 @@ export const postsRouter = createRouter().endpoint(
       ...errorResponses(NotFound),
     },
   },
-  async (c, reply, { posts }) => {
+  async (c, reply, { posts, postQueries }) => {
     const actor = c.get("actor");
     const { id } = c.req.valid("param");
     const input = c.req.valid("json");
@@ -91,7 +91,12 @@ export const postsRouter = createRouter().endpoint(
     const result = await posts.update(actor, id, input, now);
     if (!result.ok) return reply.failure(result.error);
 
-    return reply(200, postResponse(result.value));
+    // After a write, read it again the way its GET does
+    const post = await postQueries.get(actor, id);
+    if (post === null)
+      throw new Error(`post ${id} is gone right after the write`);
+
+    return reply(200, postResponse(post));
   },
 );
 ```
@@ -148,7 +153,7 @@ Each file in a domain is classified by its name prefix (its role); each file in 
 | outbound | mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                                    |
 | outbound | queue    | model (types only), service (types only), lib. Puts jobs on a queue. What takes them off is a job in src/jobs/                                                                                                                                                                                    |
 | inbound  | resource | hono-kit, zod, errors, middleware, another domain's model, resource, response, queries (types only), lib. `src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported                                                                   |
-| inbound  | response | hono-kit, zod, another domain's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                             |
+| inbound  | response | hono-kit, zod, another domain's model, response, queries (types only), lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                       |
 | inbound  | queries  | drizzle-orm, hono-kit/page, db (types only), another domain's repo, another domain's model, lib. `src/routes/<noun>/queries.<tech>.ts`: the reads of the GET endpoints. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)         |
 | inbound  | job      | hono-kit (types only), another domain's model, lib. `src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps                                                                 |
 | inbound  | errors   | hono-kit, lib. `src/routes/<noun>/errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)                                     |

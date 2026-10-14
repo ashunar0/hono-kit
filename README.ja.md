@@ -52,7 +52,7 @@ export const invoicesRouter = createRouter()
         ...errorResponses(NotFound, Forbidden),
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoices, invoiceQueries }) => {
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
       const input = c.req.valid("json");
@@ -61,7 +61,12 @@ export const invoicesRouter = createRouter()
       const result = await invoices.update(actor, id, input, now);
       if (!result.ok) return reply.failure(result.error);
 
-      return reply(200, invoiceResponse(result.value));
+      // 書いた後は、GET と同じ道（queries）で読み直して返す
+      const invoice = await invoiceQueries.get(actor, id);
+      if (invoice === null)
+        throw new Error(`invoice ${id} is gone right after the write`);
+
+      return reply(200, invoiceResponse(invoice));
     },
   );
 ```
@@ -118,7 +123,7 @@ jobs を domain の中に置かないのも同じ理由。cron やキューの�
 
 GET が返す形はリソースの都合なので、読み取りはリソースの隣の `queries.<技術>.ts` に書く（CQRS の、コードと型だけを分ける段階）。
 queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。ルールは作らず、要るときは model から借りる。
-書き込みの handler が入口の確認や材料のために読むときは、service を通す。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
+書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PATCH は、その GET と同じ形を返し、見せ方（response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
 画面のための読み取りを domain に置くと、一覧ごとに「どの domain が答えるか」を決める決まり（外部キーの向き、読む側が返す形の宣言、1 つの一覧を 2 通りに割らない）が要った。それが分けた理由
 例のアプリの月ごとのレポートは、もとは自分の表もルールも持たない、読むだけの domain（reports）だった。queries に移すと domain ごと無くなった（集計は `routes/reports/queries.d1.ts`、admin だけが見られるのは guard の `requireRole("admin")`、月の計算は `src/lib/month.ts`）
 
@@ -292,7 +297,7 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 | 子の router                            | 入れ子のリソース（`routes/issues/comments/`）。親が `.route("/:issueId/comments", issueCommentsRouter)` でマウントし、子の path は残りだけ（`"/"`、`"/:id"`）。`request.param` には親の param も書く                                                                                                                                                          |
 | 失敗の使い分け                         | 見えないものは `NOT_FOUND`（在ることも知らせない）、見えるが権限が足りないものは `FORBIDDEN`。確認の順は guard（401 → 役割の 403）→ 入力検査 400 → NOT_FOUND → FORBIDDEN（行を見る権限）→ unprocessable → conflict                                                                                                                                            |
 | 状態が進むモノ                         | 遷移できない失敗は model に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の model の `NotPayable` と同じ code                                                          |
-| 状態コード                             | 作成は 200 で作ったものを返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                                                                   |
+| 状態コード                             | 作成と更新は、書いた後に queries で読み直したもの（GET と同じ形）を 200 で返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                  |
 | 入力の文字列                           | `trim()` してから長さを数える。空白だけは通さない                                                                                                                                                                                                                                                                                                             |
 | 一覧                                   | 必ず `pageQuerySchema` / `pageResponseSchema` / `pageResponse` を使う。queries は `PageQuery` を受け取って `Page` を返す（`toPage`）。上限の無い一覧を書かない。応答は `{ items, nextCursor }`（nextCursor は文字列。続きが無ければ null）。並びが昇順なら、cursor の比較は `gt`（invoices の降順は `lt`）。親が見えないときの一覧は `NOT_FOUND` を返してよい |
 | 操作する人の型                         | 利用者のいない入口（cron、webhook）が呼ぶ service は `Actor` を受ける。利用者の操作だけの service は `User` を受けてよい（HTTP は `requireAuth` で `User` になる）。どちらも引数の先頭に置く                                                                                                                                                                  |
