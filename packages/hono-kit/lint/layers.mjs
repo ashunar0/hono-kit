@@ -80,7 +80,8 @@ export const LAYERS = {
   },
   // 画面のための読み取り（src/routes/<名詞>/queries.ts）。返す形は画面が決めるので、domain の外にある。
   // SELECT だけの db を受け取り、domain の範囲付きの読み（…Within）を通して画面の 1 行を返す。
-  // ルールは作らず、model から借りる（誰として読むかの reachOf など）。手順は持たないので、service は使わない。
+  // ルールは作らず、model から借りる（今日の日付の todayOf など）。誰が何を見るかは窓口に actor を渡すだけで、読む側は知らない。
+  // 手順は持たないので、service は使わない。
   // 表は直接読めない（no-foreign-table-reads）。範囲の付け忘れが書けないように
   queries: {
     "drizzle-orm": "value",

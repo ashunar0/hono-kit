@@ -98,7 +98,7 @@ async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promi
 
 URL の名詞（リソース）と、ドメインの名詞（domain）は別物なので、置き場所を分ける。
 
-- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）、要るときだけ `errors.ts`（その入口だけの失敗）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
+- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。名詞ごとに必ずディレクトリを作り、中は `index.ts`（router）と `response.ts`（HTTP での見せ方）と `queries.<技術>.ts`（GET の読み取り）、要るときだけ `errors.ts`（その入口だけの失敗）。入れ子のリソースは入れ子のディレクトリ（`/invoices/:id/shares` → `routes/invoices/shares/`）。`:id` のディレクトリは作らない。親が子を `.route("/:id/shares", invoiceSharesRouter)` でマウントし、子の path は残りだけ
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
 - **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースが URL で名前を付けるのと同じく、きっかけで名前を付ける（`daily.ts`、`reminders-queue.ts`）。同じきっかけで動く仕事は同じファイルに並べる。domain の外に置き、service は deps から受け取る
 - **参照は入口（routes、jobs）→ domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない
@@ -106,6 +106,20 @@ URL の名詞（リソース）と、ドメインの名詞（domain）は別物�
 同じ単語になることは多いが（`routes/invoices/` と `domains/invoices/`）、ならないこともある（`/payments` は支払いの domain と請求書の domain を両方使う）。片方に合わせて曲げない。
 route を domain ごとに置くと、`/stores/:storeId/menus` と `/menus/:menuId` のように始まりの名詞が違うパスが 1 つの router に混ざり、Hono の入れ子が使えなくなる。他の domain を使うたびに、宣言して deps.ts でつなぐ例外も増える。それが分けた理由
 jobs を domain の中に置かないのも同じ理由。cron やキューの入口は、きっかけで名前が付き、service を呼ぶ側なので、domain より routes の仲間。中身が 1 つの domain しか使わなくても、名前が一致するのはたまたまで、まとめる理由にならない
+
+### 読み取りと書き込み
+
+道は 2 本ある。
+
+```
+書き込み（POST・PATCH・DELETE）: route → service → model → repo   ルールを守る
+読み取り（GET）:                  route → queries → 〜Within         範囲を守る
+```
+
+GET が返す形はリソースの都合なので、読み取りはリソースの隣の `queries.<技術>.ts` に書く（CQRS の、コードと型だけを分ける段階）。
+queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。ルールは作らず、要るときは model から借りる。
+書き込みの handler が入口の確認や材料のために読むときは、service を通す。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
+画面のための読み取りを domain に置くと、一覧ごとに「どの domain が答えるか」を決める決まり（外部キーの向き、読む側が返す形の宣言、1 つの一覧を 2 通りに割らない）が要った。それが分けた理由
 
 ### 出発点: core・inbound・outbound
 
@@ -126,7 +140,8 @@ src/domains/invoices/
 └─ repo.d1.ts     outbound: テーブルと、D1 での実装。行 → モノの詰め替え
 src/routes/invoices/
 ├─ index.ts       inbound: router。HTTP の入力の形と handler
-└─ response.ts    inbound: モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
+├─ response.ts    inbound: モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
+└─ queries.d1.ts  inbound: GET の読み取り。窓口（〜Within）を通して画面の 1 行を返す
 ```
 
 ```
@@ -146,7 +161,7 @@ outbound のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`g
 | 横に増える   | 2 つ目の outbound（保存先、外部 API、メール）      | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                                                        |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                                                            |
 | 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
-| 窓口を開く   | 他の domain が SQL で読みに来る（集計など）        | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                                                        |
+| 窓口を開く   | 画面や他の domain が SQL で読みに来る（集計など）  | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                                                        |
 | （足さない） | 他の domain を読む・書く                           | domain には何も足さない。入口（handler、cron、queue）が両方の service を呼び、値で渡す                                                                                                                        |
 
 どの動きでも、矢印は model に向かったまま変わらない。
@@ -191,7 +206,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
   外が冪等キーを受けるなら渡す（Stripe には paymentId、Resend には督促の日付入りのキー）。
   途中で落ちたときに「重複してもよい」か「欠けてもよい」かは業務の判断なので、service のコメントに書く
 - **domain は互いを呼ばない**。つなぐのは入口（上の「domain をまたぐとき」）。deps.ts は domain を 1 行ずつ組み立てるだけで、domain の間に何もつながない。
-  型の上でだけ、他の domain の model の型を借りてよい（`import type`）。外部キーの `references()` と、読ませる窓口（`〜Within`）は repo どうしの話で、下の「読みの窓口」にある。
+  型の上でだけ、他の domain の model の型を借りてよい（`import type`）。外部キーの `references()` と、読ませる窓口（`〜Within`）は repo と queries の話で、下の「読みの窓口」にある。
   getter で遅延する案は外した（組み立ては関数を返すだけで軽い）。deps.ts は何を import してもよい場所で、lint の表には入れていない
 - **route は `router.endpoint(設定, handler)` 1 つで書く**（素の Hono の上）。設定の `request` のキーは、handler で読む `c.req.valid("…")` の名前と同じ（`param` を宣言したら `valid("param")`）。`method` は小文字、`path` は Hono の `/:id`、応答はスキーマをそのまま書く（書き方は 1 つ。失敗の応答だけは `errorResponses` が失敗の文言を説明として付ける）。guard が持つ失敗と ValidationError を hono-kit が足す。`c.json` だとずれたときの赤線が handler の頭に付くので、`reply` で返す。`createRoute` は公開しない（書き方を 1 つにするため）。`path` の `:name` が `request.param` のキーに無いと型エラーになる（逆向きの余分なキーは許す。入れ子でマウントしたとき、親のパスの `:name` が来るから）
 - **スキーマは Standard Schema を満たすものなら何でも**（zod、valibot で確かめた）。hono-kit は検証のライブラリを決め打ちせず、**hono-kit 自身の依存は hono だけ**。hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書いている。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。**OpenAPI は別の部品**（`hono-kit/openapi` の `openapiDocument(app, info)`）で、登録された宣言から文書を作る。JSON Schema への変換はスキーマのライブラリ自身が持つ（Standard JSON Schema）。valibot は単体では出せないので、文書に出したいものだけ `toStandardJsonSchema` で包む。要らないなら使わない
@@ -214,7 +229,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
   `provideDeps` がリクエストごとに、使うときに 1 回だけ組み立てる
 - **outbound の形は service が宣言する**（Go の「interface は使う側が決める」）
-- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）だけ。
+- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）と `queries.<技術>.ts`（queries）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
   他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）、成功に 200 以外を使わない（`route-responds-200`）、`new Hono()` を書かない（`no-new-hono`）も、lint で止める
@@ -225,7 +240,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **一覧のページ送りは hono-kit の部品**（`hono-kit/page` と `pageQuerySchema` / `pageResponseSchema` / `pageResponse`）。
   `pageQuerySchema(絞り込みのスキーマ)` が cursor と limit を足し、`pageResponseSchema(1 件のスキーマ)` が `{ items, nextCursor }` を作る。中身はアプリのスキーマ（zod でも valibot でも）。
   一覧は `PageQuery`（`limit` は必須）を受け取って `Page` を返す。query に展開すると `limit` に既定（20）と上限（100）が付く。
-  repo は `limit + 1` 件読んで `toPage` に渡す。一覧の route（`get` で、path の最後が `:param` でないもの）の query が `pageQuerySchema(...)` の呼び出し（か、同じファイルでそれを入れた変数）でないと、lint `route-lists-are-paged` が止める。件数が別の所で決まっているもの（月ごとの集計は `MAX_MONTHS` で検査している）は、`// oxlint-disable-next-line hnk/route-lists-are-paged -- 理由` で外す。**試しに強く付けてある**。例外で困る場面が多ければ、このルールを外す
+  queries は `limit + 1` 件読んで `toPage` に渡す。一覧の route（`get` で、path の最後が `:param` でないもの）の query が `pageQuerySchema(...)` の呼び出し（か、同じファイルでそれを入れた変数）でないと、lint `route-lists-are-paged` が止める。件数が別の所で決まっているもの（月ごとの集計は `MAX_MONTHS` で検査している）は、`// oxlint-disable-next-line hnk/route-lists-are-paged -- 理由` で外す。**試しに強く付けてある**。例外で困る場面が多ければ、このルールを外す
 - **ログイン状態は `buildApp(makeDeps, authenticate)` で差し込む**。`authenticate` はセッションの user（未ログインは null）を文脈に積む middleware で、
   本番は `withUser`（認証の提供元ができるまでは仮実装）、テストは `appAs(user)`（`test/fixtures.ts`）で本物の deps と D1 のまま利用者だけ差し替える。
   route 層は HTTP 越しに試せる。置き場所はテスト相手の隣（`src/routes/invoices/index.test.ts`）。model と service のテストは domain に残す（Go の _test.go と同じ）
@@ -239,10 +254,11 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **共有は同じ組織の中で、閲覧と編集の 2 段階**。member の範囲は「自分のもの＋共有されたもの」。
   repo が範囲を解釈し、行と一緒に access（`manage` / `edit` / `view`）を返す。`canEdit` と `canManage` は access を受け取る純関数。
   共有できるのは所有者と組織の admin。見えない人には在ることも分からない（NOT_FOUND）、見えるが権限が足りないときは FORBIDDEN
-- **repo どうしの窓口は 1 つだけ**: SQL で読ませる、持ち主の repo が出す `〜Within`（outbound）。
-  outbound は他 domain の repo から、外部キーの表（`〜Table`）と `〜Within` だけを借りる（lint `layer-imports`）。service どうしは呼び合わず、入口がつなぐ
-- **他の domain に見せる読みは、誰として読むかが必須の入口（`invoicesWithin(db, actor)` など）だけ**。actor が必須引数なので、範囲の付け忘れが書けない。
-  範囲の決め方（`reachOf`）は持ち主の中に閉じていて、読む側は知らない。
+- **repo の外への窓口は 1 つだけ**: SQL で読ませる、持ち主の repo が出す `〜Within`（outbound）。
+  repo と queries は他 domain の repo から、外部キーの表（`〜Table`）と `〜Within` だけを借りる（lint `layer-imports`）。service どうしは呼び合わず、入口がつなぐ
+- **domain の外（queries と他の domain）に見せる読みは、誰として読むかが必須の入口（`invoicesWithin(db, actor)` など）だけ**。actor が必須引数なので、範囲の付け忘れが書けない。
+  範囲の決め方（`reachOf`）は持ち主の中に閉じていて、読む側は知らない。範囲が他の domain を通して決まるとき（会員の「自分の貸出」は、見える会員行の貸出）は、reach が actor を持ち、`within` がそれを相手の窓口に渡す。
+  誰が見ても同じ数（本の残り冊数）は、actor を取らない窓口（`onLoanByBookWithin(db)`）を持ち主が出す。「貸出中」の意味が持ち主の中に残る。
   生の表は読みに使わせない（lint `no-foreign-table-reads`。外部キーの `references()` の中だけ許す）。
   `〜Within` は repo の export から自動で拾い、`test/reads-contract.test.ts` が「他の組織のデータが出ない」を全部に当てる。
   読みを足したら、その表の行を seed に足さないとテストが落ちる
@@ -266,23 +282,23 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 
 生成された形のまま、invoices と同じ形で書く。迷いやすい所は、次のとおりに揃える（comments を AI に書かせた実験で、書き手が迷った所）。
 
-| 迷うこと                               | 決まり                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 置き場所                               | `domains/<名前>/` に `model / service / repo.d1` で始める（生成器）。リソースは URL のとおり `routes/<名詞>/` に `index.ts / response.ts` を手で書く。増やすのは 2 つ目が現れたとき                                                                                                                                                                        |
-| 他の domain を使う                     | domain からは使わない。handler が両方の service を受け取り、読んだものを値で渡す。受け取る service は形を宣言する（使う分だけ。例: `{ id: string; storeId: string }`）                                                                                                                                                                                     |
-| 他の domain の表                       | 外部キーの `references()` の中でだけ使う。読むときは、持ち主が出している `〜Within(db, actor)` を使う                                                                                                                                                                                                                                                      |
-| 親の下にぶら下がるもの（コメントなど） | 親が見えるかを、handler が親の service に問い合わせる（`issues.get(actor, issueId)`。見えなければ NOT_FOUND）。子に orgId は持たせない。親が見えれば読める・書ける。もっと厳しい権限が要るなら、親が access を返す問いを宣言する                                                                                                                           |
-| 子の router                            | 入れ子のリソース（`routes/issues/comments/`）。親が `.route("/:issueId/comments", issueCommentsRouter)` でマウントし、子の path は残りだけ（`"/"`、`"/:id"`）。`request.param` には親の param も書く                                                                                                                                                       |
-| 失敗の使い分け                         | 見えないものは `NOT_FOUND`（在ることも知らせない）、見えるが権限が足りないものは `FORBIDDEN`。確認の順は guard（401 → 役割の 403）→ 入力検査 400 → NOT_FOUND → FORBIDDEN（行を見る権限）→ unprocessable → conflict                                                                                                                                         |
-| 状態が進むモノ                         | 遷移できない失敗は model に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の model の `NotPayable` と同じ code                                                       |
-| 状態コード                             | 作成は 200 で作ったものを返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                                                                |
-| 入力の文字列                           | `trim()` してから長さを数える。空白だけは通さない                                                                                                                                                                                                                                                                                                          |
-| 一覧                                   | 必ず `pageQuerySchema` / `pageResponseSchema` / `pageResponse` を使う。repo は `PageQuery` を受け取って `Page` を返す（`toPage`）。上限の無い一覧を書かない。応答は `{ items, nextCursor }`（nextCursor は文字列。続きが無ければ null）。並びが昇順なら、cursor の比較は `gt`（invoices の降順は `lt`）。親が見えないときの一覧は `NOT_FOUND` を返してよい |
-| 操作する人の型                         | 利用者のいない入口（cron、webhook）が呼ぶ service は `Actor` を受ける。利用者の操作だけの service は `User` を受けてよい（HTTP は `requireAuth` で `User` になる）。どちらも引数の先頭に置く                                                                                                                                                               |
-| 外部キーの onDelete                    | 親が消えたら子も消えるなら `cascade`。子が親より長く残るべきなら、理由を書いて別の値にする                                                                                                                                                                                                                                                                 |
-| システム（cron、webhook）の権限        | 書く・消すのは利用者（`User`）だけ。システムにさせたい操作は、持ち主の service に `System` を受ける関数として出す（例: `markPaid(system, id, now)`）                                                                                                                                                                                                       |
-| テスト                                 | HTTP のテストはリソースの隣（`src/routes/<名詞>/index.test.ts`）、model と service のテストは domain の中（`service.test.ts` など）。domain をまたぐ線（組織の線・読みの窓口）とアプリ全体は `test/`。本物のローカル D1 を使う。HTTP は `fixtures.ts` の `request(user, method, path, body)` で、利用者を差し替えて試す                                    |
-| migration                              | `pnpm db:generate` で作る。`pnpm format` は `migrations/meta/*.json` を壊すので、migrations には掛けない                                                                                                                                                                                                                                                   |
+| 迷うこと                               | 決まり                                                                                                                                                                                                                                                                                                                                                        |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 置き場所                               | `domains/<名前>/` に `model / service / repo.d1` で始める（生成器）。リソースは URL のとおり `routes/<名詞>/` に `index.ts / response.ts / queries.d1.ts` を手で書く。増やすのは 2 つ目が現れたとき                                                                                                                                                           |
+| 他の domain を使う                     | domain からは使わない。handler が両方の service を受け取り、読んだものを値で渡す。受け取る service は形を宣言する（使う分だけ。例: `{ id: string; storeId: string }`）                                                                                                                                                                                        |
+| 他の domain の表                       | 外部キーの `references()` の中でだけ使う。読むときは、持ち主が出している `〜Within(db, actor)` を使う                                                                                                                                                                                                                                                         |
+| 親の下にぶら下がるもの（コメントなど） | 親が見えるかを、GET なら親のリソースの queries に（`issueQueries.get(actor, issueId)`）、書き込みなら親の service に（`issues.get(actor, issueId)`）handler が問い合わせる（見えなければ NOT_FOUND）。子に orgId は持たせない。親が見えれば読める・書ける。もっと厳しい権限が要るなら、親が access を返す問いを宣言する                                       |
+| 子の router                            | 入れ子のリソース（`routes/issues/comments/`）。親が `.route("/:issueId/comments", issueCommentsRouter)` でマウントし、子の path は残りだけ（`"/"`、`"/:id"`）。`request.param` には親の param も書く                                                                                                                                                          |
+| 失敗の使い分け                         | 見えないものは `NOT_FOUND`（在ることも知らせない）、見えるが権限が足りないものは `FORBIDDEN`。確認の順は guard（401 → 役割の 403）→ 入力検査 400 → NOT_FOUND → FORBIDDEN（行を見る権限）→ unprocessable → conflict                                                                                                                                            |
+| 状態が進むモノ                         | 遷移できない失敗は model に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の model の `NotPayable` と同じ code                                                          |
+| 状態コード                             | 作成は 200 で作ったものを返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                                                                   |
+| 入力の文字列                           | `trim()` してから長さを数える。空白だけは通さない                                                                                                                                                                                                                                                                                                             |
+| 一覧                                   | 必ず `pageQuerySchema` / `pageResponseSchema` / `pageResponse` を使う。queries は `PageQuery` を受け取って `Page` を返す（`toPage`）。上限の無い一覧を書かない。応答は `{ items, nextCursor }`（nextCursor は文字列。続きが無ければ null）。並びが昇順なら、cursor の比較は `gt`（invoices の降順は `lt`）。親が見えないときの一覧は `NOT_FOUND` を返してよい |
+| 操作する人の型                         | 利用者のいない入口（cron、webhook）が呼ぶ service は `Actor` を受ける。利用者の操作だけの service は `User` を受けてよい（HTTP は `requireAuth` で `User` になる）。どちらも引数の先頭に置く                                                                                                                                                                  |
+| 外部キーの onDelete                    | 親が消えたら子も消えるなら `cascade`。子が親より長く残るべきなら、理由を書いて別の値にする                                                                                                                                                                                                                                                                    |
+| システム（cron、webhook）の権限        | 書く・消すのは利用者（`User`）だけ。システムにさせたい操作は、持ち主の service に `System` を受ける関数として出す（例: `markPaid(system, id, now)`）                                                                                                                                                                                                          |
+| テスト                                 | HTTP のテストはリソースの隣（`src/routes/<名詞>/index.test.ts`）、model と service のテストは domain の中（`service.test.ts` など）。domain をまたぐ線（組織の線・読みの窓口）とアプリ全体は `test/`。本物のローカル D1 を使う。HTTP は `fixtures.ts` の `request(user, method, path, body)` で、利用者を差し替えて試す                                       |
+| migration                              | `pnpm db:generate` で作る。`pnpm format` は `migrations/meta/*.json` を壊すので、migrations には掛けない                                                                                                                                                                                                                                                      |
 
 ## 未決
 

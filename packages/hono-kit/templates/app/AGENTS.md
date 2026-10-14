@@ -32,12 +32,29 @@ The nouns in the URL (resources) and the nouns of the domain (domains) are diffe
 
 They often share a word (`routes/invoices/` and `domains/invoices/`) and often do not (`/customers/:customerId/invoices` is a customer's invoices, written with the invoices domain). Do not bend one to match the other.
 
+## Reads and writes
+
+There are two paths.
+
+```
+write (POST, PATCH, DELETE): route → service → model → repo    keeps the rules
+read (GET):                  route → queries → …Within          keeps the reach
+```
+
+What a GET returns is the resource's business, so the read lives next to the resource (`src/routes/<noun>/queries.<tech>.ts`).
+
+- queries take db as `ReadDb` (SELECT only). Build them in `src/deps.ts` (`invoiceQueries: invoicesQueries(db)`); the handler receives them from deps
+- Never read a table directly. Read through the `…Within` its owner's repo exports (`hnk/no-foreign-table-reads`). When what is seen depends on who looks, take `actor` and pass it on (`invoicesWithin(db, actor)`): who sees what stays inside the owner. A number that is the same whoever looks comes from a window that takes no actor
+- Return the screen's row type (`InvoiceRow`). Make no rules; borrow them from model when needed (`todayOf`)
+- A write handler that reads (an entry check, materials for the decision) reads through services
+- A read a rule needs (counting before deciding) stays in the domain's repo
+
 ## Adding a domain
 
 `pnpm hnk g domain <name>` writes the bare shape under `src/domains/<name>/` (`model / service / repo.d1 / service.test`) and wires it into `src/deps.ts` above the `// hnk:` lines. It is a thing with only `id`, `createdAt` and `updatedAt`, and `get` / `create`. **Grow it into the real thing:**
 
 1. `model.ts`: fields, `…InputSchema` (zod; `trim()` before checking length), failures (`Failure`), `reachOf(actor)` when someone may touch only some of them (a union such as `{ kind: "all" } | { kind: "own"; userId: string }`), and `may…(actor, thing)` when a permission needs the row
-2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE), indexes for the list order
+2. `repo.d1.ts`: columns, `to…` (row → thing), `within` (reach → WHERE), the `…Within(db, actor)` window the reads go through, indexes for the list order
 3. `service.ts`: the steps. Declare the `…Repository` shape here
 4. Run `pnpm db:generate`
 
@@ -62,23 +79,24 @@ export const invoicesRouter = createRouter().endpoint(
     request: { param: z.object({ id: invoiceIdSchema }) },
     responses: { 200: invoiceResponseSchema, ...errorResponses(NotFound) },
   },
-  async (c, reply, { invoices }) => {
+  async (c, reply, { invoiceQueries }) => {
     const actor = c.get("actor");
     const { id } = c.req.valid("param");
 
-    const result = await invoices.get(actor, id);
-    if (!result.ok) return reply.failure(result.error);
+    const invoice = await invoiceQueries.get(actor, id);
+    if (invoice === null) return reply.failure(NotFound.code);
 
-    return reply(200, invoiceResponse(result.value));
+    return reply(200, invoiceResponse(invoice));
   },
 );
 ```
 
-| File          | Role                                                                            |
-| ------------- | ------------------------------------------------------------------------------- |
-| `index.ts`    | The router: the endpoints of this noun, and `.route(...)` for its children      |
-| `response.ts` | How the thing is shown over HTTP: `…ResponseSchema` and `…Response`             |
-| `errors.ts`   | Failures only this entry point has (a webhook signature, ...). Only when needed |
+| File            | Role                                                                            |
+| --------------- | ------------------------------------------------------------------------------- |
+| `index.ts`      | The router: the endpoints of this noun, and `.route(...)` for its children      |
+| `response.ts`   | How the thing is shown over HTTP: `…ResponseSchema` and `…Response`             |
+| `errors.ts`     | Failures only this entry point has (a webhook signature, ...). Only when needed |
+| `queries.d1.ts` | The reads of the GET endpoints (see "Reads and writes")                         |
 
 - **`response.ts`**: a response is how a thing is shown when sent, not a rule of the thing, so it belongs to the resource. A resource that shows a thing has one, even if only `index.ts` uses it. Another resource showing the same thing imports it. Small one-off shapes (`{ ok: true }`) stay in `index.ts`
 - **IDs** in params and bodies use the owner domain's `…IdSchema` (`customerIdSchema` from `domains/customers/model`)
@@ -100,7 +118,7 @@ export const invoicesRouter = createRouter().endpoint(
 - **Reach**: put "someone else's" into the WHERE and do it in one statement (`find(reach, id)` / `update(reach, id, changes)` / `delete(reach, id)`). Never check first and write in a second statement. Repo methods take `reach` first
 - **Unique constraints**: the table's `uniqueIndex` decides, never a check you wrote first (two requests can interleave). Wrap the repo's `insert` / `update` in `try/catch`; `uniqueViolationOf(error)` from `hono-kit/sqlite` returns the column it hit (`"members.email"`) or null. Return a failure value per column (rethrow on null), and service turns each into the domain's conflict `Failure`. So every column the docs call unique gets its own `uniqueIndex`
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Create returns the created thing with 200; delete returns `{ ok: true }` with 200
-- **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. The repo takes a `PageQuery` (service declares `type …ListQuery = PageQuery & { status?: …Status }`), reads `limit + 1` rows and returns `toPage(...)` from `hono-kit/page`
+- **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. queries take a `PageQuery` (and declare `type …ListQuery = PageQuery & { status?: …Status }`), read `limit + 1` rows and return `toPage(...)` from `hono-kit/page`
 - **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` in service
 
 ## When unsure
