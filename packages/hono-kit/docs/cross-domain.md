@@ -103,6 +103,7 @@ const rows = await scope.reads
 
 - **Read the way the foreign key points**: the domain whose table references the other reads it (payments references invoices, so payments reads `invoicesWithin`). The other way round makes the imports a cycle, and `import/no-cycle` stops it. A list under the other's URL is still answered by the referencing domain: `GET /books?available=true` (books with a copy not on loan) is read by loans, which references books, and the books handler calls the loans service
 - The window takes `actor` when the owner has a reach. When every row is visible to everyone, it takes only `db`
+- **The reader declares the shape it returns** (`type ShelfBook = { id; title; …; onLoan: number }` in loans' model), as a writing service declares the shape it takes. It does not borrow the owner's type (`Book`) or its row mapper (`toBook`): a book with its copies on loan is the reader's shape, not the owner's thing
 - Conditions whose meaning the owner decides (what a search word matches) are the owner's: the window takes them (`booksWithin(db, { q })`) and applies them inside. The reader adds only conditions on its own table (copies on loan)
 - Another domain's table itself (`invoicesTable`) is used only inside foreign-key `references()` (`hnk/no-foreign-table-reads`)
 
