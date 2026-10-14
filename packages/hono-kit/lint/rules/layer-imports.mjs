@@ -7,8 +7,7 @@ import {
 } from "../project.mjs";
 import {
   HINTS,
-  KINDS,
-  KIND_HINTS,
+  DOMAIN_ROLES,
   LAYERS,
   ENTRY_HINT,
   ENTRY_ROLES,
@@ -50,9 +49,11 @@ export default {
         },
       };
     }
-    // domain の中で使えるのは KINDS の役割だけ（errors や job は domain の外の役割）
+    // domain の中で使えるのは DOMAIN_ROLES の役割だけ（errors や job は domain の外の役割）
     const allowed =
-      self.domain && !KINDS[self.role] ? undefined : LAYERS[self.role];
+      self.domain && !DOMAIN_ROLES.includes(self.role)
+        ? undefined
+        : LAYERS[self.role];
     if (!allowed) {
       if (!self.domain) return {};
       // domain の中に、役割の分からないファイルを置かせない
@@ -63,7 +64,7 @@ export default {
             message:
               self.role === "errors"
                 ? ERRORS_HINT
-                : `Files in a domain start with their role (${Object.keys(KINDS).join(", ")}). Outbound adapters are named "role.tech.ts" (repo.d1.ts, ...)`,
+                : `Files in a domain start with their role (${DOMAIN_ROLES.join(", ")}). repo, gateway, mailer and queue are named "role.tech.ts" (repo.d1.ts, ...)`,
           });
         },
       };
@@ -85,9 +86,8 @@ export default {
       const targetRole = target.replace(/^foreign:/, "");
       const hint =
         HINTS[`${self.role}→${target}`] ??
-        (self.domain && ENTRY_ROLES[targetRole] ? ENTRY_HINT : undefined) ??
-        (KINDS[targetRole] && !target.startsWith("foreign:")
-          ? KIND_HINTS[`${KINDS[self.role]}→${KINDS[targetRole]}`]
+        (self.domain && ENTRY_ROLES.includes(targetRole)
+          ? ENTRY_HINT
           : undefined);
       if (!kind) {
         const list = Object.entries(allowed)

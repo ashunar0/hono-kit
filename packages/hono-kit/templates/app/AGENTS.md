@@ -60,11 +60,11 @@ What a GET returns is the resource's business, so the read lives next to the res
 3. `service.ts`: the steps. Declare the `…Repository` shape here
 4. Run `pnpm db:generate`
 
-| File         | Side     | Role                                                |
-| ------------ | -------- | --------------------------------------------------- |
-| `model.ts`   | core     | The thing (What): types, rules, ID brands, failures |
-| `service.ts` | core     | The steps (How) and the storage shape they need     |
-| `repo.d1.ts` | outbound | Table, D1 implementation, row → thing               |
+| File         | Role                                                |
+| ------------ | --------------------------------------------------- |
+| `model.ts`   | The thing (What): types, rules, ID brands, failures |
+| `service.ts` | The steps (How) and the storage shape they need     |
+| `repo.d1.ts` | Table, D1 implementation, row → thing               |
 
 Every arrow points to model; `hnk/layer-imports` says what each file may import. Grow only **when a second one appears**: another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
 

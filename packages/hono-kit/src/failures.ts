@@ -1,5 +1,5 @@
 /**
- * Failure data. It knows no HTTP status, so core (service, commands) may import it too.
+ * Failure data. It knows no HTTP status, so model and service may import it too.
  * The three that mean the same in every domain (401, 403, 404) are the standards kept here.
  * Failures specific to a domain go in that domain's model.ts as a Failure
  */

@@ -1,4 +1,4 @@
-import { isHttpInbound } from "../ast.mjs";
+import { isHttpEntry } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 const RESPONSE_METHODS = new Set(["json", "text", "body", "html", "redirect"]);
@@ -9,7 +9,7 @@ const RESPONSE_METHODS = new Set(["json", "text", "body", "html", "redirect"]);
  */
 export default {
   create(context) {
-    if (!isHttpInbound(fileOf(context))) return {};
+    if (!isHttpEntry(fileOf(context))) return {};
 
     return {
       CallExpression(node) {

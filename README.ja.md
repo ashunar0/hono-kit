@@ -127,27 +127,21 @@ queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓�
 書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PATCH は、その GET と同じ形を返し、見せ方（response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
 書き込みの service は、見せるためのモノを返さない。返すのは、呼び出し元が次に動くための値だけ（作成なら ID、無ければ void）。見せるのは queries。
 
-### 出発点: core・inbound・outbound
+### 出発点: model・service・repo とリソース
 
-domain は 3 つの側からなる。ヘキサゴナルアーキテクチャの分け方と同じ。
+domain の中のファイルは、名前の頭が役割になる（model、service、repo、gateway、mailer、queue）。
 
-| 側           | 何か                                                 | 今あるファイル               |
-| ------------ | ---------------------------------------------------- | ---------------------------- |
-| **core**     | そのモノが何で、何ができるか。外を何も知らない       | model, service               |
-| **inbound**  | 外から呼ばれる側。誰として呼ぶかを決めて core に渡す | リソース（src/routes）, jobs |
-| **outbound** | 外へ出ていく側。core が宣言した形を満たす            | repo, gateway, mailer, queue |
-
-出発点は、domain の 3 ファイルと、同じ名詞のリソース。core は What（model）と How（service）に分けて始める。手順はどの domain にも毎回あるので、最初から分けておく。
+出発点は、domain の 3 ファイルと、同じ名詞のリソース。モノは What（model）と How（service）に分けて始める。手順はどの domain にも毎回あるので、最初から分けておく。
 
 ```
 src/domains/invoices/
-├─ model.ts      core（What）: 型・ルール（検査済みの印付き）。外を何も知らない
-├─ service.ts     core（How）: 手順と、手順が必要とする outbound の形の宣言
-└─ repo.d1.ts     outbound: テーブルと、D1 での実装。行 → モノの詰め替え
+├─ model.ts      What: 型・ルール（検査済みの印付き）。外を何も知らない
+├─ service.ts     How: 手順と、手順が必要とする repo などの形の宣言
+└─ repo.d1.ts     テーブルと、D1 での実装。service が宣言した形を満たす。行 → モノの詰め替え
 src/routes/invoices/
-├─ index.ts       inbound: router。HTTP の入力の形と handler
-├─ response.ts    inbound: モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
-└─ queries.d1.ts  inbound: GET の読み取り。窓口（〜Within）を通して画面の 1 行を返す
+├─ index.ts       入口: router。HTTP の入力の形と handler。誰として呼ぶかを決めて service に渡す
+├─ response.ts    モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
+└─ queries.d1.ts  GET の読み取り。窓口（〜Within）を通して画面の 1 行を返す
 ```
 
 ```
@@ -156,15 +150,15 @@ src/routes/invoices/
        └─(deps)──→ service ←───────┘ （service が宣言した形を、型だけ借りて満たす）
 ```
 
-ルールは 1 つ。**矢印は全部 core に向かう**。inbound は service を import せず、deps から受け取る。
-outbound のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`gateway.stripe.ts`）。
+ルールは 1 つ。**矢印は全部 model に向かう**。入口（routes, jobs）は service を import せず、deps から受け取る。
+repo・gateway・mailer・queue のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`gateway.stripe.ts`）。
 
 ### 育ち方: 2 つ目が現れたときだけ、3 種類
 
 | 動き         | きっかけ                                           | 足すもの                                                                                                                                                                                                      |
 | ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 横に増える   | 2 つ目の inbound（cron、キュー）                   | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                                                           |
-| 横に増える   | 2 つ目の outbound（保存先、外部 API、メール）      | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                                                        |
+| 横に増える   | 2 つ目の入口（cron、キュー）                       | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                                                           |
+| 横に増える   | 2 つ目の保存先・外部 API・メール                   | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                                                        |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                                                            |
 | 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
 | 窓口を開く   | 画面や他の domain が SQL で読みに来る（集計など）  | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                                                        |
@@ -234,8 +228,8 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
   `provideDeps` がリクエストごとに、使うときに 1 回だけ組み立てる
-- **outbound の形は service が宣言する**（Go の「interface は使う側が決める」）
-- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭（役割）で core / inbound / outbound に分ける。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）と `queries.<技術>.ts`（queries）だけ。
+- **repo・gateway・mailer・queue の形は service が宣言する**（Go の「interface は使う側が決める」）
+- **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭で役割（model / service / repo / gateway / mailer / queue）を決める。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）と `queries.<技術>.ts`（queries）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
   他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）、成功に 200 以外を使わない（`route-responds-200`）、`new Hono()` を書かない（`no-new-hono`）も、lint で止める
@@ -260,7 +254,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **共有は同じ組織の中で、閲覧と編集の 2 段階**。member の範囲は「自分のもの＋共有されたもの」。
   repo が範囲を解釈し、行と一緒に access（`manage` / `edit` / `view`）を返す。`canEdit` と `canManage` は access を受け取る純関数。
   共有できるのは所有者と組織の admin。見えない人には在ることも分からない（NOT_FOUND）、見えるが権限が足りないときは FORBIDDEN
-- **repo の外への窓口は 1 つだけ**: SQL で読ませる、持ち主の repo が出す `〜Within`（outbound）。
+- **repo の外への窓口は 1 つだけ**: SQL で読ませる、持ち主の repo が出す `〜Within`。
   repo と queries は他 domain の repo から、外部キーの表（`〜Table`）と `〜Within` だけを借りる（lint `layer-imports`）。service どうしは呼び合わず、入口がつなぐ
 - **domain の外（queries と他の domain）に見せる読みは、誰として読むかが必須の入口（`invoicesWithin(db, actor)` など）だけ**。actor が必須引数なので、範囲の付け忘れが書けない。
   範囲の決め方（`reachOf`）は持ち主の中に閉じていて、読む側は知らない。範囲が他の domain を通して決まるとき（会員の「自分の貸出」は、見える会員行の貸出）は、reach が actor を持ち、`within` がそれを相手の窓口に渡す。

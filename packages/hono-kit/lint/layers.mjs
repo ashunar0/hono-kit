@@ -1,23 +1,23 @@
 /**
- * domain の中の役割と、それが core / inbound / outbound のどれか。
+ * domain の中に置ける役割。
  * ここに無い名前のファイルは domain の中に置けない（layer-imports が止める）
  */
-export const KINDS = {
-  model: "core",
-  service: "core",
-  repo: "outbound",
-  gateway: "outbound",
-  mailer: "outbound",
-  queue: "outbound",
-};
+export const DOMAIN_ROLES = [
+  "model",
+  "service",
+  "repo",
+  "gateway",
+  "mailer",
+  "queue",
+];
 
 /**
  * 役割ごとに、import してよい相手。ここに無いものは全部だめ。
  * "type" は `import type` だけ許す。実行時には依存せず、形だけを借りる。
  *
- * 矢印は全部 core に向かう。model は外を何も知らない。
- * service は手順で、outbound の形を宣言する。outbound はその形を満たす。
- * inbound は誰として呼ぶかを決め、deps から core を受け取って呼ぶ。
+ * 矢印は全部 model に向かう。model は外を何も知らない。
+ * service は手順で、repo・gateway・mailer・queue の形を宣言する。repo などはその形を満たす。
+ * 入口（リソース、job）は誰として呼ぶかを決め、deps から service を受け取って呼ぶ。
  *
  * 相手の書き方:
  *   パッケージ名（hono-kit, hono-kit/result, zod, drizzle-orm）
@@ -25,7 +25,6 @@ export const KINDS = {
  *   アプリの決めごと（errors, middleware, db, deps）
  */
 export const LAYERS = {
-  // core
   model: {
     zod: "value",
     "hono-kit/system": "type",
@@ -41,7 +40,6 @@ export const LAYERS = {
     "foreign:model": "type",
   },
 
-  // outbound
   repo: {
     "drizzle-orm": "value",
     "hono-kit/page": "value",
@@ -106,14 +104,8 @@ export const LAYERS = {
 // lib は一番下の層なので、どの役割からも値で使える
 for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 
-/** domain の外にある、入口の役割。README の表の「側」に使う */
-export const ENTRY_ROLES = {
-  resource: "inbound",
-  response: "inbound",
-  queries: "inbound",
-  job: "inbound",
-  errors: "inbound",
-};
+/** domain の外にある、入口の役割 */
+export const ENTRY_ROLES = ["resource", "response", "queries", "job", "errors"];
 
 /** よくある間違いには、どうすればいいかを添える */
 export const HINTS = {
@@ -145,18 +137,13 @@ export const ENTRY_HINT =
 export const ERRORS_HINT =
   "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/errors.ts";
 
-/** 向きの間違いは、役割の組ではなく core / inbound / outbound の組で説明できる */
-export const KIND_HINTS = {
-  "core→outbound":
-    "core does not know outbound. Declare the shape you need as a type in service; outbound fulfills it",
-  "core→inbound":
-    "core does not know inbound. Return failures as Result codes; inbound decides HTTP status and the like",
-  "inbound→outbound":
-    "inbound does not know outbound. Receive core from deps and call it",
-  "inbound→core":
-    "inbound does not import service. Receive it from deps and call it",
-  "outbound→inbound": "outbound does not know inbound",
-};
+/** model と service は、自分の domain の repo・gateway・mailer・queue を知らない。形は service が宣言する */
+for (const from of ["model", "service"]) {
+  for (const to of ["repo", "gateway", "mailer", "queue"]) {
+    HINTS[`${from}→${to}`] ??=
+      `${from} does not know ${to}. Declare the shape you need as a type in service; ${to} fulfills it`;
+  }
+}
 
 /**
  * 許可表の補足。README の表の「import してよいもの」の後ろに付く。

@@ -1,5 +1,5 @@
-/** HTTP の inbound か（src/routes/ のリソース。webhook もここ）。createRouter の束を書く場所 */
-export const isHttpInbound = (file) =>
+/** HTTP の入口か（src/routes/ のリソース。webhook もここ）。createRouter の束を書く場所 */
+export const isHttpEntry = (file) =>
   /[/\\]src[/\\]routes[/\\](?:.+[/\\])?index\.ts$/.test(file);
 
 /** `as const` や `satisfies` を剥がす */

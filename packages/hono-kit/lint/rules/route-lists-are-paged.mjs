@@ -1,5 +1,5 @@
 import { unwrap } from "../ast.mjs";
-import { isHttpInbound } from "../ast.mjs";
+import { isHttpEntry } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 const propOf = (object, name) =>
@@ -26,7 +26,7 @@ const propOf = (object, name) =>
  */
 export default {
   create(context) {
-    if (!isHttpInbound(fileOf(context))) return {};
+    if (!isHttpEntry(fileOf(context))) return {};
 
     // 同じファイルの変数が何で作られているか（query のスキーマを辿るため）
     const declared = new Map();

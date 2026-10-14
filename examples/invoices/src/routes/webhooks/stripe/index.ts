@@ -36,7 +36,7 @@ export const stripeWebhookRouter = createRouter().endpoint(
     // 支払いに関係ない通知は、受け取ったことだけ返す
     if (event.value === null) return reply(200, { received: true });
 
-    // 利用者のいない inbound なので、システムとして渡す（署名を確かめた後に）
+    // 利用者のいない入口なので、システムとして渡す（署名を確かめた後に）
     const payment = await payments.receive(actor, event.value, now);
     if (!payment.ok) return reply.failure(payment.error);
     if (payment.value.status !== "succeeded") return reply(200, { received: true });

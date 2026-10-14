@@ -16,7 +16,7 @@ import { reportsQueries } from "./routes/reports/queries.d1";
  * domain の組み立て方を集める唯一の場所（composition root）。
  *
  * 組み立てた結果ではなく、組み立て方を buildApp に渡す。hnk の provideDeps が
- * リクエストごとに（handler が初めて受け取るときに 1 回）呼ぶ。HTTP 以外の inbound は createWorker が呼ぶ。
+ * リクエストごとに（handler が初めて受け取るときに 1 回）呼ぶ。HTTP 以外の入口は createWorker が呼ぶ。
  * db はリクエストごとに作る——モジュールの外で作ると、接続を持つ DB では
  * リクエストをまたいで共有されてしまう。
  *
@@ -25,7 +25,7 @@ import { reportsQueries } from "./routes/reports/queries.d1";
  * domain どうしは何もつながない。複数の domain にまたがる処理は、入口（routes の handler、webhook、
  * cron、queue）が両方を受け取って、読んだものを値で渡す。
  * 全部の domain を毎回組み立てるが、関数を返すだけで env の検証も接続もしないので軽い。
- * db そのものは返さない。inbound が書き込み先を選べてしまうので
+ * db そのものは返さない。入口が書き込み先を選べてしまうので
  */
 export const makeDeps = (env: AppEnv["Bindings"]) => {
   const db = wireDb(env.DB);

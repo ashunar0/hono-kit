@@ -1,4 +1,4 @@
-import { isHttpInbound, unwrap } from "../ast.mjs";
+import { isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /**
@@ -7,7 +7,7 @@ import { fileOf } from "../project.mjs";
  */
 export default {
   create(context) {
-    if (!isHttpInbound(fileOf(context))) return {};
+    if (!isHttpEntry(fileOf(context))) return {};
 
     return {
       CallExpression(node) {

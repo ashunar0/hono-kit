@@ -1,6 +1,6 @@
 import { defineConfig } from "drizzle-kit";
 
-// テーブルは各 domain の outbound（repo.<技術>.ts）にある
+// テーブルは各 domain の repo（repo.<技術>.ts）にある
 export default defineConfig({
   dialect: "sqlite",
   schema: "./src/domains/*/repo.d1.ts",
