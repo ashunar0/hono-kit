@@ -3,7 +3,8 @@ import { fileOf, placeOf, projectOf, resolveImport } from "../project.mjs";
 /**
  * 他の domain の表（xxxTable）は、外部キーの references() の中でだけ使う。
  * 読むときは、持ち主が出している範囲付きの読み（invoicesWithin など）を通す。
- * 表を直接 from に書けると、範囲（組織）の条件を付け忘れる書き方ができてしまう
+ * 表を直接 from に書けると、範囲（組織）の条件を付け忘れる書き方ができてしまう。
+ * 画面のための読み取り（src/routes/<名詞>/queries.ts）は domain の外にあるので、どの domain の表も他人の表
  */
 export default {
   create(context) {
@@ -11,7 +12,8 @@ export default {
     const project = projectOf(file);
     if (!project) return {};
     const self = placeOf(file, project.root);
-    if (!self.domain || self.role === "test") return {};
+    if ((!self.domain && self.role !== "queries") || self.role === "test")
+      return {};
 
     /** 外部キーの references(...) の引数の中か */
     const insideReferences = (ancestors) =>

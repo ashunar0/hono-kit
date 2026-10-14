@@ -69,6 +69,7 @@ export const LAYERS = {
     "foreign:model": "value",
     resource: "value",
     response: "value",
+    queries: "type",
   },
   // モノを HTTP でどう見せるか。モノのルールではないので、リソースの側に置く
   response: {
@@ -76,6 +77,17 @@ export const LAYERS = {
     zod: "value",
     "foreign:model": "value",
     response: "value",
+  },
+  // 画面のための読み取り（src/routes/<名詞>/queries.ts）。返す形は画面が決めるので、domain の外にある。
+  // SELECT だけの db を受け取り、domain の範囲付きの読み（…Within）を通して画面の 1 行を返す。
+  // ルールは作らず、model から借りる（誰として読むかの reachOf など）。手順は持たないので、service は使わない。
+  // 表は直接読めない（no-foreign-table-reads）。範囲の付け忘れが書けないように
+  queries: {
+    "drizzle-orm": "value",
+    "hono-kit/page": "value",
+    db: "type",
+    "foreign:repo": "value",
+    "foreign:model": "value",
   },
   // HTTP 以外の入口（src/jobs/<名前>.ts。cron、キュー）。deps と actor と now は createWorker が渡す。
   // リソースと同じく domain の外にあり、service は deps から受け取る。他の domain の ID の印を付けるため、model の値も使う
@@ -95,6 +107,7 @@ for (const allowed of Object.values(LAYERS)) allowed.lib ??= "value";
 export const ENTRY_ROLES = {
   resource: "inbound",
   response: "inbound",
+  queries: "inbound",
   job: "inbound",
   errors: "inbound",
 };
@@ -114,7 +127,7 @@ export const HINTS = {
   "resource→foreign:service":
     "A resource does not import services. The handler receives them from deps as its third argument ({ customers, invoices })",
   "resource→foreign:repo":
-    "A resource does not read tables. Read through the owner's service, received from deps",
+    "A resource does not read tables. Read for the screen in queries.ts next to it, or through the owner's service, received from deps",
   "job→foreign:service":
     "A job does not import services. It receives them from deps ({ deps, actor, now })",
   "response→resource":
