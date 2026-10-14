@@ -22,7 +22,7 @@ export const KINDS = {
  * 相手の書き方:
  *   パッケージ名（hono-kit, hono-kit/result, zod, drizzle-orm）
  *   自分の domain の役割（model, service, ...）。他の domain のものは "foreign:<role>"
- *   アプリの決めごと（errors, middleware, db, dbErrors, deps）
+ *   アプリの決めごと（errors, middleware, db, deps）
  */
 export const LAYERS = {
   // core
@@ -46,8 +46,8 @@ export const LAYERS = {
     "drizzle-orm": "value",
     "hono-kit/page": "value",
     db: "type",
-    // 一意制約の違反を見分ける（D1 の文面を知る場所は 1 つにする）
-    dbErrors: "value",
+    // 一意制約の違反がどの列かを見分ける（SQLite の文面を知る場所は hono-kit の 1 か所）
+    "hono-kit/sqlite": "value",
     model: "value",
     service: "type",
     "foreign:repo": "value",

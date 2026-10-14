@@ -27,6 +27,7 @@
     "./failures": "./src/failures.ts",
     "./openapi": "./src/openapi.ts",
     "./page": "./src/page.ts",
+    "./sqlite": "./src/sqlite.ts",
     "./system": "./src/system.ts",
     "./testing": "./src/testing.ts",
     "./worker": "./src/worker.ts",
@@ -54,6 +55,10 @@
       "./page": {
         "types": "./dist/page.d.ts",
         "default": "./dist/page.js"
+      },
+      "./sqlite": {
+        "types": "./dist/sqlite.d.ts",
+        "default": "./dist/sqlite.js"
       },
       "./system": {
         "types": "./dist/system.d.ts",
