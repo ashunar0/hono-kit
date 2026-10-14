@@ -28,8 +28,10 @@ export function notesService(repo: NotesRepository) {
       return ok(found);
     },
 
-    async create(now: Date): Promise<Note> {
-      return repo.insert({ id: newNoteId(), createdAt: now, updatedAt: now });
+    async create(now: Date): Promise<NoteId> {
+      const created = await repo.insert({ id: newNoteId(), createdAt: now, updatedAt: now });
+
+      return created.id;
     },
   };
 }

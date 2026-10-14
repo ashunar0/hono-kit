@@ -96,11 +96,11 @@ export const invoicesRouter = createRouter()
       const input = c.req.valid("json");
       const now = c.get("now");
 
-      const created = await invoices.create(actor, input, now);
+      const id = await invoices.create(actor, input, now);
 
       // 書いた後は、GET と同じ道で読み直して返す。書けた直後に無いのは想定外
-      const invoice = await invoiceQueries.get(actor, created.id);
-      if (invoice === null) throw new Error(`invoice ${created.id} is gone right after the write`);
+      const invoice = await invoiceQueries.get(actor, id);
+      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
 
       return reply(200, invoiceResponse(invoice));
     },

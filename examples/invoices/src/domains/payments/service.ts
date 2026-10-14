@@ -58,13 +58,13 @@ export type PayableInvoice = { id: string; title: string; amount: number };
 /** 引数の順番は、誰として（actor）→ 何を → どうする → いつ（now）。時計は読まない */
 export function paymentsService(repo: PaymentsRepository, gateway: PaymentGateway) {
   return {
-    /** 支払いを始める。請求書は、入口が invoices から読んだ支払えるもの */
+    /** 支払いを始める。請求書は、入口が invoices から読んだ支払えるもの。返すのは、支払いの ID と、利用者を送る先 */
     async start(
       invoice: PayableInvoice,
       now: Date,
     ): Promise<
       Result<
-        { payment: Payment; checkoutUrl: string },
+        { paymentId: string; checkoutUrl: string },
         typeof GatewayFailed.code | typeof PaymentStarting.code
       >
     > {
@@ -74,7 +74,7 @@ export function paymentsService(repo: PaymentsRepository, gateway: PaymentGatewa
       const existing = await repo.findPending(invoiceId);
       if (existing !== null) {
         if (existing.checkoutUrl !== null)
-          return ok({ payment: existing, checkoutUrl: existing.checkoutUrl });
+          return ok({ paymentId: existing.id, checkoutUrl: existing.checkoutUrl });
         // 画面を作っている途中。ただし長く止まっているものは、途中で落ちたとみなして閉じ、作り直す
         if (!isStale(existing, now)) return err(PaymentStarting.code);
         await repo.markFailed(existing.id, now);
@@ -107,10 +107,7 @@ export function paymentsService(repo: PaymentsRepository, gateway: PaymentGatewa
 
       await repo.attachCheckout(payment.id, checkout.value, now);
 
-      return ok({
-        payment: { ...payment, ...checkout.value },
-        checkoutUrl: checkout.value.checkoutUrl,
-      });
+      return ok({ paymentId: payment.id, checkoutUrl: checkout.value.checkoutUrl });
     },
 
     /** 届いた通知を確かめる */

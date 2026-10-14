@@ -58,7 +58,7 @@ it("webhook は allowSystem で、署名を確かめた後、支払いと請求�
         invoices: {
           async markPaid(system: unknown) {
             received.push(["invoices", system]);
-            return { ok: true, value: {} };
+            return { ok: true, value: undefined };
           },
         },
       }) as never,

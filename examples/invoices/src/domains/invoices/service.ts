@@ -81,8 +81,8 @@ export function invoicesService(repo: InvoicesRepository) {
     },
 
     /** 作成。作った人が所有者になる */
-    async create(actor: User, input: InvoiceInput, now: Date): Promise<Invoice> {
-      return repo.insert({
+    async create(actor: User, input: InvoiceInput, now: Date): Promise<InvoiceId> {
+      const created = await repo.insert({
         id: newInvoiceId(),
         orgId: actor.orgId,
         ownerId: actor.id,
@@ -96,6 +96,8 @@ export function invoicesService(repo: InvoicesRepository) {
         createdAt: now,
         updatedAt: now,
       });
+
+      return created.id;
     },
 
     /**
@@ -107,14 +109,14 @@ export function invoicesService(repo: InvoicesRepository) {
       id: InvoiceId,
       input: InvoiceInput,
       now: Date,
-    ): Promise<Result<Invoice, typeof NotFound.code | typeof Forbidden.code>> {
+    ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
       const reach = reachOf(actor);
 
       const found = await repo.find(reach, id);
       if (found === null) return err(NotFound.code);
       if (!canEdit(found.access)) return err(Forbidden.code);
 
-      const invoice = await repo.update(reach, id, {
+      const updated = await repo.update(reach, id, {
         title: input.title,
         body: input.body,
         amount: input.amount,
@@ -122,9 +124,9 @@ export function invoicesService(repo: InvoicesRepository) {
         dueAt: input.dueAt,
         updatedAt: now,
       });
-      if (invoice === null) return err(NotFound.code);
+      if (updated === null) return err(NotFound.code);
 
-      return ok(invoice);
+      return ok(undefined);
     },
 
     /** 支払いに進める請求書。範囲の中で、送付済みのものだけ */
@@ -142,22 +144,22 @@ export function invoicesService(repo: InvoicesRepository) {
     /**
      * 支払い済みにする。利用者の操作ではなく、決済の結果を受けた入口（webhook）が呼ぶので、システムの印を受け取る。
      * requireAuth を通った利用者は System ではないので、利用者の route からは呼べない。
-     * 何度呼んでも同じ結果になる（すでに支払い済みなら、そのまま返す）。webhook は再送されるので、それに耐える
+     * 何度呼んでも同じ結果になる（すでに支払い済みなら、成功として返す）。webhook は再送されるので、それに耐える
      */
     async markPaid(
       system: System,
       id: InvoiceId,
       now: Date,
-    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_PAYABLE">> {
+    ): Promise<Result<void, typeof NotFound.code | "NOT_PAYABLE">> {
       const all = reachOf(system);
 
       const paid = await repo.update(all, id, { status: "paid", updatedAt: now }, "sent");
-      if (paid !== null) return ok(paid);
+      if (paid !== null) return ok(undefined);
 
       // 書き換わらなかった。無いのか、もう支払い済みなのか、送付前なのか
       const found = await repo.find(all, id);
       if (found === null) return err(NotFound.code);
-      if (found.invoice.status === "paid") return ok(found.invoice);
+      if (found.invoice.status === "paid") return ok(undefined);
 
       return err("NOT_PAYABLE");
     },
@@ -167,9 +169,7 @@ export function invoicesService(repo: InvoicesRepository) {
       actor: Actor,
       id: InvoiceId,
       now: Date,
-    ): Promise<
-      Result<Invoice, typeof NotFound.code | typeof Forbidden.code | typeof NotDraft.code>
-    > {
+    ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code | typeof NotDraft.code>> {
       const reach = reachOf(actor);
 
       const found = await repo.find(reach, id);
@@ -181,7 +181,7 @@ export function invoicesService(repo: InvoicesRepository) {
       // 読んだ後に、別の誰かが先に状態を変えた
       if (sent === null) return err(NotDraft.code);
 
-      return ok(sent);
+      return ok(undefined);
     },
 
     /** 消せるのは、範囲の中で、所有者側の関係のものだけ */

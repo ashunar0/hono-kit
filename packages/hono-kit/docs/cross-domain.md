@@ -28,10 +28,10 @@ async (c, reply, { customers, products, invoices, invoiceQueries }) => {
   );
   if (!result.ok) return reply.failure(result.error);
 
-  // After a write, read it again the way its GET does
-  const invoice = await invoiceQueries.get(actor, result.value.id);
+  // The write returns only the ID. Read it again the way its GET does
+  const invoice = await invoiceQueries.get(actor, result.value);
   if (invoice === null)
-    throw new Error(`invoice ${result.value.id} is gone right after the write`);
+    throw new Error(`invoice ${result.value} is gone right after the write`);
 
   return reply(200, invoiceResponse(invoice));
 };

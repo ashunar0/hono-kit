@@ -78,22 +78,23 @@ export const invoicesRouter = createRouter()
 
 ```ts
 // src/domains/invoices/service.ts
-async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promise<Result<Invoice, typeof NotFound.code | typeof Forbidden.code>> {
+async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
   const reach = reachOf(actor);
 
   const found = await repo.find(reach, id);
   if (found === null) return err(NotFound.code);
   if (!canEdit(found.access)) return err(Forbidden.code);
 
-  const invoice = await repo.update(reach, id, { ...input, updatedAt: now });
-  if (invoice === null) return err(NotFound.code);
+  const updated = await repo.update(reach, id, { ...input, updatedAt: now });
+  if (updated === null) return err(NotFound.code);
 
-  return ok(invoice);
+  return ok(undefined);
 }
 ```
 
 - 引数は「誰として（actor）→ 何を → どうする → いつ（now）」の順。service は時計を読まない
 - 想定内の失敗は Result で返す。service は HTTP のステータスを知らない
+- 書き込みの service は、見せるためのモノを返さない（作成は ID、それ以外は void）。見せるのは queries
 - 所有者の条件は repo の WHERE に入れて 1 文で書く。他人のものは在ることも知らせず NOT_FOUND
 - `Invoice` は model が宣言するモノの型。repo は DB の行をこれに詰め替えて返す
 
@@ -124,6 +125,7 @@ jobs を domain の中に置かないのも同じ理由。cron やキューの�
 GET が返す形はリソースの都合なので、読み取りはリソースの隣の `queries.<技術>.ts` に書く（CQRS の、コードと型だけを分ける段階）。
 queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。ルールは作らず、要るときは model から借りる。
 書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PATCH は、その GET と同じ形を返し、見せ方（response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
+書き込みの service は、見せるためのモノを返さない（作成は ID、それ以外は void）。見せるのは queries。
 
 ### 出発点: core・inbound・outbound
 

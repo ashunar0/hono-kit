@@ -47,6 +47,7 @@ What a GET returns is the resource's business, so the read lives next to the res
 - Never read a table directly. Read through the `…Within` its owner's repo exports (`hnk/no-foreign-table-reads`). When what is seen depends on who looks, take `actor` and pass it on (`invoicesWithin(db, actor)`): who sees what stays inside the owner. A number that is the same whoever looks comes from a window that takes no actor
 - Return the screen's row type (`InvoiceRow`). Make no rules; borrow them from model when needed (`todayOf`)
 - Reads before a write (an entry check, materials for the decision) go through services. The read after a write, to show the result, goes through queries: a POST or PATCH returns what the GET of that thing returns. If it is gone right after the write, throw
+- A write service does not return the thing for showing: create returns the ID, the others return `void`. Showing is the job of queries
 - A read a rule needs (counting before deciding) stays in the domain's repo
 - A handler may use any queries from deps, not only its own noun's: `GET /customers/:customerId/invoices` reads through `invoiceQueries` and shows them with `routes/invoices/response.ts`
 

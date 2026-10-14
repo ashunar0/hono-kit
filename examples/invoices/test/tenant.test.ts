@@ -1,5 +1,5 @@
 import { orgId } from "../src/domains/users/model";
-import { invoiceId } from "../src/domains/invoices/model";
+import { invoiceId, reachOf } from "../src/domains/invoices/model";
 import { expect, it } from "vitest";
 import { scopeTo } from "../src/db";
 import { invoicesService } from "../src/domains/invoices/service";
@@ -50,7 +50,7 @@ it("システムは全ての組織の請求書に触れる", async () => {
 });
 
 it("作った請求書は作った人の組織のものになる", async () => {
-  const created = await service().create(
+  const id = await service().create(
     carol,
     {
       title: "t",
@@ -62,7 +62,8 @@ it("作った請求書は作った人の組織のものになる", async () => {
     now,
   );
 
-  expect(created.orgId).toBe("org2");
+  const found = await invoicesRepo().find(reachOf(carol), id);
+  expect(found?.invoice.orgId).toBe("org2");
 });
 
 it("レポートは自分の組織の分だけ数える", async () => {

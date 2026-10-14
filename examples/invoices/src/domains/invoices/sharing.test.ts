@@ -1,4 +1,4 @@
-import { invoiceId } from "./model";
+import { invoiceId, reachOf } from "./model";
 import { expect, it } from "vitest";
 import { invoicesWithin } from "./repo.d1";
 import { invoicesService } from "./service";
@@ -67,8 +67,9 @@ it("編集を共有された人は、書き換えられるが、削除と共有�
   await seed("s3");
   await service().share(alice, invoiceId("s3"), bob.id, "edit");
 
-  const updated = await service().update(bob, invoiceId("s3"), input, now);
-  expect(updated.ok && updated.value.title).toBe("新しいタイトル");
+  expect((await service().update(bob, invoiceId("s3"), input, now)).ok).toBe(true);
+  const found = await invoicesRepo().find(reachOf(bob), invoiceId("s3"));
+  expect(found?.invoice.title).toBe("新しいタイトル");
   expect(await service().remove(bob, invoiceId("s3"))).toEqual({ ok: false, error: "FORBIDDEN" });
 });
 

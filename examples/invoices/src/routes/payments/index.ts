@@ -45,9 +45,6 @@ export const paymentsRouter = createRouter()
       const result = await payments.start(invoice.value, now);
       if (!result.ok) return reply.failure(result.error);
 
-      return reply(200, {
-        paymentId: result.value.payment.id,
-        checkoutUrl: result.value.checkoutUrl,
-      });
+      return reply(200, result.value);
     },
   );
