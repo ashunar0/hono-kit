@@ -24,8 +24,7 @@ import { reportsQueries } from "./routes/reports/queries.d1";
  * なので、domain の依存の輪はコンパイルが通らない（Go の main と同じ）。
  * domain どうしは何もつながない。複数の domain にまたがる処理は、入口（routes の handler、webhook、
  * cron、queue）が両方を受け取って、読んだものを値で渡す。
- * 遅延（getter）で「使う domain だけ組み立てる」ことをやめた代わりに、宣言順の保証を取った。
- * 組み立ては関数を返すだけで、env の検証も接続もしないので軽い。
+ * 全部の domain を毎回組み立てるが、関数を返すだけで env の検証も接続もしないので軽い。
  * db そのものは返さない。inbound が書き込み先を選べてしまうので
  */
 export const makeDeps = (env: AppEnv["Bindings"]) => {

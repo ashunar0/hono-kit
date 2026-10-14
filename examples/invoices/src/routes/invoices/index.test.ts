@@ -94,7 +94,7 @@ it("本文の Content-Type が JSON でなければ 400。JSON なら charset �
 
   const none = await post({});
   expect(none.status).toBe(400);
-  // 必須の項目があるので、直す前も {} が検査で落ちて 400 だった。本文を読む前に止まっていることを文言で確かめる
+  // 必須の項目があるので、本文の検査でも 400 になる。本文を読む前に止まっていることを文言で確かめる
   expect((await json(none)).error).toEqual({
     code: "VALIDATION_ERROR",
     message: "Content-Type must be application/json",

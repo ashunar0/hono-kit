@@ -124,8 +124,6 @@ jobs を domain の中に置かないのも同じ理由。cron やキューの�
 GET が返す形はリソースの都合なので、読み取りはリソースの隣の `queries.<技術>.ts` に書く（CQRS の、コードと型だけを分ける段階）。
 queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。ルールは作らず、要るときは model から借りる。
 書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PATCH は、その GET と同じ形を返し、見せ方（response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
-画面のための読み取りを domain に置くと、一覧ごとに「どの domain が答えるか」を決める決まり（外部キーの向き、読む側が返す形の宣言、1 つの一覧を 2 通りに割らない）が要った。それが分けた理由
-例のアプリの月ごとのレポートは、もとは自分の表もルールも持たない、読むだけの domain（reports）だった。queries に移すと domain ごと無くなった（集計は `routes/reports/queries.d1.ts`、admin だけが見られるのは guard の `requireRole("admin")`、月の計算は `src/lib/month.ts`）
 
 ### 出発点: core・inbound・outbound
 
@@ -189,7 +187,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 
 ## 考え方
 
-- **目指す先は Go**。同じ API を Go の定番の書き方でも書いて、並べて比べながら形を決めた（経緯は [hnk-next](https://github.com/ashunar0/hnk-next)）。
+- **目指す先は Go**。
   AI は毎回ゼロから読むので、揃っていることが一番効く。書く量は AI が書くので気にしない。
   Rails の「書く量を減らす」は、人間の時間が足りなかった時代の答え
 - **Go でも、慣習の多くはお願い**。会社のコードが揃うのは言語のおかげというより、
@@ -213,7 +211,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
   途中で落ちたときに「重複してもよい」か「欠けてもよい」かは業務の判断なので、service のコメントに書く
 - **domain は互いを呼ばない**。つなぐのは入口（上の「domain をまたぐとき」）。deps.ts は domain を 1 行ずつ組み立てるだけで、domain の間に何もつながない。
   型の上でだけ、他の domain の model の型を借りてよい（`import type`）。外部キーの `references()` と、読ませる窓口（`〜Within`）は repo と queries の話で、下の「読みの窓口」にある。
-  getter で遅延する案は外した（組み立ては関数を返すだけで軽い）。deps.ts は何を import してもよい場所で、lint の表には入れていない
+  deps.ts は何を import してもよい場所で、lint の表には入れていない
 - **route は `router.endpoint(設定, handler)` 1 つで書く**（素の Hono の上）。設定の `request` のキーは、handler で読む `c.req.valid("…")` の名前と同じ（`param` を宣言したら `valid("param")`）。`method` は小文字、`path` は Hono の `/:id`、応答はスキーマをそのまま書く（書き方は 1 つ。失敗の応答だけは `errorResponses` が失敗の文言を説明として付ける）。guard が持つ失敗と ValidationError を hono-kit が足す。`c.json` だとずれたときの赤線が handler の頭に付くので、`reply` で返す。`createRoute` は公開しない（書き方を 1 つにするため）。`path` の `:name` が `request.param` のキーに無いと型エラーになる（逆向きの余分なキーは許す。入れ子でマウントしたとき、親のパスの `:name` が来るから）
 - **スキーマは Standard Schema を満たすものなら何でも**（zod、valibot で確かめた）。hono-kit は検証のライブラリを決め打ちせず、**hono-kit 自身の依存は hono だけ**。hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書いている。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。**OpenAPI は別の部品**（`hono-kit/openapi` の `openapiDocument(app, info)`）で、登録された宣言から文書を作る。JSON Schema への変換はスキーマのライブラリ自身が持つ（Standard JSON Schema）。valibot は単体では出せないので、文書に出したいものだけ `toStandardJsonSchema` で包む。要らないなら使わない
 - **失敗は値で、番号と文言を持つ**（`httpError("NOT_FOUND", 404, "…")`）。モノの失敗は model に `Failure`（`{ code, kind, message }`、HTTP を知らない）として置き、種類（`conflict` など）から番号を決める表は hono-kit が 1 か所で持つ（Go の errors.go、gRPC のステータスコードと同じ考え方）。`errorResponses` は `Failure` も `httpError` も受け取る。guard が持つ失敗と ValidationError は自動で宣言する。
@@ -226,9 +224,9 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
   モノの時刻（`createdAt`・`updatedAt`）も `now` から入れる。DB の既定値は、model に出ない列の記録だけに使う
 - **利用者とシステムには印を付ける**（`unique symbol`）。`{ kind: "system" }` のようなリテラルでは書けず、利用者を作れるのは `authenticatedUser` だけ。システムの型と値は hono-kit が持ち、アプリは作れず受け取るだけ（下の「HTTP 以外の入口」）
 - **domain は model / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は domain の外のリソース（`src/routes/`）。
-  名前は domains。URL で切る routes と並べて、もう 1 つの軸がドメインだと名前で分かるようにする（以前は modules）。中のモノとルールのファイルは、まとまりの名前とぶつからないよう model.ts にする。features は「機能」で、複数のモノにまたがる操作の言葉なので使わない
+  名前は domains。URL で切る routes と並べて、もう 1 つの軸がドメインだと名前で分かるようにする。中のモノとルールのファイルは、まとまりの名前とぶつからないよう model.ts にする。features は「機能」で、複数のモノにまたがる操作の言葉なので使わない
 - **model は外を知らない**。import できるのは zod と `src/lib/` だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
-- **業務を知らないものは `src/lib/` に置く**（日付、時刻、タイムゾーンの変換）。見分け方は「別のアプリにそのまま持っていけるか」で、スタッフの立場は staff のもの（コピーするか型を借りる）、暦の上の日付はどのアプリでも同じ（lib）。どこからでも値で import でき、lib 自身は zod と他の lib しか import しない。だから lib を通して domain どうしがつながることはない。ファイルは中身で名前を付け（`time.ts`）、`utils.ts` は作らない。salon で、タイムゾーンの変換が shifts と予約の domain に 2 つコピーされたことから足した
+- **業務を知らないものは `src/lib/` に置く**（日付、時刻、タイムゾーンの変換）。見分け方は「別のアプリにそのまま持っていけるか」で、スタッフの立場は staff のもの（コピーするか型を借りる）、暦の上の日付はどのアプリでも同じ（lib）。どこからでも値で import でき、lib 自身は zod と他の lib しか import しない。だから lib を通して domain どうしがつながることはない。ファイルは中身で名前を付け（`time.ts`）、`utils.ts` は作らない
 - **ID には印を付ける**（`InvoiceId` / `UserId` / `OrgId`。`string & { [brand]: true }`）。印を付けてよいのは、その domain の model が出す作る関数（`invoiceId(value)`）だけで、他の場所の `as XxxId` は lint `no-id-cast` が止める。素の `string` や別の ID は渡せない。domain の中では、他の domain の ID は素の `string`（`Payment.invoiceId`）。印を付けるのは入口で、リソースはどの domain の model も使えるので、持ち主の `…IdSchema` で受け取る（`invoiceIdSchema`）。cron・queue も他の domain の model の値を使えるので、`invoiceId(body.invoiceId)` を付けて渡す
 - **入力は検査済みの印（zod の brand）付きでしか service に渡せない**。どの入口から呼んでも、検査を飛ばすと型エラーになる
 - **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
@@ -286,7 +284,7 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 
 ## 新しい domain を足すとき
 
-生成された形のまま、invoices と同じ形で書く。迷いやすい所は、次のとおりに揃える（comments を AI に書かせた実験で、書き手が迷った所）。
+生成された形のまま、invoices と同じ形で書く。迷いやすい所は、次のとおりに揃える。
 
 | 迷うこと                               | 決まり                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

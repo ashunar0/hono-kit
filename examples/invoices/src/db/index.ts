@@ -7,13 +7,13 @@ export const wireDb = (binding: D1Database) => drizzle(binding);
 
 export type Db = ReturnType<typeof wireDb>;
 
-/** 読みだけの db。他 domain の table も読める（join のため） */
+/** 読みだけの db。他 domain の table は、持ち主の窓口（〜Within）を通してだけ読む（no-foreign-table-reads） */
 export type ReadDb = Pick<Db, "select">;
 
 /**
  * この domain が触れる範囲だけを取り出す。
  *
- * 読みは越境してよく、書きはこの table に限る——規約の非対称性がそのまま型になる。
+ * 書きはこの table に限る。
  * repository に db を渡さないので、他 domain の table への書き込みは書きようがない
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({

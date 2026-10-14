@@ -24,7 +24,7 @@ export const wireBatch =
 
 export type Batch = ReturnType<typeof wireBatch>;
 
-/** A read-only db. It can read other domains' tables too (for joins) */
+/** A read-only db. Another domain's table is read only through its owner's window (…Within; no-foreign-table-reads) */
 export type ReadDb = Pick<Db, "select">;
 
 /** D1 allows this many bound values (`?`) in one statement */
@@ -33,7 +33,7 @@ const maxBoundValues = 100;
 /**
  * Takes out only what this domain may touch.
  *
- * Reads may cross domains, writes are limited to this table: the asymmetry in the convention becomes the type.
+ * Writes are limited to this table.
  * The repository never gets db, so writing to another domain's table cannot be written
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({
