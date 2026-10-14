@@ -2,9 +2,8 @@
  * invoices の保存。service.ts が宣言した InvoicesRepository を、D1 で満たす。
  * 行の形はこのファイルの外に出さず、domain の Invoice に詰め替えて返す
  */
-import { and, desc, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { toPage } from "hono-kit/page";
 import type { ReadDb, Scope } from "../../db";
 import { orgId, userId, type Actor } from "../users/model";
 import {
@@ -124,32 +123,6 @@ export function invoicesRepository(
   shares: Scope<typeof invoiceSharesTable>,
 ): InvoicesRepository {
   return {
-    async list(reach, { status, after, limit }) {
-      // 1 件多く読んで、続きがあるかを知る
-      const rows = await scope.reads
-        .select()
-        .from(invoicesTable)
-        .where(
-          and(
-            within(reach),
-            status ? eq(invoicesTable.status, status) : undefined,
-            after
-              ? or(
-                  lt(invoicesTable.updatedAt, after.at),
-                  and(eq(invoicesTable.updatedAt, after.at), lt(invoicesTable.id, after.id)),
-                )
-              : undefined,
-          ),
-        )
-        .orderBy(desc(invoicesTable.updatedAt), desc(invoicesTable.id))
-        .limit(limit + 1);
-
-      return toPage(rows.map(toInvoice), limit, (invoice) => ({
-        at: invoice.updatedAt,
-        id: invoice.id,
-      }));
-    },
-
     async listOverdue(reach, now) {
       const rows = await scope.reads
         .select()

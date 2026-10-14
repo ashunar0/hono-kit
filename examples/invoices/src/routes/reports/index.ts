@@ -1,10 +1,10 @@
 /**
  * /reports。集計のリソース
  */
-import { createRouter, errorResponses, Forbidden } from "hono-kit";
+import { createRouter } from "hono-kit";
 import { z } from "zod";
-import { requireAuth } from "../../middleware/auth";
-import { monthsBetween, type Month } from "../../domains/reports/model";
+import { requireRole } from "../../middleware/auth";
+import { monthsBetween, type Month } from "../../lib/month";
 
 /** 1 回に出せる月の数。重い集計で詰まらないように */
 const MAX_MONTHS = 24;
@@ -41,20 +41,15 @@ export const reportsRouter = createRouter()
       method: "get",
       // oxlint-disable-next-line hnk/route-lists-are-paged -- 件数は期間の月数で決まり、MAX_MONTHS（24）で上限を検査している
       path: "/monthly",
-      middleware: [requireAuth],
+      // レポートを見られるのは admin だけ。役割だけで決まるので guard に置く
+      middleware: [requireRole("admin")],
       request: { query: monthlyQuerySchema },
-      responses: {
-        200: monthlyResponseSchema,
-        ...errorResponses(Forbidden),
-      },
+      responses: { 200: monthlyResponseSchema },
     },
-    async (c, reply, { reports }) => {
+    async (c, reply, { reportQueries }) => {
       const actor = c.get("actor");
       const { from, to } = c.req.valid("query");
 
-      const result = await reports.monthly(actor, from, to);
-      if (!result.ok) return reply.failure(result.error);
-
-      return reply(200, { months: result.value });
+      return reply(200, { months: await reportQueries.monthly(actor, from, to) });
     },
   );

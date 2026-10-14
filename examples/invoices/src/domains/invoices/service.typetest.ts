@@ -32,20 +32,20 @@ export async function systemCannotCreate(invoices: InvoicesService, raw: unknown
 // 印はリテラルでは作れない。システムは systemActor、利用者は認証を通ったときだけ現れる
 export async function cannotForgeActors(invoices: InvoicesService) {
   // @ts-expect-error { kind: "system" } と書いてもシステムにはなれない
-  await invoices.list({ kind: "system" }, { limit: 10 });
+  await invoices.listOverdue({ kind: "system" }, new Date());
   // @ts-expect-error { kind: "user", ... } と書いても利用者にはなれない
-  await invoices.list({ kind: "user", id: "x", role: "admin" }, { limit: 10 });
+  await invoices.listOverdue({ kind: "user", id: "x", role: "admin" }, new Date());
 }
 
 // 請求書の ID は印付き。素の string は渡せない
 export async function idsAreNotInterchangeable(invoices: InvoicesService, actor: User) {
   // @ts-expect-error 素の string は請求書の ID ではない
-  await invoices.get(actor, "x");
+  await invoices.remove(actor, "x");
   // @ts-expect-error 利用者の ID も請求書の ID としては渡せない
-  await invoices.get(actor, actor.id);
+  await invoices.remove(actor, actor.id);
 
   // 印は作る関数で付ける
-  await invoices.get(actor, invoiceId("x"));
+  await invoices.remove(actor, invoiceId("x"));
 }
 
 // 支払い済みにできるのはシステム（webhook）だけ。利用者の route からは呼べない

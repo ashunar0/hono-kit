@@ -1,7 +1,6 @@
 /**
  * 請求書の手順（How）。domain のモノを使って、何をどの順でやるか
  */
-import type { Page, PageQuery } from "hono-kit/page";
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
@@ -26,21 +25,11 @@ import {
   NotDraft,
 } from "./model";
 
-/** 一覧の条件。位置と件数は hnk の PageQuery */
-export type InvoiceListQuery = PageQuery & {
-  status?: InvoiceStatus;
-};
-
-/** 一覧の 1 ページ。位置は更新の新しい順（updatedAt と id）で決まる */
-export type InvoicePage = Page<Invoice>;
-
 /**
  * 手順が必要とする保存の形。使う側のここで宣言し、repo.d1.ts がそれを満たす。
  * service は保存の実装を知らないので、テストでは同じ形の偽物を渡せる
  */
 export type InvoicesRepository = {
-  /** 範囲の中のものを、更新の新しい順に 1 ページ */
-  list(reach: InvoiceReach, query: InvoiceListQuery): Promise<InvoicePage>;
   /** 範囲の中の、送付済みで期限を過ぎたもの */
   listOverdue(reach: InvoiceReach, now: Date): Promise<Invoice[]>;
   /** 範囲の中に無ければ null。あれば、操作する人がどの関係で触れているか（access）と一緒に返す */
@@ -73,11 +62,6 @@ export type InvoicesRepository = {
  */
 export function invoicesService(repo: InvoicesRepository) {
   return {
-    /** 一覧。触れる範囲のものだけ、更新の新しい順 */
-    async list(actor: Actor, query: InvoiceListQuery): Promise<InvoicePage> {
-      return repo.list(reachOf(actor), query);
-    },
-
     /** 期限切れのもの。範囲の中だけ */
     async listOverdue(actor: Actor, now: Date): Promise<Invoice[]> {
       return repo.listOverdue(reachOf(actor), now);
@@ -92,14 +76,6 @@ export function invoicesService(repo: InvoicesRepository) {
       const found = await repo.find(reachOf(actor), id);
       if (found === null) return err(NotFound.code);
       if (!isRemindable(found.invoice, now)) return err("NOT_REMINDABLE");
-
-      return ok(found.invoice);
-    },
-
-    /** 範囲の外のものは、在ることも知らせない */
-    async get(actor: Actor, id: InvoiceId): Promise<Result<Invoice, typeof NotFound.code>> {
-      const found = await repo.find(reachOf(actor), id);
-      if (found === null) return err(NotFound.code);
 
       return ok(found.invoice);
     },

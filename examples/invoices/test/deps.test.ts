@@ -10,7 +10,13 @@ import { makeDeps } from "../src/deps";
 it("deps の全部が組み上がる", () => {
   const deps = makeDeps(env);
 
-  expect(Object.keys(deps).sort()).toEqual(["invoices", "payments", "reminders", "reports"]);
+  expect(Object.keys(deps).sort()).toEqual([
+    "invoiceQueries",
+    "invoices",
+    "payments",
+    "reminders",
+    "reportQueries",
+  ]);
   for (const name of Object.keys(deps)) {
     expect(deps[name as keyof typeof deps], name).toBeDefined();
   }

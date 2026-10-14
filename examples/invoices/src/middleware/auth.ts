@@ -1,8 +1,8 @@
 import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthVariables } from "../env";
-import type { User } from "../domains/users/model";
-import { fail, guard, Unauthorized } from "hono-kit";
+import type { Role, User } from "../domains/users/model";
+import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
  * セッションの利用者を文脈に積む。未ログインでも通す。
@@ -32,6 +32,25 @@ export const requireAuth = guard(
     await next();
   }),
 );
+
+/**
+ * ログインと役割を要求する。役割だけで決まる権限（レポートは admin だけ）はここに置き、
+ * 行を見る権限（所有者か共有された人）は service に置く。Unauthorized と Forbidden は responses に自動で足される
+ */
+export const requireRole = (...roles: Role[]) =>
+  guard(
+    [Unauthorized, Forbidden],
+    createMiddleware<{
+      Variables: AuthVariables & { actor: User };
+    }>(async (c, next) => {
+      const user = c.get("user");
+      if (user === null) throw fail(Unauthorized);
+      if (!roles.includes(user.role)) throw fail(Forbidden);
+
+      c.set("actor", user);
+      await next();
+    }),
+  );
 
 /**
  * 認証を要求しないことを明示する。何もしない。

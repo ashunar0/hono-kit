@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Cursor } from "hono-kit/page";
-import { alice, bob, insertInvoices, invoice, invoicesRepo } from "../../../test/fixtures";
+import { alice, bob, db, insertInvoices, invoice } from "../../../test/fixtures";
+import { invoicesQueries } from "./queries.d1";
 
 const at = (iso: string) => new Date(iso);
 
@@ -16,15 +17,12 @@ describe("一覧のキーセットのページ送り", () => {
       // 他人のものは出てこない
       invoice({ id: "b1", ownerId: bob.id, updatedAt: at("2026-03-05T00:00:00Z") }),
     ]);
-    const repo = invoicesRepo();
+    const queries = invoicesQueries(db());
 
     const seen: string[] = [];
     let after: Cursor | undefined;
     for (let pages = 0; pages < 10; pages++) {
-      const page = await repo.list(
-        { kind: "member", orgId: alice.orgId, userId: alice.id },
-        { after, limit: 2 },
-      );
+      const page = await queries.list(alice, { after, limit: 2 });
       seen.push(...page.items.map((i) => i.id));
       if (page.next === null) break;
       after = page.next;
@@ -39,12 +37,7 @@ describe("一覧のキーセットのページ送り", () => {
       invoice({ id: "s2", status: "draft" }),
       invoice({ id: "s3", status: "paid" }),
     ]);
-    const repo = invoicesRepo();
-
-    const page = await repo.list(
-      { kind: "member", orgId: alice.orgId, userId: alice.id },
-      { status: "sent", limit: 10 },
-    );
+    const page = await invoicesQueries(db()).list(alice, { status: "sent", limit: 10 });
 
     expect(page.items.map((i) => i.id)).toEqual(["s1"]);
   });

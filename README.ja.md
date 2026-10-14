@@ -120,6 +120,7 @@ GET が返す形はリソースの都合なので、読み取りはリソース�
 queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。ルールは作らず、要るときは model から借りる。
 書き込みの handler が入口の確認や材料のために読むときは、service を通す。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
 画面のための読み取りを domain に置くと、一覧ごとに「どの domain が答えるか」を決める決まり（外部キーの向き、読む側が返す形の宣言、1 つの一覧を 2 通りに割らない）が要った。それが分けた理由
+例のアプリの月ごとのレポートは、もとは自分の表もルールも持たない、読むだけの domain（reports）だった。queries に移すと domain ごと無くなった（集計は `routes/reports/queries.d1.ts`、admin だけが見られるのは guard の `requireRole("admin")`、月の計算は `src/lib/month.ts`）
 
 ### 出発点: core・inbound・outbound
 
@@ -263,7 +264,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
   `〜Within` は repo の export から自動で拾い、`test/reads-contract.test.ts` が「他の組織のデータが出ない」を全部に当てる。
   読みを足したら、その表の行を seed に足さないとテストが落ちる
 - **読みの線引き**: 状態の意味や業務のルールが入るもの（期限切れ、請求済みなど）は持ち主が答える（`isRemindable`、`billedStatuses`）。
-  形を変えるだけの集計（月ごとにまとめる）は読み側が、範囲付きの入口から書く。ここは機械で止められないので、レビューで見る
+  形を変えるだけの集計（月ごとにまとめる）は読み側（queries）が、範囲付きの入口から書く。ここは機械で止められないので、レビューで見る
 
 ## 新しい土台・新しい domain を出す
 

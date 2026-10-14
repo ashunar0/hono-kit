@@ -4,8 +4,8 @@ import { expect, it } from "vitest";
 import { scopeTo } from "../src/db";
 import { invoicesService } from "../src/domains/invoices/service";
 import { paymentsTable } from "../src/domains/payments/repo.d1";
-import { reportsRepository } from "../src/domains/reports/repo.d1";
-import { reportsService } from "../src/domains/reports/service";
+import { invoicesQueries } from "../src/routes/invoices/queries.d1";
+import { reportsQueries } from "../src/routes/reports/queries.d1";
 import { systemActor } from "hono-kit/testing";
 import { admin, admin2, alice, carol, db, insertInvoices, invoice, invoicesRepo } from "./fixtures";
 
@@ -24,10 +24,12 @@ it("admin が触れるのは自分の組織の請求書だけ。他の組織の�
   await seed("t1");
   const invoices = service();
 
-  const page = await invoices.list(admin, { limit: 10 });
+  const queries = invoicesQueries(db());
+
+  const page = await queries.list(admin, { limit: 10 });
   expect(page.items.map((i) => i.id)).toEqual(["t1-a"]);
 
-  expect(await invoices.get(admin, invoiceId("t1-c"))).toEqual({ ok: false, error: "NOT_FOUND" });
+  expect(await queries.get(admin, invoiceId("t1-c"))).toBeNull();
   expect(await invoices.send(admin, invoiceId("t1-c"), now)).toEqual({
     ok: false,
     error: "NOT_FOUND",
@@ -41,7 +43,7 @@ it("admin が触れるのは自分の組織の請求書だけ。他の組織の�
 it("システムは全ての組織の請求書に触れる", async () => {
   await seed("t2");
 
-  const page = await service().list(systemActor, { limit: 100 });
+  const page = await invoicesQueries(db()).list(systemActor, { limit: 100 });
   const ids = page.items.map((i) => i.id);
   expect(ids).toContain("t2-a");
   expect(ids).toContain("t2-c");
@@ -100,14 +102,12 @@ it("レポートは自分の組織の分だけ数える", async () => {
     updatedAt: paidAt,
   });
 
-  const reports = reportsService(reportsRepository(db()));
+  const reports = reportsQueries(db());
 
-  expect(await reports.monthly(admin, "2026-01", "2026-01")).toEqual({
-    ok: true,
-    value: [{ month: "2026-01", invoiced: 1000, received: 1000 }],
-  });
-  expect(await reports.monthly(admin2, "2026-01", "2026-01")).toEqual({
-    ok: true,
-    value: [{ month: "2026-01", invoiced: 7000, received: 7000 }],
-  });
+  expect(await reports.monthly(admin, "2026-01", "2026-01")).toEqual([
+    { month: "2026-01", invoiced: 1000, received: 1000 },
+  ]);
+  expect(await reports.monthly(admin2, "2026-01", "2026-01")).toEqual([
+    { month: "2026-01", invoiced: 7000, received: 7000 },
+  ]);
 });

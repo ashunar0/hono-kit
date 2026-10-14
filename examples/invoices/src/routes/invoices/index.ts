@@ -51,9 +51,9 @@ export const invoicesRouter = createRouter()
         200: listInvoicesResponseSchema,
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoiceQueries }) => {
       const actor = c.get("actor");
-      const page = await invoices.list(actor, c.req.valid("query"));
+      const page = await invoiceQueries.list(actor, c.req.valid("query"));
 
       return reply(200, pageResponse(page, invoiceResponse));
     },
@@ -70,14 +70,14 @@ export const invoicesRouter = createRouter()
         ...errorResponses(NotFound),
       },
     },
-    async (c, reply, { invoices }) => {
+    async (c, reply, { invoiceQueries }) => {
       const actor = c.get("actor");
       const { id } = c.req.valid("param");
 
-      const result = await invoices.get(actor, id);
-      if (!result.ok) return reply.failure(result.error);
+      const invoice = await invoiceQueries.get(actor, id);
+      if (invoice === null) return reply.failure(NotFound.code);
 
-      return reply(200, invoiceResponse(result.value));
+      return reply(200, invoiceResponse(invoice));
     },
   )
   // 作成

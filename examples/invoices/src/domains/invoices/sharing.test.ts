@@ -1,12 +1,14 @@
 import { invoiceId } from "./model";
 import { expect, it } from "vitest";
+import { invoicesWithin } from "./repo.d1";
 import { invoicesService } from "./service";
-import { authenticatedUser, orgId } from "../users/model";
+import { authenticatedUser, orgId, type Actor } from "../users/model";
 import {
   admin,
   alice,
   bob,
   carol,
+  db,
   insertInvoices,
   invoice,
   invoicesRepo,
@@ -28,13 +30,16 @@ const input = {
 const seed = (id: string) =>
   insertInvoices([invoice({ id, ownerId: alice.id, orgId: orgId("org1") })]);
 
-const ids = async (actor: Parameters<ReturnType<typeof service>["list"]>[0]) =>
-  (await service().list(actor, { limit: 100 })).items.map((i) => i.id);
+/** その人に見える請求書の id。見えるかどうかは invoices の窓口が決める */
+const ids = async (actor: Actor) =>
+  (await db().select().from(invoicesWithin(db(), actor))).map((i) => i.id as string);
+
+const sees = async (actor: Actor, id: string) => (await ids(actor)).includes(id);
 
 it("共有されていなければ、同じ組織の member にも見えない", async () => {
   await seed("s1");
 
-  expect(await service().get(bob, invoiceId("s1"))).toEqual({ ok: false, error: "NOT_FOUND" });
+  expect(await sees(bob, "s1")).toBe(false);
   expect(await ids(bob)).not.toContain("s1");
 });
 
@@ -45,7 +50,7 @@ it("閲覧を共有された人は、見られるが、書き換えも削除も�
     value: undefined,
   });
 
-  expect((await service().get(bob, invoiceId("s2"))).ok).toBe(true);
+  expect(await sees(bob, "s2")).toBe(true);
   expect(await ids(bob)).toContain("s2");
   expect(await service().update(bob, invoiceId("s2"), input, now)).toEqual({
     ok: false,
@@ -77,7 +82,7 @@ it("共有の権限は置き換えられ、やめると見えなくなる", asyn
   });
 
   await service().unshare(alice, invoiceId("s4"), bob.id);
-  expect(await service().get(bob, invoiceId("s4"))).toEqual({ ok: false, error: "NOT_FOUND" });
+  expect(await sees(bob, "s4")).toBe(false);
 });
 
 it("共有できるのは所有者と組織の admin。見えない人には在ることも分からない", async () => {
@@ -91,21 +96,21 @@ it("共有できるのは所有者と組織の admin。見えない人には在�
     ok: true,
     value: undefined,
   });
-  expect((await service().get(bob, invoiceId("s5"))).ok).toBe(true);
+  expect(await sees(bob, "s5")).toBe(true);
 });
 
 it("違う組織の人に共有しても、その人には見えない", async () => {
   await seed("s6");
   await service().share(alice, invoiceId("s6"), carol.id, "edit");
 
-  expect(await service().get(carol, invoiceId("s6"))).toEqual({ ok: false, error: "NOT_FOUND" });
+  expect(await sees(carol, "s6")).toBe(false);
   expect(await service().update(carol, invoiceId("s6"), input, now)).toEqual({
     ok: false,
     error: "NOT_FOUND",
   });
   // 同じ id の人が組織を移っても、組織の線は越えない
   const carolInOrg1 = authenticatedUser(carol.id, orgId("org1"), "member");
-  expect((await service().get(carolInOrg1, invoiceId("s6"))).ok).toBe(true);
+  expect(await sees(carolInOrg1, "s6")).toBe(true);
 });
 
 it("所有者は共有されていなくても、自分のものを自由に扱える", async () => {

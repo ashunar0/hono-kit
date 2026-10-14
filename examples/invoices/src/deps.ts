@@ -9,8 +9,8 @@ import { queuesReminderJobs } from "./domains/reminders/queue.cloudflare";
 import { resendMailer } from "./domains/reminders/mailer.resend";
 import { remindersRepository, remindersTable } from "./domains/reminders/repo.d1";
 import { remindersService } from "./domains/reminders/service";
-import { reportsRepository } from "./domains/reports/repo.d1";
-import { reportsService } from "./domains/reports/service";
+import { invoicesQueries } from "./routes/invoices/queries.d1";
+import { reportsQueries } from "./routes/reports/queries.d1";
 
 /**
  * domain の組み立て方を集める唯一の場所（composition root）。
@@ -51,10 +51,11 @@ export const makeDeps = (env: AppEnv["Bindings"]) => {
     queuesReminderJobs(env.REMINDER_QUEUE),
   );
 
-  // 自分のテーブルを持たず、読むだけ。書き込みの範囲（scope）ではなく、db をそのまま読みとして渡す
-  const reports = reportsService(reportsRepository(db));
+  // GET の読み。db を ReadDb（SELECT だけ）として受け取るので、書き込みは書けない
+  const invoiceQueries = invoicesQueries(db);
+  const reportQueries = reportsQueries(db);
 
-  return { invoices, payments, reminders, reports };
+  return { invoices, payments, reminders, invoiceQueries, reportQueries };
 };
 
 export type Deps = ReturnType<typeof makeDeps>;
