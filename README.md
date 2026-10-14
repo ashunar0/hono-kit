@@ -31,6 +31,15 @@ An app has two axes, because the nouns in a URL and the nouns of the domain are 
 
 Entry points (routes and jobs) use domains, never the other way. A route may use as many domains as it needs; domains never call each other.
 
+On top of the two axes run two paths:
+
+```
+write (POST, PATCH, DELETE): route → service → model → repo    keeps the rules
+read (GET):                  route → queries → …Within          keeps the reach
+```
+
+What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out.
+
 | Side         | What it is                                                     | Files                        |
 | ------------ | -------------------------------------------------------------- | ---------------------------- |
 | **core**     | What the thing is and what it can do. Knows nothing outside.   | model, service               |
@@ -46,7 +55,8 @@ src/domains/posts/          (generated)
 └─ repo.d1.ts    outbound: table and D1 implementation
 src/routes/posts/           (written by hand)
 ├─ index.ts      inbound: the router (HTTP input, handlers)
-└─ response.ts   inbound: how a post is shown over HTTP
+├─ response.ts   inbound: how a post is shown over HTTP
+└─ queries.d1.ts inbound: the reads of the GET endpoints
 ```
 
 ```
@@ -125,7 +135,7 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 
 ### Who may import what
 
-Each file in a domain is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`), a `response` (`response.ts`) or `errors` (`errors.ts`, failures only that entry point has). `layer-imports` allows only the imports below; everything else is an error.
+Each file in a domain is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`), a `response` (`response.ts`), `queries` (`queries.<tech>.ts`, the reads of the GET endpoints) or `errors` (`errors.ts`, failures only that entry point has). `layer-imports` allows only the imports below; everything else is an error.
 
 <!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
 
@@ -137,8 +147,9 @@ Each file in a domain is classified by its name prefix (its role); each file in 
 | outbound | gateway  | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                                    |
 | outbound | mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                                    |
 | outbound | queue    | model (types only), service (types only), lib. Puts jobs on a queue. What takes them off is a job in src/jobs/                                                                                                                                                                                    |
-| inbound  | resource | hono-kit, zod, errors, middleware, another domain's model, resource, response, lib. `src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported                                                                                         |
+| inbound  | resource | hono-kit, zod, errors, middleware, another domain's model, resource, response, queries (types only), lib. `src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported                                                                   |
 | inbound  | response | hono-kit, zod, another domain's model, response, lib. `src/routes/<noun>/response.ts`: how a thing is shown over HTTP                                                                                                                                                                             |
+| inbound  | queries  | drizzle-orm, hono-kit/page, db (types only), another domain's repo, another domain's model, lib. `src/routes/<noun>/queries.<tech>.ts`: the reads of the GET endpoints. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)         |
 | inbound  | job      | hono-kit (types only), another domain's model, lib. `src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps                                                                 |
 | inbound  | errors   | hono-kit, lib. `src/routes/<noun>/errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)                                     |
 | lib      | lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead                                                                              |

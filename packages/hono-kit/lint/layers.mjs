@@ -168,6 +168,8 @@ export const NOTES = {
   resource:
     "`src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported",
   response: "`src/routes/<noun>/response.ts`: how a thing is shown over HTTP",
+  queries:
+    "`src/routes/<noun>/queries.<tech>.ts`: the reads of the GET endpoints. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)",
   job: "`src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps",
   queue: "Puts jobs on a queue. What takes them off is a job in src/jobs/",
 };
