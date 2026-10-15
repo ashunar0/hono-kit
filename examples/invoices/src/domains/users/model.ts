@@ -1,6 +1,6 @@
 /**
  * 利用者というモノ。今は、ログインしている人が誰で、どの組織の、どのロールかだけ。
- * 他の domain の domain は、ここから型だけを借りる。
+ * 他の domain は、ここから型だけを借りる。
  * システム（利用者のいない呼び出し元）は hnk が持つ。cron・キュー・webhook が受け取る
  */
 import type { System } from "hono-kit/system";

@@ -6,7 +6,7 @@ A complete example (a customer's invoices, billed from products):
 
 ```ts
 // src/routes/customers/invoices/index.ts: read from as many domains as needed, write once
-async (c, reply, { customers, products, invoices }) => {
+async (c, reply, { customers, products, invoices, invoiceQueries }) => {
   const actor = c.get("actor");
   const { customerId } = c.req.valid("param");
   const input = c.req.valid("json");
@@ -28,7 +28,12 @@ async (c, reply, { customers, products, invoices }) => {
   );
   if (!result.ok) return reply.failure(result.error);
 
-  return reply(200, invoiceResponse(result.value));
+  // After a write, read it again the way its GET does
+  const invoice = await invoiceQueries.get(actor, result.value.id);
+  if (invoice === null)
+    throw new Error(`invoice ${result.value.id} is gone right after the write`);
+
+  return reply(200, invoiceResponse(invoice));
 };
 
 // domains/invoices/service.ts: declare the shape you take, not another domain's types
@@ -57,7 +62,7 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 
 ### When the write must cause something in another domain
 
-Do not write the other domain's table, and do not make a second write from the handler. **Record it in your own table in the same batch** (an outbox: `reservation_events`, `invoice_notifications`, ...), and deliver it later from an entry point that retries (your domain's `cron.ts` or `queue.ts`). The delivery is then a write from a retrying entry point (next section).
+Do not write the other domain's table, and do not make a second write from the handler. **Record it in your own table in the same batch** (an outbox: `reservation_events`, `invoice_notifications`, ...), and deliver it later from an entry point that retries (a job in `src/jobs/`: cron or a queue). The delivery is then a write from a retrying entry point (next section).
 
 ## Writing from an entry point that retries (webhook, queue, cron)
 
@@ -68,7 +73,7 @@ A failure midway is retried, so the entry point **may write to several domains o
 - Each write is still one call to one service; the entry point calls them in order
 
 ```ts
-// domains/payments/webhook.stripe.ts (sketch): the payment is recorded, then the invoice is marked paid
+// routes/webhooks/stripe/index.ts (sketch): the payment is recorded, then the invoice is marked paid
 const recorded = await payments.record(actor, event, now); // unique by event id
 if (!recorded.ok) return reply.failure(recorded.error);
 await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sent"; a retry finds it paid and does nothing
