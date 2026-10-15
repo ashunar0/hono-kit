@@ -60,6 +60,15 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 - Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (a permission that needs the row, a rule across things), it stays in the service. A permission the role alone decides is the endpoint guard (`requireRole`)
 - Writes that must happen together go inside that one call, in one batch (the repo receives `batch`: `wireBatch(db)`, next to its scopes). One repo call writes all or nothing; how is the store's business (D1 sends a fixed batch, a store with transactions could read and decide inside one)
 
+### Where the domain line goes
+
+When two writes look like they belong to different domains, ask: **does anyone get hurt right away if only one of them is written?**
+
+- Yes (an invoice is visible without its line items) → put them in the same domain. The repo receives one scope per table and writes both in one batch, in one call
+- No (the notification mail goes out a few minutes late) → keep them in separate domains and deliver later through an outbox (next section)
+
+Split them while the answer is yes, and there is no correct way left to write them.
+
 ### When the write must cause something in another domain
 
 Do not write the other domain's table, and do not make a second write from the handler. **Record it in your own table in the same batch** (an outbox: `reservation_events`, `invoice_notifications`, ...), and deliver it later from an entry point that retries (a job in `src/jobs/`: cron or a queue). The delivery is then a write from a retrying entry point (next section).

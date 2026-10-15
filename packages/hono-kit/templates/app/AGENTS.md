@@ -53,6 +53,8 @@ What a GET returns is the resource's business, so the read lives next to the res
 
 ## Adding a domain
 
+A domain's line is the line of what is written together. Tables that must never be written one without the other (an invoice and its line items) go in one domain, written in one call. What may catch up a little later (a mail when an invoice is sent) goes in another domain, joined through an outbox. The generator writes a domain with one table; add more tables when they belong together.
+
 `pnpm hnk g domain <name>` writes the bare shape under `src/domains/<name>/` (`model / service / repo.d1 / service.test`) and wires it into `src/deps.ts` above the `// hnk:` lines. It is a thing with only `id`, `createdAt` and `updatedAt`, and `get` / `create`. **Grow it into the real thing:**
 
 1. `model.ts`: fields, `…InputSchema` (zod; `trim()` before checking length), failures (`Failure`), `reachOf(actor)` when someone may touch only some of them (a union such as `{ kind: "all" } | { kind: "own"; userId: string }`), and `may…(actor, thing)` when a permission needs the row
