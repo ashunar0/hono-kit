@@ -125,5 +125,8 @@ export class Router<
   }
 }
 
-/** A Hono that groups routes. Use instead of `new Hono()` */
-export const createRouter = () => new Router<RegisteredEnv>();
+/**
+ * A Hono that groups routes. Use instead of `new Hono()`.
+ * The return type is written out so the published .d.ts keeps RegisteredEnv instead of resolving it to Env
+ */
+export const createRouter = (): Router<RegisteredEnv> => new Router<RegisteredEnv>();
