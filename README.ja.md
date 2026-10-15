@@ -232,7 +232,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭で役割（model / service / repo / gateway / mailer / queue）を決める。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）と `queries.<技術>.ts`（queries）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
-  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）、成功に 200 以外を使わない（`route-responds-200`）、`new Hono()` を書かない（`no-new-hono`）も、lint で止める
+  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）、成功に 200 以外を使わない（`route-responds-200`）、利用者の HTTP の handler で service に 2 回書かない（`route-writes-once`。service の読みは `get…`・`list…` で始め、それ以外は書き込みとみなす）、`new Hono()` を書かない（`no-new-hono`）も、lint で止める
 
 役割ごとに import してよい相手の表は、英語の [README の「Who may import what」](README.md#who-may-import-what) にある（`packages/hono-kit/lint/layers.mjs` から生成）。
 

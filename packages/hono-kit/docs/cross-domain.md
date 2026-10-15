@@ -52,7 +52,7 @@ export type Billed = {
 
 ## Writing from a user's request (HTTP)
 
-There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails.
+There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails. `hnk/route-writes-once` stops a second write call; it tells reads by name, so a service's reads start with `get` or `list` (`getCopiesTaken`, `listOverdue`).
 
 - The handler passes what it read as values. The writing service **checks that they belong together** before deciding, because rules that must hold from every entry point live in the service:
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
