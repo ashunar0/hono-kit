@@ -153,15 +153,14 @@ src/routes/invoices/
 ルールは 1 つ。**矢印は全部 model と service に向かう**。model は外を知らない。アダプターは service が宣言した形を型だけ借りて満たす。入口（routes, jobs）は model を使ってよいが、service は import せず deps から受け取る。
 アダプターのファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`gateway.stripe.ts`）。
 
-### 育ち方: 2 つ目が現れたときだけ、3 種類
+### 育ち方: 2 つ目が現れたときだけ、2 種類
 
 | 動き         | きっかけ                                           | 足すもの                                                                                                                                                                                                      |
 | ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 横に増える   | 2 つ目の入口（cron、キュー）                       | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                                                           |
 | 横に増える   | 2 つ目のアダプター（外部 API、メール、キュー）     | `gateway.stripe.ts`、`mailer.resend.ts` など。必要な形は service で宣言する                                                                                                                                   |
-| 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                                                            |
-| 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
 | 窓口を開く   | 画面や他の domain が SQL で読みに来る（集計など）  | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                                                        |
+| （足さない） | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
 | （足さない） | 他の domain を読む・書く                           | domain には何も足さない。入口（handler、cron、queue）が両方の service を呼び、値で渡す                                                                                                                        |
 
 どの動きでも、矢印は model と service に向かったまま変わらない。
