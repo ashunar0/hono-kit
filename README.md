@@ -38,7 +38,7 @@ write (POST, PATCH, DELETE): route → service → model → repo    keeps the r
 read (GET):                  route → queries → …Within          keeps the reach
 ```
 
-What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns. A write service does not return the thing for showing (create returns the ID, the others `void`); showing is the job of queries.
+What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns. A write service does not return the thing for showing, only what the caller needs to act next (the ID for a create, otherwise `void`); showing is the job of queries.
 
 | Side         | What it is                                                     | Files                        |
 | ------------ | -------------------------------------------------------------- | ---------------------------- |
@@ -118,7 +118,7 @@ async update(actor: Actor, id: PostId, input: PostInput, now: Date): Promise<Res
 ```
 
 - Expected failures are returned as `Result`. The service does not know about HTTP status codes.
-- A write does not return the thing for showing: create returns the ID, the others return `void`. Showing is the job of queries.
+- A write does not return the thing for showing, only what the caller needs to act next: the ID for a create, otherwise `void`. Showing is the job of queries.
 - Access is part of the query (the reach goes into the WHERE). Things you cannot see are `NOT_FOUND`; their existence is not revealed.
 - The service does not read the clock. It receives `now`.
 

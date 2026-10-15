@@ -118,19 +118,19 @@ export function paymentsService(repo: PaymentsRepository, gateway: PaymentGatewa
     /**
      * 決済サービスから届いた結果を、支払いに反映する。何度やっても同じ結果になる。
      * 請求書を支払い済みにするのは、この後に入口（webhook）が invoices を呼んで行う。
-     * 反映した支払いを返すので、入口は status で成功を見分けられる
+     * 入口が次にすることを決められるよう、反映した結果（status）と請求書の ID だけを返す
      */
     // system は使わないが、受け取ることで利用者の route からは呼べなくなる
     async receive(
       _system: System,
       event: PaymentEvent,
       now: Date,
-    ): Promise<Result<Payment, typeof NotFound.code>> {
+    ): Promise<Result<Pick<Payment, "status" | "invoiceId">, typeof NotFound.code>> {
       const status = event.kind === "failed" ? "failed" : "succeeded";
       const payment = await repo.updateStatusByProviderRef(event.providerRef, status, now);
       if (payment === null) return err(NotFound.code);
 
-      return ok(payment);
+      return ok({ status: payment.status, invoiceId: payment.invoiceId });
     },
   };
 }
