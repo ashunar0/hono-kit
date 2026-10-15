@@ -1,22 +1,21 @@
 /**
+ * アダプター: service が宣言した形を満たし、外（DB、外部 API、メール、キュー）に繋ぐ役割。
+ * ファイル名は「役割.技術.ts」（repo.d1.ts、gateway.stripe.ts）
+ */
+export const ADAPTER_ROLES = ["repo", "gateway", "mailer", "queue"];
+
+/**
  * domain の中に置ける役割。
  * ここに無い名前のファイルは domain の中に置けない（layer-imports が止める）
  */
-export const DOMAIN_ROLES = [
-  "model",
-  "service",
-  "repo",
-  "gateway",
-  "mailer",
-  "queue",
-];
+export const DOMAIN_ROLES = ["model", "service", ...ADAPTER_ROLES];
 
 /**
  * 役割ごとに、import してよい相手。ここに無いものは全部だめ。
  * "type" は `import type` だけ許す。実行時には依存せず、形だけを借りる。
  *
- * 矢印は全部 model に向かう。model は外を何も知らない。
- * service は手順で、repo・gateway・mailer・queue の形を宣言する。repo などはその形を満たす。
+ * 矢印は全部 model と service に向かう。model は外を何も知らない。
+ * service は手順で、アダプターの形を宣言する。アダプターはその形を型だけ借りて満たす。
  * 入口（リソース、job）は誰として呼ぶかを決め、deps から service を受け取って呼ぶ。
  *
  * 相手の書き方:
@@ -137,9 +136,9 @@ export const ENTRY_HINT =
 export const ERRORS_HINT =
   "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/errors.ts";
 
-/** model と service は、自分の domain の repo・gateway・mailer・queue を知らない。形は service が宣言する */
+/** model と service は、自分の domain のアダプターを知らない。形は service が宣言する */
 for (const from of ["model", "service"]) {
-  for (const to of ["repo", "gateway", "mailer", "queue"]) {
+  for (const to of ADAPTER_ROLES) {
     HINTS[`${from}→${to}`] ??=
       `${from} does not know ${to}. Declare the shape you need as a type in service; ${to} fulfills it`;
   }

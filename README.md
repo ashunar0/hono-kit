@@ -26,7 +26,7 @@ pnpm db:generate && pnpm check
 An app has two axes, because the nouns in a URL and the nouns of the domain are different things.
 
 - **Resources** (`src/routes/<noun>/`): what a client points at, cut by the URL. `/customers/:customerId/invoices` lives in `src/routes/customers/invoices/`.
-- **Domains** (`src/domains/<name>/`): who keeps which rules, cut by the domain. Each file in a domain is named by its role (model, service, repo, ...).
+- **Domains** (`src/domains/<name>/`): who keeps which rules, cut by the domain. Each file in a domain is named by its role: model (the thing and its rules), service (the steps), and adapters that connect to the outside (repo, gateway, mailer, queue).
 - **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Like resources, they live outside domains.
 
 Entry points (routes and jobs) use domains, never the other way. A route may use as many domains as it needs; domains never call each other.
@@ -45,8 +45,8 @@ What a GET returns is the resource's business, so the read lives next to the res
 ```
 src/domains/posts/          (generated)
 ├─ model.ts     types and rules. Knows nothing outside
-├─ service.ts    steps, and the shape of storage they need
-└─ repo.d1.ts    table and D1 implementation. Fulfills the shape service declares
+├─ service.ts    steps, and the shape of the adapters they need
+└─ repo.d1.ts    adapter: table and D1 implementation. Fulfills the shape service declares
 src/routes/posts/           (written by hand)
 ├─ index.ts      entry point: the router (HTTP input, handlers). Decides who is acting and calls services
 ├─ response.ts   how a post is shown over HTTP
@@ -59,7 +59,7 @@ src/routes/posts/           (written by hand)
        └──(deps)─→ service ←───────┘
 ```
 
-One rule: **every arrow points to model.** Handlers receive services from deps instead of importing them. More files are added only when a second one appears (a second entry point, a second storage, ...).
+One rule: **every arrow points to model and service.** model knows nothing outside. Adapters fulfill the shape service declares, borrowing only its type. Entry points may use model, but receive services from deps instead of importing them. More files are added only when a second one appears (a second entry point, a second adapter, ...).
 
 ## What the code looks like
 

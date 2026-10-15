@@ -8,6 +8,7 @@ import {
 import {
   HINTS,
   DOMAIN_ROLES,
+  ADAPTER_ROLES,
   LAYERS,
   ENTRY_HINT,
   ENTRY_ROLES,
@@ -64,7 +65,7 @@ export default {
             message:
               self.role === "errors"
                 ? ERRORS_HINT
-                : `Files in a domain start with their role (${DOMAIN_ROLES.join(", ")}). repo, gateway, mailer and queue are named "role.tech.ts" (repo.d1.ts, ...)`,
+                : `Files in a domain start with their role (${DOMAIN_ROLES.join(", ")}). Adapters (${ADAPTER_ROLES.join(", ")}) are named "role.tech.ts" (repo.d1.ts, ...)`,
           });
         },
       };

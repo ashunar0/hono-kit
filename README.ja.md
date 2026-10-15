@@ -129,15 +129,15 @@ queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓�
 
 ### 出発点: model・service・repo とリソース
 
-domain の中のファイルは、名前の頭が役割になる（model、service、repo、gateway、mailer、queue）。
+domain の中のファイルは、名前の頭が役割になる。モノの型とルール（model）、手順（service）、外に繋ぐアダプター（repo、gateway、mailer、queue）。アダプターは、service が宣言した形を満たす。
 
 出発点は、domain の 3 ファイルと、同じ名詞のリソース。モノは What（model）と How（service）に分けて始める。手順はどの domain にも毎回あるので、最初から分けておく。
 
 ```
 src/domains/invoices/
 ├─ model.ts      What: 型・ルール（検査済みの印付き）。外を何も知らない
-├─ service.ts     How: 手順と、手順が必要とする repo などの形の宣言
-└─ repo.d1.ts     テーブルと、D1 での実装。service が宣言した形を満たす。行 → モノの詰め替え
+├─ service.ts     How: 手順と、手順が必要とするアダプターの形の宣言
+└─ repo.d1.ts     アダプター: テーブルと、D1 での実装。service が宣言した形を満たす。行 → モノの詰め替え
 src/routes/invoices/
 ├─ index.ts       入口: router。HTTP の入力の形と handler。誰として呼ぶかを決めて service に渡す
 ├─ response.ts    モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
@@ -150,21 +150,21 @@ src/routes/invoices/
        └─(deps)──→ service ←───────┘ （service が宣言した形を、型だけ借りて満たす）
 ```
 
-ルールは 1 つ。**矢印は全部 model に向かう**。入口（routes, jobs）は service を import せず、deps から受け取る。
-repo・gateway・mailer・queue のファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`gateway.stripe.ts`）。
+ルールは 1 つ。**矢印は全部 model と service に向かう**。model は外を知らない。アダプターは service が宣言した形を型だけ借りて満たす。入口（routes, jobs）は model を使ってよいが、service は import せず deps から受け取る。
+アダプターのファイル名には、何に繋ぐかを書く（`repo.d1.ts`、`gateway.stripe.ts`）。
 
 ### 育ち方: 2 つ目が現れたときだけ、3 種類
 
 | 動き         | きっかけ                                           | 足すもの                                                                                                                                                                                                      |
 | ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 横に増える   | 2 つ目の入口（cron、キュー）                       | domain の外の `src/jobs/<名前>.ts`。webhook は HTTP なのでリソース（`src/routes/webhooks/stripe/`）                                                                                                           |
-| 横に増える   | 2 つ目の保存先・外部 API・メール                   | `files.r2.ts`、`gateway.stripe.ts` など。必要な形は service で宣言する                                                                                                                                        |
+| 横に増える   | 2 つ目のアダプター（外部 API、メール、キュー）     | `gateway.stripe.ts`、`mailer.resend.ts` など。必要な形は service で宣言する                                                                                                                                   |
 | 中で割れる   | 1 つのファイルが 2 つ目の理由で変わり始めた        | 同じ箱の中で分ける（service.ts → ports.ts など）。矢印は変わらない                                                                                                                                            |
 | 中で割れる   | その domain だけの失敗（`NOT_DRAFT` など）が現れた | 足さない。model.ts に `Failure`（コード・種類・文言）を置く。番号は種類から hono-kit が決める。入口だけの失敗（webhook の署名など）は入口の隣の `src/routes/<名詞>/errors.ts`。domain に errors.ts は置かない |
 | 窓口を開く   | 画面や他の domain が SQL で読みに来る（集計など）  | 持ち主の repo に `〜Within(db, actor)`。読む側は表を直接読まず、範囲の決め方も知らない                                                                                                                        |
 | （足さない） | 他の domain を読む・書く                           | domain には何も足さない。入口（handler、cron、queue）が両方の service を呼び、値で渡す                                                                                                                        |
 
-どの動きでも、矢印は model に向かったまま変わらない。
+どの動きでも、矢印は model と service に向かったまま変わらない。
 
 ### domain をまたぐとき
 
@@ -228,7 +228,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
   `provideDeps` がリクエストごとに、使うときに 1 回だけ組み立てる
-- **repo・gateway・mailer・queue の形は service が宣言する**（Go の「interface は使う側が決める」）
+- **アダプター（repo・gateway・mailer・queue）の形は service が宣言する**（Go の「interface は使う側が決める」）
 - **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭で役割（model / service / repo / gateway / mailer / queue）を決める。`src/routes/` の中は `index.ts`（resource）と `response.ts`（response）と `errors.ts`（errors）と `queries.<技術>.ts`（queries）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、 `.endpoint` に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。

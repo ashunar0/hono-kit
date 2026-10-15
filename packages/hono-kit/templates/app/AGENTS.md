@@ -63,10 +63,10 @@ What a GET returns is the resource's business, so the read lives next to the res
 | File         | Role                                                |
 | ------------ | --------------------------------------------------- |
 | `model.ts`   | The thing (What): types, rules, ID brands, failures |
-| `service.ts` | The steps (How) and the storage shape they need     |
-| `repo.d1.ts` | Table, D1 implementation, row → thing               |
+| `service.ts` | The steps (How) and the adapter shapes they need    |
+| `repo.d1.ts` | Adapter: table, D1 implementation, row → thing      |
 
-Every arrow points to model; `hnk/layer-imports` says what each file may import. Grow only **when a second one appears**: another store or external API (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
+Every arrow points to model and service: adapters (repo, gateway, mailer, queue) fulfill the shapes service declares. `hnk/layer-imports` says what each file may import. Grow only **when a second one appears**: another adapter (`gateway.stripe.ts`, `mailer.resend.ts`). **Do not add them up front.**
 
 ## Adding a resource
 
