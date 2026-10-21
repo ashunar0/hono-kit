@@ -2,7 +2,7 @@
 
 Read [layout.md](layout.md) first. A resource is a directory under `src/routes/`; the reads it uses are in [layout.md](layout.md#reads-and-writes).
 
-The generator writes no resource. Create the directory the URL says, by hand: `src/routes/invoices/index.ts` is `/invoices`, `src/routes/invoices/[id]/index.ts` is `/invoices/:id`, a child resource nests (`src/routes/customers/[customerId]/invoices/index.ts`). Each method is one export, `GET` / `POST` / `PUT` / `PATCH` / `DELETE`. `pnpm hnk gen` (the first step of `pnpm check`) registers them in `src/routes.gen.ts`; never edit that file or register routes by hand. `request.param` lists every `:param` of the whole path, the parent's too (`{ customerId, id }`): the generated file is underlined when one is missing. One endpoint looks like this:
+The generator writes no resource. Create the directory the URL says, by hand: `src/routes/invoices/index.ts` is `/invoices`, `src/routes/invoices/[id]/index.ts` is `/invoices/:id`, a child resource nests (`src/routes/customers/[customerId]/invoices/index.ts`). Each method is one export, `GET` / `POST` / `PUT` / `PATCH` / `DELETE`. `pnpm hnk gen` (kept running by `pnpm dev`, and the first step of `pnpm check`) registers them in `src/routes.gen.ts`; never edit that file or register routes by hand. `request.param` lists every `:param` of the whole path, the parent's too (`{ customerId, id }`): the generated file is underlined when one is missing. One endpoint looks like this:
 
 ```ts
 // src/routes/invoices/[id]/index.ts

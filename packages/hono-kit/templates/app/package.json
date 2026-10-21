@@ -8,7 +8,7 @@
   },
   "scripts": {
     "postinstall": "hnk gen",
-    "dev": "wrangler dev",
+    "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "format": "prettier --write .",
