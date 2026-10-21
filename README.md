@@ -10,7 +10,7 @@ The goal: whoever writes the code, including AI, it comes out in the same shape.
 When AI writes a backend, the details drift every time: where files go, how failures are returned, how access is checked.
 hono-kit fixes the shape up front and stops deviations with types and lint. Every lint message says how to fix it, so the AI can notice and correct itself.
 
-It is not a framework or a platform. It sits thinly on top of plain Hono, and its only dependency is `hono`.
+It is not a framework or a platform. It sits thinly on top of plain Hono, and what it puts into your app is `hono` only (the generator, `hnk gen`, reads files with `oxc-parser` on your machine).
 
 ## Getting started
 
