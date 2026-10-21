@@ -1,5 +1,5 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → g domain → pnpm install → db:generate → pnpm check を通す。
+ * 雛形の通し確認。空のディレクトリに hnk init → g domain → pnpm install（postinstall で hnk gen）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
  * 使い方: node scripts/e2e-template.mjs [--packed] [domain 名...]（既定は invoices と signupRequests。複数形と camelCase の置き換えを確かめる）
  *   既定は手元の hono-kit を link: でつなぐ。--packed は pnpm pack した tgz を展開し、その中の CLI と dist で通す（npm に出す物そのもの）
@@ -42,6 +42,8 @@ if (packed) {
 run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
 for (const name of domains) run("node", [cli, "g", "domain", name], app);
 run("pnpm", ["install"], app);
+// postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
+run("pnpm", ["typecheck"], app);
 run("pnpm", ["db:generate"], app);
 run("pnpm", ["exec", "prettier", "--write", "."], app);
 run("pnpm", ["check"], app);
