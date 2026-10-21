@@ -6,7 +6,7 @@ Two axes, and two paths. Read this before writing any file.
 
 The nouns in the URL (resources) and the nouns of the domain (domains) are different things, so they live apart.
 
-- **Resources** (`src/routes/<noun>/`): what a client points at. Cut by the URL: the directory is the path and `[id]` is `:id` (`/customers/:customerId/invoices` → `routes/customers/[customerId]/invoices/`). Each method is an export of its `index.ts`
+- **Resources** (`src/routes/<noun>/`): what a client points at. Cut by the URL: the directory is the path and `[id]` is `:id` (`/customers/:customerId/invoices` → `routes/customers/[customerId]/invoices/`). Each method is an export of its `index.ts`. Directories are nouns, except a state transition: a verb directory under the thing (`invoices/[id]/send/`) with only `POST` ([state.md](state.md))
 - **Domains** (`src/domains/<name>/`): who keeps which rules. Cut by the rules a thing must keep
 - **Jobs** (`src/jobs/<name>.ts`): entry points that are not HTTP (cron, a queue). Named by what starts them (`daily.ts`, `reminders-queue.ts`). Like resources, they live outside domains and receive services from deps
 - **One way only**: entry points (routes and jobs) use domains; domains know nothing of them. A route may use as many domains as it needs. One domain's code never uses another domain's service; the handler joins them

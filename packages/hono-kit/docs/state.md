@@ -6,7 +6,7 @@ model holds an `as const` array (`…Statuses`) and a zod enum (`…StatusSchema
 
 ## Transitions
 
-- Transitions are `POST /:id/<verb>` as its own resource directory (`src/routes/invoices/[id]/send/index.ts` for `POST /invoices/:id/send`), not a `PATCH` of the status
+- Transitions are `POST /:id/<verb>`: a verb directory under the thing with only `POST` (`src/routes/invoices/[id]/send/index.ts` for `POST /invoices/:id/send`), not a `PATCH` of the status and not a noun (`/sending`). An undo is another verb (`publish` / `unpublish`)
 - service does `find` (NOT_FOUND if absent) → a check (a pure function in model such as `canSend(invoice)`) → `transition`
 - The repo may add `transition(reach, id, from, changes)`: one statement with `WHERE id AND status = from AND within(reach)`. If it returns null, another request moved first, so return the same conflict
 - A transition that is not allowed is a domain failure `{ code: "…_NOT_SENDABLE", kind: "conflict", message }`. When the docs do not name the code, make it `<THING>_` + what happened; a name the docs give is the API's contract, so use it as is
