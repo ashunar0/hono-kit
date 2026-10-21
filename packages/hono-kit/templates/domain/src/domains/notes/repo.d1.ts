@@ -4,7 +4,7 @@
  */
 import { eq, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { Scope } from "#src/db/index";
+import type { ReadDb, Scope } from "#src/db/index";
 import { noteId, type Note } from "./model";
 import type { NotesRepository } from "./service";
 
@@ -25,6 +25,13 @@ const toNote = (row: NoteRow): Note => ({
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
+
+/**
+ * The window every outside read of notes goes through: the GET queries in src/routes, and other domains.
+ * Nobody reads notesTable directly (no-foreign-table-reads). When who looks decides what is seen,
+ * take actor and narrow the rows here with reachOf: notesWithin(db, actor)
+ */
+export const notesWithin = (db: ReadDb) => db.select().from(notesTable).as("__snake___within");
 
 export function notesRepository(scope: Scope<typeof notesTable>): NotesRepository {
   return {

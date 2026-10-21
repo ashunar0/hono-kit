@@ -1,5 +1,5 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → g domain → pnpm install（postinstall で hnk gen）→ typecheck → db:generate → pnpm check を通す。
+ * 雛形の通し確認。空のディレクトリに hnk init → g domain → e2e-routes/ を写す → pnpm install（postinstall で hnk gen）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
  * 使い方: node scripts/e2e-template.mjs [--packed] [domain 名...]（既定は invoices と signupRequests。複数形と camelCase の置き換えを確かめる）
  *   既定は手元の hono-kit を link: でつなぐ。--packed は pnpm pack した tgz を展開し、その中の CLI と dist で通す（npm に出す物そのもの）
@@ -40,7 +40,10 @@ if (packed) {
 }
 
 run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
-for (const name of domains) run("node", [cli, "g", "domain", name], app);
+// notes は読みの道（_queries.ts → notesWithin → endpoint → routes.gen.ts → AppType）を雛形の上で通すため、いつも作る。
+// リソースは生成しないので、e2e-routes/ の route を手で書いた体で写す
+for (const name of new Set(["notes", ...domains])) run("node", [cli, "g", "domain", name], app);
+fs.cpSync(path.join(root, "scripts/e2e-routes"), path.join(app, "src/routes"), { recursive: true });
 run("pnpm", ["install"], app);
 // postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
 run("pnpm", ["typecheck"], app);
