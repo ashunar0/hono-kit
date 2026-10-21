@@ -1,11 +1,9 @@
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 import { requireRole } from "../../middleware/auth";
 
 // A guard built by a call counts as the one auth guard
-export const roleRouter = createRouter().endpoint(
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [requireRole("admin")] as const,
     responses: {},
   },

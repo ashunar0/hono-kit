@@ -136,7 +136,7 @@ src/domains/invoices/
 ├─ service.ts     How: 手順と、手順が必要とするアダプターの形の宣言
 └─ repo.d1.ts     アダプター: テーブルと、D1 での実装。service が宣言した形を満たす。行 → モノの詰め替え
 src/routes/invoices/
-├─ index.ts       入口: router。HTTP の入力の形と handler。誰として呼ぶかを決めて service に渡す
+├─ index.ts       入口: endpoint（export const GET = createEndpoint(...)）。HTTP の入力の形と handler。誰として呼ぶかを決めて service に渡す
 ├─ _response.ts   モノを HTTP でどう見せるか（モノのルールではないので、リソースの側）
 └─ _queries.ts    GET の読み取り。窓口（〜Within）を通して画面の 1 行を返す
 ```
@@ -286,7 +286,7 @@ CLI の元は `packages/hono-kit/bin/hnk.mjs`、雛形は `packages/hono-kit/tem
 | 他の domain を使う                     | domain からは使わない。handler が両方の service を受け取り、読んだものを値で渡す。受け取る service は形を宣言する（使う分だけ。例: `{ id: string; storeId: string }`）                                                                                                                                                                                        |
 | 他の domain の表                       | 外部キーの `references()` の中でだけ使う。読むときは、持ち主が出している `〜Within(db, actor)` を使う                                                                                                                                                                                                                                                         |
 | 親の下にぶら下がるもの（コメントなど） | 親が見えるかを、GET なら親のリソースの queries に（`issuesQueries.get(actor, issueId)`）、書き込みなら親の service に（`issues.get(actor, issueId)`）handler が問い合わせる（見えなければ NOT_FOUND）。子に orgId は持たせない。親が見えれば読める・書ける。もっと厳しい権限が要るなら、親が access を返す問いを宣言する                                      |
-| 子の router                            | 入れ子のリソースは入れ子のディレクトリ（`routes/issues/[issueId]/comments/`）。マウントは書かず、`pnpm hnk gen` が登録する。`request.param` には親の param も書く                                                                                                                                                                                             |
+| 子のリソース                           | 入れ子のリソースは入れ子のディレクトリ（`routes/issues/[issueId]/comments/`）。マウントは書かず、`pnpm hnk gen` が登録する。`request.param` には親の param も書く                                                                                                                                                                                             |
 | 失敗の使い分け                         | 見えないものは `NOT_FOUND`（在ることも知らせない）、見えるが権限が足りないものは `FORBIDDEN`。確認の順は guard（401 → 役割の 403）→ 入力検査 400 → NOT_FOUND → FORBIDDEN（行を見る権限）→ unprocessable → conflict                                                                                                                                            |
 | 状態が進むモノ                         | 遷移できない失敗は model に `kind: "conflict"` の `Failure`。遷移は `POST /:id/<動詞>`。repo に `status = from` を WHERE に入れた 1 文の更新を持たせ、確認の後に null なら同じ conflict を返す（`send` の形）。`NOT_PAYABLE` は invoices が返す失敗で、payments の model の `NotPayable` と同じ code                                                          |
 | 状態コード                             | 作成と更新は、書いた後に queries で読み直したもの（GET と同じ形）を 200 で返す。削除は `{ ok: true }` の 200                                                                                                                                                                                                                                                  |

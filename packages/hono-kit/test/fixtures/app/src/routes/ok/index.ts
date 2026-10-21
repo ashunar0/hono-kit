@@ -1,10 +1,8 @@
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
 
-export const okRouter = createRouter().endpoint(
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [requireAuth] as const,
     responses: {},
   },

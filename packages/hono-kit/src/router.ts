@@ -1,18 +1,7 @@
-import {
-  Hono,
-  type Env,
-  type MiddlewareHandler,
-  type Schema,
-  type ToSchema,
-} from "hono";
+import { Hono, type MiddlewareHandler, type ToSchema } from "hono";
 import { validator } from "hono/validator";
-import type { H, MergePath, MergeSchemaPath, ParamKeys } from "hono/types";
-import {
-  buildEndpoint,
-  type BuiltRoute,
-  type EndpointConfig,
-  type EndpointFn,
-} from "./endpoint.js";
+import type { H, ParamKeys } from "hono/types";
+import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
 import type { RegisteredEnv } from "./register.js";
 import type { InferInput } from "./standard-schema.js";
@@ -66,74 +55,11 @@ const validatorsOf = (route: RouteConfig) => {
 };
 
 /**
- * A Hono that groups routes. `.endpoint(config, fn)` registers a declaration together with its handler.
- * The declaration determines the types of c.req.valid() and of hc responses
- */
-export class Router<
-  E extends Env = Env,
-  S extends Schema = {},
-  BasePath extends string = "/",
-> extends Hono<E, S, BasePath> {
-  endpoint<const C extends RouteConfig>(
-    config: EndpointConfig<C>,
-    fn: EndpointFn<C>,
-  ): Router<
-    E,
-    S &
-      ToSchema<
-        C["method"],
-        MergePath<BasePath, C["path"]>,
-        ComputeInput<BuiltRoute<C>>,
-        RouteConfigToTypedResponse<BuiltRoute<C>>
-      >,
-    BasePath
-  > {
-    const [route, handler] = buildEndpoint(config as C, fn);
-    const middleware = [route.middleware ?? []].flat();
-    const last = Object.assign(handler, { [ROUTE]: route });
-
-    // Types are guarded by the parameter declarations. Hono's on cannot match them up in here
-    (
-      (this as unknown as Hono<any, any, any>).on as (
-        ...args: unknown[]
-      ) => unknown
-    ).call(
-      this,
-      route.method.toUpperCase(),
-      route.path,
-      ...([...middleware, ...validatorsOf(route), last] as unknown[]),
-    );
-
-    return this as never;
-  }
-
-  /**
-   * Mounts a child router (`.route("/:customerId/invoices", customerInvoicesRouter)`).
-   * Hono's route returns a plain Hono; this returns the Router, so `.endpoint` may follow in any order
-   */
-  override route<
-    SubPath extends string,
-    SubEnv extends Env,
-    SubSchema extends Schema,
-    SubBasePath extends string,
-  >(
-    path: SubPath,
-    app: Hono<SubEnv, SubSchema, SubBasePath>,
-  ): Router<
-    E,
-    MergeSchemaPath<SubSchema, MergePath<BasePath, SubPath>> | S,
-    BasePath
-  > {
-    return super.route(path, app) as never;
-  }
-}
-
-/**
- * A Hono that groups routes. Use instead of `new Hono()`.
+ * The app's root. Use instead of `new Hono()`, so c.get / c.set know the app's Env (Register).
  * The return type is written out so the published .d.ts keeps RegisteredEnv instead of resolving it to Env
  */
-export const createRouter = (): Router<RegisteredEnv> =>
-  new Router<RegisteredEnv>();
+export const createRouter = (): Hono<RegisteredEnv> =>
+  new Hono<RegisteredEnv>();
 
 // ---- createEndpoint: one file per resource, one export per method ----
 

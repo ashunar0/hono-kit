@@ -1,11 +1,9 @@
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
 import { InvalidSignature } from "./_errors";
 
-export const r14Router = createRouter().endpoint(
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [requireAuth] as const,
     responses: {},
   },

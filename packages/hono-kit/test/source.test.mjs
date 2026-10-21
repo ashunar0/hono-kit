@@ -55,9 +55,6 @@ const CASTS = {
   // errorResponses の戻り値: 実行時に組み立てた object に、番号ごとの失敗の型を付ける。
   // handler の中の reply と fn(c, ...): route の型が決まらないここでは、Hono のジェネリクスを照らし合わせきれない
   "endpoint.ts": 10,
-  // .endpoint の中の Hono の on と戻り値: 型は引数の宣言で守られていて、Hono の on はここでは照らし合わせきれない。
-  // .route の戻り値: Hono の route は自分自身を返すが、型は素の Hono なので、Router として返し直す
-  "router.ts": 3,
   // 登録された handler に貼った宣言（ROUTE）を読む。Hono の handler の型は、hnk の印を知らない
   "openapi.ts": 1,
 };

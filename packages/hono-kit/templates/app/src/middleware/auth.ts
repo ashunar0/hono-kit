@@ -16,7 +16,7 @@ export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 /**
- * Requires sign-in. Put it in .endpoint middleware and, in the handler after it,
+ * Requires sign-in. Put it in an endpoint's middleware and, in the handler after it,
  * actor (who is acting) becomes a User (user itself still includes null).
  * Unauthorized is added to responses automatically
  */

@@ -1,11 +1,9 @@
 // expect: hnk(route-responds-200) | Success is always 200
 import { allowAnonymous } from "../../middleware/auth";
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 
-export const createdRouter = createRouter().endpoint(
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [allowAnonymous] as const,
     responses: { 201: {} },
   },

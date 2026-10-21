@@ -1,6 +1,5 @@
 import type { Context, MiddlewareHandler, TypedResponse } from "hono";
 import { routePath } from "hono/route";
-import type { ParamKeys } from "hono/types";
 import type {
   ContentfulStatusCode,
   SuccessStatusCode,
@@ -28,7 +27,6 @@ import {
 import {
   hnkSchema,
   issue,
-  type InferInput,
   type InferOutput,
 } from "./standard-schema.js";
 
@@ -171,7 +169,7 @@ export type Guard<
 };
 
 /**
- * Gives a middleware the failures it may return. Put it in .endpoint middleware and
+ * Gives a middleware the failures it may return. Put it in an endpoint's middleware and
  * those failures are added to responses automatically. `export const requireAuth = guard([Unauthorized], ...)`
  */
 export const guard = <
@@ -252,7 +250,7 @@ type DeclaredSuccess<R extends RouteConfig> = keyof R["responses"] &
 type Built<C extends RouteConfig> = ReturnType<typeof createRoute<C>>;
 
 /**
- * Failure codes reply.failure accepts. With hono-kit's .endpoint, only those written by hand
+ * Failure codes reply.failure accepts. Only those written by hand
  * (failures from guards or input validation are excluded, since the handler does not return them)
  */
 type DeclaredFailure<R extends RouteConfig> = R extends {
@@ -316,30 +314,6 @@ const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
   );
 };
 
-/** The keys of request.param */
-type ParamsKeysOf<C extends RouteConfig> = C extends {
-  request: { param: infer S extends AnySchema };
-}
-  ? keyof InferInput<S> & string
-  : never;
-
-/**
- * The message shown when a `:name` in the path is missing from the keys of request.param.
- * If it is missing, the value is never validated. Extra keys are allowed: they come from the
- * path the router is mounted at (`.route("/:storeId/menus", router)`), which the endpoint does not see
- */
-type PathMismatch<C extends RouteConfig> = [
-  Exclude<ParamKeys<C["path"]>, ParamsKeysOf<C>>,
-] extends [never]
-  ? never
-  : `The path params (${ParamKeys<C["path"]>}) are missing from the keys of request.param (${ParamsKeysOf<C>})`;
-
-/** The type of a declaration (config). A path param missing from request.param is underlined */
-export type EndpointConfig<C extends RouteConfig> = C &
-  ([PathMismatch<C>] extends [never]
-    ? unknown
-    : { readonly "path and request.param do not match": PathMismatch<C> });
-
 /** The declaration type after adding automatic failures, used for hc response types and the like */
 export type BuiltRoute<C extends RouteConfig> = Built<C>;
 
@@ -355,7 +329,7 @@ export type EndpointFn<C extends RouteConfig> = (
 ) => MaybePromise<RouteConfigToTypedResponse<Built<C>>>;
 
 /**
- * Pairs a declaration with a handler. Used for registration by Router's `.endpoint(config, fn)`
+ * Pairs a declaration with a handler. Used by createEndpoint
  */
 export const buildEndpoint = <const C extends RouteConfig>(
   config: C,

@@ -5,6 +5,7 @@
  */
 import { toStandardJsonSchema } from "@valibot/to-json-schema";
 import {
+  createEndpoint,
   createRouter,
   errorResponses,
   onError,
@@ -12,6 +13,7 @@ import {
   pageResponse,
   pageResponseSchema,
   provideDeps,
+  registerEndpoint,
   NotFound,
 } from "hono-kit";
 import { openapiDocument } from "hono-kit/openapi";
@@ -32,55 +34,52 @@ const output = toStandardJsonSchema(
 
 const item = toStandardJsonSchema(v.object({ name: v.string() }));
 
-const router = createRouter()
-  .endpoint(
-    {
-      method: "post",
-      path: "/items/:id",
-      middleware: [allowAnonymous],
-      request: { param: params, query, json: input },
-      responses: { 200: output, ...errorResponses(NotFound) },
-    },
-    async (c, reply) => {
-      const { id } = c.req.valid("param");
-      const { limit } = c.req.valid("query");
-      const { title } = c.req.valid("json");
-      // 型: limit は transform の後の number、title は string
-      limit satisfies number;
-      title satisfies string;
+const postItem = createEndpoint(
+  {
+    middleware: [allowAnonymous],
+    request: { param: params, query, json: input },
+    responses: { 200: output, ...errorResponses(NotFound) },
+  },
+  async (c, reply) => {
+    const { id } = c.req.valid("param");
+    const { limit } = c.req.valid("query");
+    const { title } = c.req.valid("json");
+    // 型: limit は transform の後の number、title は string
+    limit satisfies number;
+    title satisfies string;
 
-      if (id === "no") return reply.failure("NOT_FOUND");
+    if (id === "no") return reply.failure("NOT_FOUND");
 
-      return reply(200, { id, title, limit });
-    },
-  )
-  // hnk のページ送りの部品は、valibot の絞り込みと 1 件の形も包める
-  .endpoint(
-    {
-      method: "get",
-      path: "/items",
-      middleware: [allowAnonymous],
-      request: {
-        query: pageQuerySchema(toStandardJsonSchema(v.object({ q: v.optional(v.string()) }))),
-      },
-      responses: { 200: pageResponseSchema(item) },
-    },
-    async (c, reply) => {
-      const { q, after, limit } = c.req.valid("query");
-      q satisfies string | undefined;
-      const items = Array.from({ length: limit }, (_, i) => ({ name: `${q ?? "item"}${i}` }));
+    return reply(200, { id, title, limit });
+  },
+);
 
-      return reply(
-        200,
-        pageResponse({ items, next: after ?? null }, (x) => x),
-      );
+// hnk のページ送りの部品は、valibot の絞り込みと 1 件の形も包める
+const listItems = createEndpoint(
+  {
+    middleware: [allowAnonymous],
+    request: {
+      query: pageQuerySchema(toStandardJsonSchema(v.object({ q: v.optional(v.string()) }))),
     },
-  );
+    responses: { 200: pageResponseSchema(item) },
+  },
+  async (c, reply) => {
+    const { q, after, limit } = c.req.valid("query");
+    q satisfies string | undefined;
+    const items = Array.from({ length: limit }, (_, i) => ({ name: `${q ?? "item"}${i}` }));
+
+    return reply(
+      200,
+      pageResponse({ items, next: after ?? null }, (x) => x),
+    );
+  },
+);
 
 const app = createRouter()
   .use(provideDeps(() => ({}) as never))
-  .route("/", router)
   .onError(onError);
+registerEndpoint(app, "POST", "/items/:id", postItem);
+registerEndpoint(app, "GET", "/items", listItems);
 
 const post = (path: string, body: unknown) =>
   app.request(path, {

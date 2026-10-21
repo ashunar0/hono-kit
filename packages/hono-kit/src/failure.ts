@@ -56,7 +56,7 @@ export const httpError = <
   message: string,
 ): HttpError<K, S> => ({ code, status, message });
 
-/** When input validation fails. Used by createRouter */
+/** When input validation fails. Used by createEndpoint */
 export const ValidationError = httpError(
   "VALIDATION_ERROR",
   400,

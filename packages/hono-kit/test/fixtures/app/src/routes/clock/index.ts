@@ -1,11 +1,9 @@
 // expect: hnk(no-clock-outside-app-entry) | resource reads the clock (new Date()). The app reads it once
 import { allowAnonymous } from "../../middleware/auth";
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 
-export const clockRouter = createRouter().endpoint(
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [allowAnonymous] as const,
     responses: {},
   },

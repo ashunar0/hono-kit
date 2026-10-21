@@ -1,4 +1,4 @@
-/** HTTP の入口か（src/routes/ のリソース。webhook もここ）。createRouter の束を書く場所 */
+/** HTTP の入口か（src/routes/ のリソース。webhook もここ）。endpoint を書く場所 */
 export const isHttpEntry = (file) =>
   /[/\\]src[/\\]routes[/\\](?:.+[/\\])?index\.ts$/.test(file);
 
@@ -11,28 +11,6 @@ export const unwrap = (node) => {
   )
     cur = cur.expression;
   return cur;
-};
-
-/**
- * 式の根まで降りて `createRouter()` かどうかを見る。
- * `createRouter().endpoint(...).endpoint(...)` はチェーンなので、
- * CallExpression と MemberExpression を剥がしてから判定する
- */
-export const rootsAtCreateRouter = (node) => {
-  let cur = node;
-  let last;
-  while (cur) {
-    if (cur.type === "CallExpression") {
-      last = cur;
-      cur = cur.callee;
-    } else if (cur.type === "MemberExpression") cur = cur.object;
-    else break;
-  }
-  return (
-    cur?.type === "Identifier" &&
-    cur.name === "createRouter" &&
-    last?.callee === cur
-  );
 };
 
 /**
@@ -73,18 +51,15 @@ export const walkOwnScope = (node, visit) => {
 };
 
 /**
- * endpoint の宣言の呼び出し。`export const GET = createEndpoint(config, fn)` と、`router.endpoint(config, fn)`。
+ * endpoint の宣言の呼び出し `export const GET = createEndpoint(config, fn)`。
  * 宣言が object で書かれていなければ null（読めないものは見ない）
  */
 export const endpointCallOf = (node) => {
   const callee = node.callee;
-  const created =
-    callee?.type === "Identifier" && callee.name === "createEndpoint";
-  const chained =
-    callee?.type === "MemberExpression" && callee.property?.name === "endpoint";
-  if (!created && !chained) return null;
+  if (callee?.type !== "Identifier" || callee.name !== "createEndpoint")
+    return null;
   const config = unwrap(node.arguments[0]);
   if (config?.type !== "ObjectExpression") return null;
 
-  return { config, handler: node.arguments[1], created };
+  return { config, handler: node.arguments[1] };
 };

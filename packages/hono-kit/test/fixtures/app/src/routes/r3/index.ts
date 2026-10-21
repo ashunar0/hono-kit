@@ -1,8 +1,8 @@
 // expect: hnk(route-declares-auth) | The endpoint does not declare auth
-import { createRouter } from "hono-kit";
+import { createEndpoint } from "hono-kit";
 
-export const r3Router = createRouter().endpoint(
-  { method: "post", path: "/", responses: {} },
+export const POST = createEndpoint(
+  { responses: {} },
   async () => {
     throw new Error("fixture");
   },

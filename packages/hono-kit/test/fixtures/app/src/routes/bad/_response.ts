@@ -1,4 +1,4 @@
 // expect: hnk(layer-imports) | _response.ts only shows things
-import { badRouter } from "./index";
+import { POST } from "./index";
 
-export const x = badRouter;
+export const x = POST;

@@ -16,7 +16,7 @@ const propOf = (object, name) =>
  * 後から付けると応答の形も変わる。pageQuerySchema は limit に既定と上限を持つので、
  * 使えば「上限の無い一覧」を書く道が無くなる。
  *
- * 一覧かどうかは、型なしで見分けられる範囲で決める: get で、path の最後が :param でないもの。
+ * 一覧かどうかは、型なしで見分けられる範囲で決める: export が GET で、ディレクトリの最後が [param] でないもの。
  * 包んでいるかは構文で見る: query が pageQuerySchema(...) の呼び出しか、同じファイルでそれを入れた変数。
  * 文字列の一致では見ないので、名前やコメントに pageQuerySchema と書いてあっても通らない
  * 件数が別の所で決まっている（月ごとの集計など）なら、この行の上に
@@ -44,17 +44,9 @@ export default {
         if (!call) return;
         const { config } = call;
 
-        if (call.created) {
-          // method は export の名前、パスはディレクトリ。[id] で終わるなら 1 件
-          if (node.parent?.id?.name !== "GET") return;
-          if (/\[[^/\\]+\][/\\]index\.ts$/.test(fileOf(context))) return;
-        } else {
-          const method = unwrap(propOf(config, "method")?.value);
-          const path = unwrap(propOf(config, "path")?.value);
-          if (method?.value !== "get" || typeof path?.value !== "string")
-            return;
-          if (/:[^/]+$/.test(path.value)) return;
-        }
+        // method は export の名前、パスはディレクトリ。[id] で終わるなら 1 件
+        if (node.parent?.id?.name !== "GET") return;
+        if (/\[[^/\\]+\][/\\]index\.ts$/.test(fileOf(context))) return;
 
         const request = unwrap(propOf(config, "request")?.value);
         const query = unwrap(propOf(request, "query")?.value);
@@ -63,7 +55,7 @@ export default {
         if (isPageQuery(schema)) return;
 
         context.report({
-          node: call.created ? node : propOf(config, "path"),
+          node,
           message:
             "This list route has no limit. Wrap query in pageQuerySchema(filterSchema) (respond with pageResponseSchema and pageResponse). Keep the query schema in the same file. If the size is bounded elsewhere, put `// oxlint-disable-next-line hnk/route-lists-are-paged -- reason` above this line",
         });
