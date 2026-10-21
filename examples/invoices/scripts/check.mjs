@@ -5,8 +5,8 @@
 import { spawnSync } from "node:child_process";
 
 const steps = [
-  // routes.gen.ts が古いと、型もテストも古い routes を見る
-  ["routes.gen.ts", ["pnpm", "hnk", "gen"]],
+  // routes.gen.ts が古いと、型もテストも古い routes を見る。CI（CI がある）では書かずに比べ、古いまま commit されたものを落とす
+  ["routes.gen.ts", ["pnpm", "hnk", "gen", ...(process.env.CI ? ["--check"] : [])]],
   ["typecheck", ["pnpm", "typecheck"]],
   ["lint", ["pnpm", "lint"]],
   ["format:check", ["pnpm", "format:check"]],

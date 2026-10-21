@@ -1,12 +1,16 @@
 /**
  * hnk gen のテスト。一時ディレクトリに src/routes を書き、生成物か止める理由を見る
  */
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import { generate } from "../bin/gen.mjs";
+
+const hnk = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "hnk.mjs");
 
 const ENDPOINT = "export const GET = createEndpoint({}, async () => {});\n";
 
@@ -49,4 +53,20 @@ test("catch-all はまだ止める", () => {
 test("読めない括弧は文字どおり登録せず止める", () => {
   const { problems } = generate(appWith({ "posts/[id/index.ts": ENDPOINT }));
   assert.match(problems[0], /\[id is not a path segment/);
+});
+
+test("--check は書かずに比べ、古ければ落ちる", () => {
+  const src = appWith({ "invoices/index.ts": ENDPOINT });
+  const gen = (...args) => spawnSync("node", [hnk, "gen", ...args], { cwd: path.dirname(src), encoding: "utf8" });
+
+  assert.equal(gen("--check").status, 1);
+  assert.equal(fs.existsSync(path.join(src, "routes.gen.ts")), false);
+  assert.equal(gen().status, 0);
+  assert.equal(gen("--check").status, 0);
+
+  fs.mkdirSync(path.join(src, "routes", "customers"));
+  fs.writeFileSync(path.join(src, "routes", "customers", "index.ts"), ENDPOINT);
+  const stale = gen("--check");
+  assert.equal(stale.status, 1);
+  assert.match(stale.stderr, /is out of date with src\/routes\. Run pnpm hnk gen and commit it/);
 });

@@ -1,5 +1,5 @@
 /**
- * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `hnk gen --watch`）。
+ * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`）。
  * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
  *   ディレクトリがパス、[id] は :id、(名前) は URL に出ない（route group）。_ で始まるファイルとディレクトリは読まない
  * - src/routes/**\/_queries.ts: export された xxxQueries を db につなぐ（makeQueries）
@@ -140,29 +140,37 @@ export const generate = (src) => {
   return { code: lines.join("\n") };
 };
 
-/** 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように */
-const run = (src) => {
+/**
+ * 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように。
+ * check では書かずに比べるだけ（CI で、古いまま commit された routes.gen.ts を見つける）
+ */
+const run = (src, { check = false } = {}) => {
   const out = path.join(src, "routes.gen.ts");
   const result = generate(src);
   if ("problems" in result) {
     console.error(`✗ ${out} not written:\n${result.problems.map((p) => `  ${p}`).join("\n")}`);
     return false;
   }
-  if (!fs.existsSync(out) || fs.readFileSync(out, "utf8") !== result.code) {
+  const fresh = fs.existsSync(out) && fs.readFileSync(out, "utf8") === result.code;
+  if (check) {
+    if (!fresh) console.error(`✗ ${out} is out of date with src/routes. Run pnpm hnk gen and commit it`);
+    return fresh;
+  }
+  if (!fresh) {
     fs.writeFileSync(out, result.code);
     console.log(`✓ ${out} written`);
   }
   return true;
 };
 
-export const gen = ({ watch }) => {
+export const gen = ({ watch, check }) => {
   const src = "src";
   if (!fs.existsSync(path.join(src, "routes"))) {
     console.error("✗ Run this at the app root (where src/routes is)");
     process.exit(1);
   }
   if (!watch) {
-    if (!run(src)) process.exit(1);
+    if (!run(src, { check })) process.exit(1);
     return;
   }
   run(src);
