@@ -58,7 +58,7 @@ const validatorsOf = (route: RouteConfig) => {
  * The app's root. Use instead of `new Hono()`, so c.get / c.set know the app's Env (Register).
  * The return type is written out so the published .d.ts keeps RegisteredEnv instead of resolving it to Env
  */
-export const createRouter = (): Hono<RegisteredEnv> =>
+export const createApp = (): Hono<RegisteredEnv> =>
   new Hono<RegisteredEnv>();
 
 // ---- createEndpoint: one file per resource, one export per method ----

@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileOf, projectOf } from "../project.mjs";
 
 /**
- * アプリの中で new Hono() を書かない。根は createRouter() で作る。Env がアプリの Register になるので、
+ * アプリの中で new Hono() を書かない。根は createApp() で作る。Env がアプリの Register になるので、
  * c.get("actor") や c.get("now") に型が付く。endpoint は createEndpoint で書き、hnk gen が登録する
  */
 export default {
@@ -20,7 +20,7 @@ export default {
           context.report({
             node,
             message:
-              "Do not write new Hono(). Make the app's root with createRouter() from hono-kit (its Env is the app's), and write endpoints with createEndpoint under src/routes",
+              "Do not write new Hono(). Make the app's root with createApp() from hono-kit (its Env is the app's), and write endpoints with createEndpoint under src/routes",
           });
       },
     };

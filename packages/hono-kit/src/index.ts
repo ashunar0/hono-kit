@@ -15,7 +15,7 @@ export type { Register } from "./register.js";
 export { errorResponses, guard, provideDeps, type Guard } from "./endpoint.js";
 export {
   createEndpoint,
-  createRouter,
+  createApp,
   registerEndpoint,
   type Endpoint,
   type EndpointDeclaration,

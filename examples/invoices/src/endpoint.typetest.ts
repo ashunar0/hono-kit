@@ -1,9 +1,9 @@
-import { createEndpoint, createRouter, registerEndpoint } from "hono-kit";
+import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { allowAnonymous } from "./middleware/auth";
 
 const ok = z.object({ ok: z.literal(true) });
-const app = createRouter();
+const app = createApp();
 
 // path の :id と param の id が合っていれば通る
 export const matched = createEndpoint(

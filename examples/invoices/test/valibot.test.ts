@@ -6,7 +6,7 @@
 import { toStandardJsonSchema } from "@valibot/to-json-schema";
 import {
   createEndpoint,
-  createRouter,
+  createApp,
   errorResponses,
   onError,
   pageQuerySchema,
@@ -75,7 +75,7 @@ const listItems = createEndpoint(
   },
 );
 
-const app = createRouter()
+const app = createApp()
   .use(provideDeps(() => ({}) as never))
   .onError(onError);
 registerEndpoint(app, "POST", "/items/:id", postItem);

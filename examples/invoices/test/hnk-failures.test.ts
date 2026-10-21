@@ -4,7 +4,7 @@
  */
 import {
   createEndpoint,
-  createRouter,
+  createApp,
   errorResponses,
   httpError,
   provideDeps,
@@ -17,7 +17,7 @@ import { allowAnonymous } from "../src/middleware/auth";
 const First = httpError("FIRST", 409, "1 つ目の失敗");
 const Second = httpError("SECOND", 409, "2 つ目の失敗");
 
-const app = createRouter();
+const app = createApp();
 app.use(provideDeps(() => ({}) as never));
 registerEndpoint(
   app,
@@ -52,7 +52,7 @@ it.each([
 
 it("model の Failure は、種類から決まった番号と、自分のコードと文言で返る", async () => {
   const Stale = { code: "STALE", kind: "conflict", message: "古い" } as const;
-  const failing = createRouter();
+  const failing = createApp();
   failing.use(provideDeps(() => ({}) as never));
   registerEndpoint(
     failing,

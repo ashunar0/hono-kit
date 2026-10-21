@@ -131,7 +131,7 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 | `no-module-scope-state`       | Mutable state at module scope                                                  |
 | `route-responds-200`          | Success statuses other than 200 (201, 204)                                     |
 | `route-writes-once`           | An HTTP handler writing through two service calls (reads are `get…` / `list…`) |
-| `no-new-hono`                 | `new Hono()` instead of `createRouter()`                                       |
+| `no-new-hono`                 | `new Hono()` instead of `createApp()`                                          |
 
 ### Who may import what
 

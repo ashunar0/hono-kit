@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { createRouter, onError, provideDeps } from "hono-kit";
+import { createApp, onError, provideDeps } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
@@ -18,7 +18,7 @@ export const buildApp = (
   authenticate: MiddlewareHandler<AppEnv> = withUser,
   clock: () => Date = () => new Date(),
 ) => {
-  const app = createRouter()
+  const app = createApp()
     .use("*", async (c, next) => {
       c.set("now", clock());
       await next();
