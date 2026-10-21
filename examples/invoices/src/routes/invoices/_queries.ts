@@ -1,5 +1,5 @@
 /**
- * /invoices の読み（一覧と 1 件）。請求書は invoices の窓口（invoicesWithin）からだけ読む。
+ * /invoices（一覧）と /invoices/:id（1 件）が使う読み。請求書は invoices の窓口（invoicesWithin）からだけ読む。
  * 誰が何に触れるかは窓口が決めるので、ここは actor を渡すだけ。範囲を付け忘れる書き方が存在しない
  */
 import { and, desc, eq, lt, or } from "drizzle-orm";

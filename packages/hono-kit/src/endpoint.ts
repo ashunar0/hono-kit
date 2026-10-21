@@ -1,4 +1,5 @@
 import type { Context, MiddlewareHandler, TypedResponse } from "hono";
+import { routePath } from "hono/route";
 import type { ParamKeys } from "hono/types";
 import type {
   ContentfulStatusCode,
@@ -299,7 +300,7 @@ type Reply<R extends RouteConfig> = {
 };
 
 /** Finds the failure for that code in the declaration, which knows its status and message */
-const findDeclaredFailure = (route: RouteConfig, code: string) => {
+const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
   for (const [status, response] of Object.entries(route.responses)) {
     const declared = (response as Partial<ErrorResponse>)[
       DECLARED_ERRORS
@@ -311,7 +312,7 @@ const findDeclaredFailure = (route: RouteConfig, code: string) => {
       };
   }
   throw new Error(
-    `${code} is not declared in the responses of ${route.method.toUpperCase()} ${route.path}`,
+    `${code} is not declared in the responses of ${c.req.method} ${routePath(c)}`,
   );
 };
 
@@ -368,7 +369,7 @@ export const buildEndpoint = <const C extends RouteConfig>(
     const reply = ((status: number, body: unknown) =>
       c.json(body as never, status as never)) as unknown as Reply<Built<C>>;
     reply.failure = ((code: string) => {
-      const declared = findDeclaredFailure(route, code);
+      const declared = findDeclaredFailure(route, code, c);
       return c.json(errorBody(code, declared.message), declared.status);
     }) as unknown as Reply<Built<C>>["failure"];
 

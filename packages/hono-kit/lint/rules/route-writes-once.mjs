@@ -1,4 +1,4 @@
-import { isHttpEntry, unwrap } from "../ast.mjs";
+import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /** 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす */
@@ -84,15 +84,10 @@ export default {
 
     return {
       CallExpression(node) {
-        // `router.endpoint(config, fn)`
-        if (
-          node.callee?.type !== "MemberExpression" ||
-          node.callee.property?.name !== "endpoint"
-        )
-          return;
-        const config = unwrap(node.arguments[0]);
-        const handler = node.arguments[1];
-        if (config?.type !== "ObjectExpression" || !handler) return;
+        const call = endpointCallOf(node);
+        if (!call) return;
+        const { config, handler } = call;
+        if (!handler) return;
         if (isSystemEntry(config)) return;
         const deps = depsOf(handler);
         if (!deps) return;

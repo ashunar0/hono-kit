@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
 import { thing } from "../../domains/a/model";
 import { childRouter } from "./child";
-import { thingResponse } from "./response";
+import { thingResponse } from "./_response";
 
 const params = z.object({ id: z.string() });
 

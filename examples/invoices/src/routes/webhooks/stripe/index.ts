@@ -6,18 +6,17 @@
  * 再送のある入口なので、どちらも何度やっても同じ結果にしておけば、順に書いてよい。
  * 途中で落ちたら 200 以外が返り、決済サービスの再送でやり直す
  */
-import { allowSystem, createRouter, errorResponses, NotFound } from "hono-kit";
+import { allowSystem, createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
 import { NotPayable } from "../../../domains/payments/model";
-import { InvalidSignature } from "./errors";
+import { InvalidSignature } from "./_errors";
 import { invoiceId } from "../../../domains/invoices/model";
 
 const receivedSchema = z.object({ received: z.literal(true) });
 
-export const stripeWebhookRouter = createRouter().endpoint(
+/** 通知を受ける */
+export const POST = createEndpoint(
   {
-    method: "post",
-    path: "/",
     middleware: [allowSystem],
     responses: {
       200: receivedSchema,

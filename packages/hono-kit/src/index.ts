@@ -13,7 +13,14 @@ export type { Cursor, Page, PageQuery } from "./page.js";
 
 export type { Register } from "./register.js";
 export { errorResponses, guard, provideDeps, type Guard } from "./endpoint.js";
-export { createRouter } from "./router.js";
+export {
+  createEndpoint,
+  createRouter,
+  registerEndpoint,
+  type Endpoint,
+  type EndpointDeclaration,
+  type EndpointSchema,
+} from "./router.js";
 export {
   Forbidden,
   NotFound,

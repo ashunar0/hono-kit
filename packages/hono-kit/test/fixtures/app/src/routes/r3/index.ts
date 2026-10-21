@@ -1,4 +1,4 @@
-// expect: hnk(route-declares-auth) | .endpoint does not declare auth
+// expect: hnk(route-declares-auth) | The endpoint does not declare auth
 import { createRouter } from "hono-kit";
 
 export const r3Router = createRouter().endpoint(

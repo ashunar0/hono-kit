@@ -1,4 +1,4 @@
-import { isGuardName, isHttpEntry, unwrap } from "../ast.mjs";
+import { endpointCallOf, isGuardName, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /**
@@ -18,14 +18,9 @@ export default {
 
     return {
       CallExpression(node) {
-        // `router.endpoint(config, fn)`
-        if (
-          node.callee?.type !== "MemberExpression" ||
-          node.callee.property?.name !== "endpoint"
-        )
-          return;
-        const config = unwrap(node.arguments[0]);
-        if (config?.type !== "ObjectExpression") return;
+        const call = endpointCallOf(node);
+        if (!call) return;
+        const { config } = call;
 
         const middleware = config.properties.find(
           (p) =>
@@ -42,7 +37,7 @@ export default {
           context.report({
             node,
             message:
-              ".endpoint does not declare auth. Put middleware: [requireAuth], or [allowAnonymous] if it is public",
+              "The endpoint does not declare auth. Put middleware: [requireAuth], or [allowAnonymous] if it is public",
           });
           return;
         }

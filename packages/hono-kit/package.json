@@ -104,5 +104,8 @@
   },
   "bin": {
     "hnk": "./bin/hnk.mjs"
+  },
+  "dependencies": {
+    "oxc-parser": "^0.155.0"
   }
 }

@@ -3,7 +3,7 @@
  */
 import { z } from "zod";
 import { invoiceStatuses } from "../../domains/invoices/model";
-import type { InvoiceRow } from "./queries.d1";
+import type { InvoiceRow } from "./_queries";
 
 export const invoiceResponseSchema = z.object({
   id: z.string(),

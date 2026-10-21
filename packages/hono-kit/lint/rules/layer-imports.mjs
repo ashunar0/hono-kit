@@ -45,7 +45,7 @@ export default {
           context.report({
             node,
             message:
-              "Files in src/routes/<noun>/ are index.ts (the router), response.ts (how things are shown), errors.ts (failures only this entry point has) and queries.ts (reads for the screen, named queries.tech.ts). Put rules in a domain's model, steps in its service",
+              "Files in src/routes/<noun>/ are index.ts (the endpoints: export const GET = createEndpoint(...)) and, next to it, _response.ts (how things are shown), _errors.ts (failures only this entry point has) and _queries.ts (reads for the GET endpoints). Put rules in a domain's model, steps in its service",
           });
         },
       };

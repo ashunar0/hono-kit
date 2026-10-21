@@ -11,11 +11,11 @@ it("deps の全部が組み上がる", () => {
   const deps = makeDeps(env);
 
   expect(Object.keys(deps).sort()).toEqual([
-    "invoiceQueries",
     "invoices",
+    "invoicesQueries",
     "payments",
     "reminders",
-    "reportQueries",
+    "reportsQueries",
   ]);
   for (const name of Object.keys(deps)) {
     expect(deps[name as keyof typeof deps], name).toBeDefined();

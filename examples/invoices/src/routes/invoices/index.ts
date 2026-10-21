@@ -1,183 +1,59 @@
 /**
- * /invoices。請求書のリソース。共有（/:id/shares）は子のリソースとして shares/ にある
+ * /invoices。請求書のリソース。1 件は [id]/、共有は [id]/shares/ にある
  */
-import {
-  createRouter,
-  errorResponses,
-  pageQuerySchema,
-  pageResponse,
-  pageResponseSchema,
-  Forbidden,
-  NotFound,
-} from "hono-kit";
+import { createEndpoint, pageQuerySchema, pageResponse, pageResponseSchema } from "hono-kit";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
-import {
-  invoiceIdSchema,
-  invoiceInputSchema,
-  invoiceStatuses,
-  NotDraft,
-} from "../../domains/invoices/model";
-import { invoiceResponse, invoiceResponseSchema } from "./response";
-import { invoiceSharesRouter } from "./shares";
+import { invoiceInputSchema, invoiceStatuses } from "../../domains/invoices/model";
+import { invoiceResponse, invoiceResponseSchema } from "./_response";
 
 // 受け取る形。本文の入力は model の invoiceInputSchema
-const invoiceParamsSchema = z.object({
-  id: invoiceIdSchema,
-});
-
 const listInvoicesQuerySchema = pageQuerySchema(
   z.object({
     status: z.enum(invoiceStatuses).optional(),
   }),
 );
 
-// 返す形。請求書そのものは response.ts
+// 返す形。請求書そのものは _response.ts
 const listInvoicesResponseSchema = pageResponseSchema(invoiceResponseSchema);
 
-const deleteInvoiceResponseSchema = z.object({
-  ok: z.literal(true),
-});
-
-export const invoicesRouter = createRouter()
-  // 一覧
-  .endpoint(
-    {
-      method: "get",
-      path: "/",
-      middleware: [requireAuth],
-      request: { query: listInvoicesQuerySchema },
-      responses: {
-        200: listInvoicesResponseSchema,
-      },
+/** 一覧 */
+export const GET = createEndpoint(
+  {
+    middleware: [requireAuth],
+    request: { query: listInvoicesQuerySchema },
+    responses: {
+      200: listInvoicesResponseSchema,
     },
-    async (c, reply, { invoiceQueries }) => {
-      const actor = c.get("actor");
-      const page = await invoiceQueries.list(actor, c.req.valid("query"));
+  },
+  async (c, reply, { invoicesQueries }) => {
+    const actor = c.get("actor");
+    const page = await invoicesQueries.list(actor, c.req.valid("query"));
 
-      return reply(200, pageResponse(page, invoiceResponse));
+    return reply(200, pageResponse(page, invoiceResponse));
+  },
+);
+
+/** 作成 */
+export const POST = createEndpoint(
+  {
+    middleware: [requireAuth],
+    request: { json: invoiceInputSchema },
+    responses: {
+      200: invoiceResponseSchema,
     },
-  )
-  // 1件
-  .endpoint(
-    {
-      method: "get",
-      path: "/:id",
-      middleware: [requireAuth],
-      request: { param: invoiceParamsSchema },
-      responses: {
-        200: invoiceResponseSchema,
-        ...errorResponses(NotFound),
-      },
-    },
-    async (c, reply, { invoiceQueries }) => {
-      const actor = c.get("actor");
-      const { id } = c.req.valid("param");
+  },
+  async (c, reply, { invoices, invoicesQueries }) => {
+    const actor = c.get("actor");
+    const input = c.req.valid("json");
+    const now = c.get("now");
 
-      const invoice = await invoiceQueries.get(actor, id);
-      if (invoice === null) return reply.failure(NotFound.code);
+    const id = await invoices.create(actor, input, now);
 
-      return reply(200, invoiceResponse(invoice));
-    },
-  )
-  // 作成
-  .endpoint(
-    {
-      method: "post",
-      path: "/",
-      middleware: [requireAuth],
-      request: { json: invoiceInputSchema },
-      responses: {
-        200: invoiceResponseSchema,
-      },
-    },
-    async (c, reply, { invoices, invoiceQueries }) => {
-      const actor = c.get("actor");
-      const input = c.req.valid("json");
-      const now = c.get("now");
+    // 書いた後は、GET と同じ道で読み直して返す。書けた直後に無いのは想定外
+    const invoice = await invoicesQueries.get(actor, id);
+    if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
 
-      const id = await invoices.create(actor, input, now);
-
-      // 書いた後は、GET と同じ道で読み直して返す。書けた直後に無いのは想定外
-      const invoice = await invoiceQueries.get(actor, id);
-      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
-
-      return reply(200, invoiceResponse(invoice));
-    },
-  )
-  // 更新
-  .endpoint(
-    {
-      method: "put",
-      path: "/:id",
-      middleware: [requireAuth],
-      request: { param: invoiceParamsSchema, json: invoiceInputSchema },
-      responses: {
-        200: invoiceResponseSchema,
-        ...errorResponses(NotFound, Forbidden),
-      },
-    },
-    async (c, reply, { invoices, invoiceQueries }) => {
-      const actor = c.get("actor");
-      const { id } = c.req.valid("param");
-      const input = c.req.valid("json");
-      const now = c.get("now");
-
-      const result = await invoices.update(actor, id, input, now);
-      if (!result.ok) return reply.failure(result.error);
-
-      const invoice = await invoiceQueries.get(actor, id);
-      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
-
-      return reply(200, invoiceResponse(invoice));
-    },
-  )
-  // 送付
-  .endpoint(
-    {
-      method: "post",
-      path: "/:id/send",
-      middleware: [requireAuth],
-      request: { param: invoiceParamsSchema },
-      responses: {
-        200: invoiceResponseSchema,
-        ...errorResponses(NotFound, Forbidden, NotDraft),
-      },
-    },
-    async (c, reply, { invoices, invoiceQueries }) => {
-      const actor = c.get("actor");
-      const { id } = c.req.valid("param");
-      const now = c.get("now");
-
-      const result = await invoices.send(actor, id, now);
-      if (!result.ok) return reply.failure(result.error);
-
-      const invoice = await invoiceQueries.get(actor, id);
-      if (invoice === null) throw new Error(`invoice ${id} is gone right after the write`);
-
-      return reply(200, invoiceResponse(invoice));
-    },
-  )
-  // 削除
-  .endpoint(
-    {
-      method: "delete",
-      path: "/:id",
-      middleware: [requireAuth],
-      request: { param: invoiceParamsSchema },
-      responses: {
-        200: deleteInvoiceResponseSchema,
-        ...errorResponses(NotFound, Forbidden),
-      },
-    },
-    async (c, reply, { invoices }) => {
-      const actor = c.get("actor");
-      const { id } = c.req.valid("param");
-
-      const result = await invoices.remove(actor, id);
-      if (!result.ok) return reply.failure(result.error);
-
-      return reply(200, { ok: true });
-    },
-  )
-  .route("/:id/shares", invoiceSharesRouter);
+    return reply(200, invoiceResponse(invoice));
+  },
+);

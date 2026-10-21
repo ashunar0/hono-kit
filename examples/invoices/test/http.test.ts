@@ -10,8 +10,24 @@ it("OpenAPI の文書が作れる（query に zod の transform を含んでい�
   const res = await app.request("/openapi.json", {}, env);
 
   expect(res.status).toBe(200);
-  const doc = (await res.json()) as { paths: Record<string, unknown> };
-  expect(Object.keys(doc.paths)).toContain("/invoices");
+  const doc = (await res.json()) as { paths: Record<string, Record<string, unknown>> };
+  // routes.gen.ts が登録した endpoint が全部、登録の method で出る
+  const operations = Object.entries(doc.paths).flatMap(([path, methods]) =>
+    Object.keys(methods).map((method) => `${method} ${path}`),
+  );
+  expect(operations.sort()).toEqual([
+    "delete /invoices/{id}",
+    "delete /invoices/{id}/shares/{userId}",
+    "get /invoices",
+    "get /invoices/{id}",
+    "get /reports/monthly",
+    "post /invoices",
+    "post /invoices/{id}/send",
+    "post /payments",
+    "post /webhooks/stripe",
+    "put /invoices/{id}",
+    "put /invoices/{id}/shares",
+  ]);
 });
 
 it("OpenAPI の文書: 日付は日時の文字列で出て、各 schema に $schema が付かない", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Cursor } from "hono-kit/page";
 import { alice, bob, db, insertInvoices, invoice } from "../../../test/fixtures";
-import { invoicesQueries } from "./queries.d1";
+import { invoicesQueries } from "./_queries";
 
 const at = (iso: string) => new Date(iso);
 

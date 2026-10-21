@@ -1,4 +1,4 @@
-import { isHttpEntry, unwrap } from "../ast.mjs";
+import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /**
@@ -11,14 +11,9 @@ export default {
 
     return {
       CallExpression(node) {
-        // `router.endpoint(config, fn)`
-        if (
-          node.callee?.type !== "MemberExpression" ||
-          node.callee.property?.name !== "endpoint"
-        )
-          return;
-        const config = unwrap(node.arguments[0]);
-        if (config?.type !== "ObjectExpression") return;
+        const call = endpointCallOf(node);
+        if (!call) return;
+        const { config } = call;
         const responses = config.properties.find(
           (p) =>
             p.type === "Property" &&

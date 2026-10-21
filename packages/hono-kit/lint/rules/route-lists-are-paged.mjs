@@ -1,5 +1,4 @@
-import { unwrap } from "../ast.mjs";
-import { isHttpEntry } from "../ast.mjs";
+import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 const propOf = (object, name) =>
@@ -41,18 +40,21 @@ export default {
           declared.set(node.id.name, unwrap(node.init));
       },
       CallExpression(node) {
-        if (
-          node.callee?.type !== "MemberExpression" ||
-          node.callee.property?.name !== "endpoint"
-        )
-          return;
-        const config = unwrap(node.arguments[0]);
-        if (config?.type !== "ObjectExpression") return;
+        const call = endpointCallOf(node);
+        if (!call) return;
+        const { config } = call;
 
-        const method = unwrap(propOf(config, "method")?.value);
-        const path = unwrap(propOf(config, "path")?.value);
-        if (method?.value !== "get" || typeof path?.value !== "string") return;
-        if (/:[^/]+$/.test(path.value)) return;
+        if (call.created) {
+          // method は export の名前、パスはディレクトリ。[id] で終わるなら 1 件
+          if (node.parent?.id?.name !== "GET") return;
+          if (/\[[^/\\]+\][/\\]index\.ts$/.test(fileOf(context))) return;
+        } else {
+          const method = unwrap(propOf(config, "method")?.value);
+          const path = unwrap(propOf(config, "path")?.value);
+          if (method?.value !== "get" || typeof path?.value !== "string")
+            return;
+          if (/:[^/]+$/.test(path.value)) return;
+        }
 
         const request = unwrap(propOf(config, "request")?.value);
         const query = unwrap(propOf(request, "query")?.value);
@@ -61,7 +63,7 @@ export default {
         if (isPageQuery(schema)) return;
 
         context.report({
-          node: propOf(config, "path"),
+          node: call.created ? node : propOf(config, "path"),
           message:
             "This list route has no limit. Wrap query in pageQuerySchema(filterSchema) (respond with pageResponseSchema and pageResponse). Keep the query schema in the same file. If the size is bounded elsewhere, put `// oxlint-disable-next-line hnk/route-lists-are-paged -- reason` above this line",
         });

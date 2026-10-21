@@ -8,10 +8,7 @@ import { withUser } from "./middleware/auth";
 import { enqueueOverdueReminders } from "./jobs/daily";
 import type { ReminderJob } from "./domains/reminders/model";
 import { sendReminder } from "./jobs/reminders-queue";
-import { invoicesRouter } from "./routes/invoices";
-import { paymentsRouter } from "./routes/payments";
-import { reportsRouter } from "./routes/reports";
-import { webhooksRouter } from "./routes/webhooks";
+import { registerRoutes } from "./routes.gen";
 
 /** zod の日付は JSON Schema で表せないので、文書には日時の文字列として出す */
 const dateAsString = (ctx: {
@@ -42,11 +39,10 @@ export const buildApp = (
     })
     .use("*", provideDeps(makeDeps))
     .use("*", authenticate)
-    .route("/invoices", invoicesRouter)
-    .route("/payments", paymentsRouter)
-    .route("/reports", reportsRouter)
-    .route("/webhooks", webhooksRouter)
     .onError(onError);
+
+  // src/routes の endpoint を全部。routes.gen.ts は pnpm hnk gen が書く
+  registerRoutes(app);
 
   // 登録された route の宣言から作る。リクエストのたびに読むので、登録の順番に関係しない
   app.get("/openapi.json", (c) =>
@@ -62,7 +58,8 @@ export const buildApp = (
   return app;
 };
 
-export type ApiApp = ReturnType<typeof buildApp>;
+/** hc に渡す型。routes.gen.ts が endpoint ごとに平らに並べる */
+export type { AppType as ApiApp } from "./routes.gen";
 
 const app = buildApp(makeDeps);
 

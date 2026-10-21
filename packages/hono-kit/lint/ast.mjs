@@ -71,3 +71,20 @@ export const walkOwnScope = (node, visit) => {
     }
   }
 };
+
+/**
+ * endpoint の宣言の呼び出し。`export const GET = createEndpoint(config, fn)` と、`router.endpoint(config, fn)`。
+ * 宣言が object で書かれていなければ null（読めないものは見ない）
+ */
+export const endpointCallOf = (node) => {
+  const callee = node.callee;
+  const created =
+    callee?.type === "Identifier" && callee.name === "createEndpoint";
+  const chained =
+    callee?.type === "MemberExpression" && callee.property?.name === "endpoint";
+  if (!created && !chained) return null;
+  const config = unwrap(node.arguments[0]);
+  if (config?.type !== "ObjectExpression") return null;
+
+  return { config, handler: node.arguments[1], created };
+};

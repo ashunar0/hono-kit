@@ -95,7 +95,11 @@ export const openapiDocument = (
     if (!route) continue;
 
     const path = openapiPath(registered.path);
-    (paths[path] ??= {})[route.method] = operationOf(route, options);
+    // The method of the registration, since createEndpoint declarations do not carry one
+    (paths[path] ??= {})[registered.method.toLowerCase()] = operationOf(
+      route,
+      options,
+    );
   }
 
   return { openapi: "3.1.0", info, paths };

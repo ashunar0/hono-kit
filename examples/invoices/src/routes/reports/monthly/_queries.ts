@@ -1,15 +1,15 @@
 /**
- * /reports の読み。請求と入金を、月ごとに並べる。
+ * /reports/monthly の読み。請求と入金を、月ごとに並べる。
  * 自分のテーブルは持たず、invoices と payments の窓口（〜Within）から集計する。
  * 誰の分を数えるかは窓口が決める。ここは actor を渡すだけで、範囲の決め方は知らない
  */
 import { and, eq, gte, inArray, lt, sql, type AnyColumn } from "drizzle-orm";
-import type { ReadDb } from "../../db";
-import { billedStatuses } from "../../domains/invoices/model";
-import { invoicesWithin } from "../../domains/invoices/repo.d1";
-import { paymentsWithin } from "../../domains/payments/repo.d1";
-import type { Actor } from "../../domains/users/model";
-import { monthsBetween, nextMonth, startOfMonth, type Month } from "../../lib/month";
+import type { ReadDb } from "../../../db";
+import { billedStatuses } from "../../../domains/invoices/model";
+import { invoicesWithin } from "../../../domains/invoices/repo.d1";
+import { paymentsWithin } from "../../../domains/payments/repo.d1";
+import type { Actor } from "../../../domains/users/model";
+import { monthsBetween, nextMonth, startOfMonth, type Month } from "../../../lib/month";
 
 /** 1 か月分の集計 */
 export type MonthlySummary = {

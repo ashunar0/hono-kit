@@ -1,14 +1,12 @@
 import {
   Hono,
   type Env,
-  type Handler,
-  type Input,
   type MiddlewareHandler,
   type Schema,
   type ToSchema,
 } from "hono";
 import { validator } from "hono/validator";
-import type { MergePath, MergeSchemaPath } from "hono/types";
+import type { H, MergePath, MergeSchemaPath, ParamKeys } from "hono/types";
 import {
   buildEndpoint,
   type BuiltRoute,
@@ -17,6 +15,7 @@ import {
 } from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
 import type { RegisteredEnv } from "./register.js";
+import type { InferInput } from "./standard-schema.js";
 import type {
   AnySchema,
   ComputeInput,
@@ -120,7 +119,11 @@ export class Router<
   >(
     path: SubPath,
     app: Hono<SubEnv, SubSchema, SubBasePath>,
-  ): Router<E, MergeSchemaPath<SubSchema, MergePath<BasePath, SubPath>> | S, BasePath> {
+  ): Router<
+    E,
+    MergeSchemaPath<SubSchema, MergePath<BasePath, SubPath>> | S,
+    BasePath
+  > {
     return super.route(path, app) as never;
   }
 }
@@ -129,4 +132,104 @@ export class Router<
  * A Hono that groups routes. Use instead of `new Hono()`.
  * The return type is written out so the published .d.ts keeps RegisteredEnv instead of resolving it to Env
  */
-export const createRouter = (): Router<RegisteredEnv> => new Router<RegisteredEnv>();
+export const createRouter = (): Router<RegisteredEnv> =>
+  new Router<RegisteredEnv>();
+
+// ---- createEndpoint: one file per resource, one export per method ----
+
+/**
+ * The declaration of one endpoint. The method and path are not written: they come from the file,
+ * the export name (GET, POST, ...) and where the file sits under src/routes
+ */
+export type EndpointDeclaration = Omit<RouteConfig, "method" | "path">;
+
+/** The declaration seen as a route. The method and path are fixed when routes.gen.ts registers it */
+type AsRoute<
+  D extends EndpointDeclaration,
+  M extends RouteConfig["method"] = RouteConfig["method"],
+  P extends string = string,
+> = D & { method: M; path: P };
+
+declare const DECLARATION: unique symbol;
+
+/** The handlers to register, in order (middleware, input validation, the handler). The declaration rides along in the type */
+export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
+  readonly [DECLARATION]?: D;
+};
+
+/**
+ * One endpoint. `export const GET = createEndpoint({ request, responses }, async (c, reply, deps) => ...)`.
+ * routes.gen.ts registers it with registerEndpoint
+ */
+export const createEndpoint = <const D extends EndpointDeclaration>(
+  config: D,
+  fn: EndpointFn<AsRoute<D>>,
+): Endpoint<D> => {
+  const [route, handler] = buildEndpoint(config as AsRoute<D>, fn);
+  const middleware = [route.middleware ?? []].flat();
+
+  return [
+    ...middleware,
+    ...validatorsOf(route),
+    Object.assign(handler, { [ROUTE]: route }),
+  ];
+};
+
+/**
+ * Registers an endpoint at that method and path. Called by routes.gen.ts, not by hand.
+ * The app's type does not come from here: routes.gen.ts writes it with EndpointSchema
+ */
+export const registerEndpoint = <
+  P extends string,
+  D extends EndpointDeclaration,
+>(
+  app: Hono<any, any, any>,
+  method: Uppercase<RouteConfig["method"]>,
+  path: P,
+  endpoint: Endpoint<D> & ParamsDeclared<P, D>,
+): void => {
+  // Hono's on is typed per number of handlers, so a list of unknown length matches none of them
+  (app.on as (...args: unknown[]) => unknown).call(
+    app,
+    method,
+    path,
+    ...endpoint,
+  );
+};
+
+/** The keys of request.param */
+type ParamKeysOf<D> = D extends {
+  request: { param: infer S extends AnySchema };
+}
+  ? keyof InferInput<S> & string
+  : never;
+
+/**
+ * Every `:name` in the path must be a key of request.param, or its value is never validated.
+ * When one is missing, registerEndpoint in routes.gen.ts is underlined with this message
+ */
+type ParamsDeclared<P extends string, D> = [
+  Exclude<ParamKeys<P>, ParamKeysOf<D>>,
+] extends [never]
+  ? unknown
+  : {
+      readonly "path and request.param do not match": `The path params (${Exclude<ParamKeys<P>, ParamKeysOf<D>>}) of ${P} are missing from the keys of request.param`;
+    };
+
+/**
+ * The hc type of an endpoint registered at that method and path.
+ * routes.gen.ts joins these with & into the app's type, without chaining
+ */
+export type EndpointSchema<
+  M extends RouteConfig["method"],
+  P extends string,
+  T,
+> =
+  T extends Endpoint<infer D>
+    ? ToSchema<
+        M,
+        P,
+        ComputeInput<BuiltRoute<AsRoute<D, M, P>>>,
+        RouteConfigToTypedResponse<BuiltRoute<AsRoute<D, M, P>>>
+      >
+    : never;

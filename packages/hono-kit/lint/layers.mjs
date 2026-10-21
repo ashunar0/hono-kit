@@ -74,10 +74,10 @@ export const LAYERS = {
     zod: "value",
     "foreign:model": "value",
     response: "value",
-    // 見せるのは queries が返す画面の 1 行（書いた後も queries で読み直して返す）
+    // 見せるのは _queries が返す画面の 1 行（書いた後も queries で読み直して返す）
     queries: "type",
   },
-  // 画面のための読み取り（src/routes/<名詞>/queries.ts）。返す形は画面が決めるので、domain の外にある。
+  // GET の読み（src/routes/<名詞>/_queries.ts）。返す形は画面が決めるので、domain の外にある。
   // SELECT だけの db を受け取り、domain の範囲付きの読み（…Within）を通して画面の 1 行を返す。
   // ルールは作らず、model から借りる（今日の日付の todayOf など）。誰が何を見るかは窓口に actor を渡すだけで、読む側は知らない。
   // 手順は持たないので、service は使わない。
@@ -92,7 +92,7 @@ export const LAYERS = {
   // HTTP 以外の入口（src/jobs/<名前>.ts。cron、キュー）。deps と actor と now は createWorker が渡す。
   // リソースと同じく domain の外にあり、service は deps から受け取る。他の domain の ID の印を付けるため、model の値も使う
   job: { "hono-kit": "type", "foreign:model": "value" },
-  // 入口だけの失敗（webhook の署名など）を、HTTP でどう返すか。入口の隣（src/routes/<名詞>/errors.ts）に置く
+  // 入口だけの失敗（webhook の署名など）を、HTTP でどう返すか。入口の隣（src/routes/<名詞>/_errors.ts）に置く
   errors: { "hono-kit": "value" },
 
   // 業務を知らない＝別のアプリにそのまま持っていけるもの（src/lib/。日付、時刻、タイムゾーン）。
@@ -121,11 +121,11 @@ export const HINTS = {
   "resource→foreign:service":
     "A resource does not import services. The handler receives them from deps as its third argument ({ customers, invoices })",
   "resource→foreign:repo":
-    "A resource does not read tables. Read for the screen in queries.ts next to it, or through the owner's service, received from deps",
+    "A resource does not read tables. Read in _queries.ts next to it, or through the owner's service, received from deps",
   "job→foreign:service":
     "A job does not import services. It receives them from deps ({ deps, actor, now })",
   "response→resource":
-    "response.ts only shows things. Import it from index.ts, not the other way",
+    "_response.ts only shows things. Import it from index.ts, not the other way",
 };
 
 /** domain の中から入口（src/routes/、src/jobs/）を見たとき。向きは入口 → domains の一方だけ */
@@ -134,7 +134,7 @@ export const ENTRY_HINT =
 
 /** domain の中に errors.ts を置いたとき。モノの失敗は model、入口だけの失敗は入口の隣 */
 export const ERRORS_HINT =
-  "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/errors.ts";
+  "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/_errors.ts";
 
 /** model と service は、自分の domain のアダプターを知らない。形は service が宣言する */
 for (const from of ["model", "service"]) {
@@ -150,14 +150,14 @@ for (const from of ["model", "service"]) {
  */
 export const NOTES = {
   errors:
-    "`src/routes/<noun>/errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
+    "`src/routes/<noun>/_errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)",
   lib: "Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead",
   repo: "From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types",
   resource:
-    "`src/routes/<noun>/index.ts`, outside domains. Services come from deps (the handler's third argument), never imported",
-  response: "`src/routes/<noun>/response.ts`: how a thing is shown over HTTP",
+    "`src/routes/<noun>/index.ts`, outside domains: `export const GET = createEndpoint(...)`, one per method. Services come from deps (the handler's third argument), never imported",
+  response: "`src/routes/<noun>/_response.ts`: how a thing is shown over HTTP",
   queries:
-    "`src/routes/<noun>/queries.<tech>.ts`: the reads of the GET endpoints. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)",
+    "`src/routes/<noun>/_queries.ts`: the reads of the GET endpoints, wired into deps by `hnk gen`. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)",
   job: "`src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps",
   queue: "Puts jobs on a queue. What takes them off is a job in src/jobs/",
 };

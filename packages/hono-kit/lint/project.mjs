@@ -50,16 +50,16 @@ export const packageOf = (specifier) => {
 
 /**
  * src/routes/ の中のファイルの役割。リソース（URL の名詞）ごとのディレクトリに、
- * router（index.ts）と、HTTP での見せ方（response.ts）と、その入口だけの失敗（errors.ts）と、
- * 画面のための読み取り（queries.ts。技術名を付けて queries.sqlite.ts など）だけを置く。
+ * endpoint（index.ts）と、そばに置くもの（_ で始まる）だけを置く: HTTP での見せ方（_response.ts）、
+ * その入口だけの失敗（_errors.ts）、GET の読み（_queries.ts）。
  * import 先は拡張子が無く、`./menus` のようにディレクトリを指すこともある（その index.ts）
  */
 const resourceRoleOf = (resolved, rest) => {
   if (/\.(test|typetest|spec)$/.test(rest)) return "test";
   if (/(^|\/)index$/.test(rest)) return "resource";
-  if (/(^|\/)response$/.test(rest)) return "response";
-  if (/(^|\/)errors$/.test(rest)) return "errors";
-  if (/(^|\/)queries(\.[^/]+)?$/.test(rest)) return "queries";
+  if (/(^|\/)_response$/.test(rest)) return "response";
+  if (/(^|\/)_errors$/.test(rest)) return "errors";
+  if (/(^|\/)_queries$/.test(rest)) return "queries";
   if (
     !/\.tsx?$/.test(resolved) &&
     fs.statSync(resolved, { throwIfNoEntry: false })?.isDirectory()
@@ -71,7 +71,7 @@ const resourceRoleOf = (resolved, rest) => {
 /**
  * アプリの中のファイルを、役割で見る。
  * src/domains/<m>/<role>.ts → { domain, role }。何に繋ぐかの技術名は落とす（repo.d1 → repo、mailer.resend → mailer）。
- * src/routes/<名詞>/index.ts → { role: "resource" }、…/response.ts → { role: "response" }。domain ではない。
+ * src/routes/<名詞>/index.ts → { role: "resource" }、…/_response.ts → { role: "response" }。domain ではない。
  * src 直下の決めごと（errors, middleware, db, env, deps）→ { role }。
  * src/jobs/ の中は全部 { role: "job" }（HTTP 以外の入口。domain ではない）。
  * src/lib/ の中は全部 { role: "lib" }（業務を知らない＝別のアプリにそのまま持っていけるもの）
