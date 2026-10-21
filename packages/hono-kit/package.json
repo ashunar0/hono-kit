@@ -81,7 +81,8 @@
     "bin",
     "lint",
     "templates",
-    "docs"
+    "docs",
+    "CHANGELOG.md"
   ],
   "peerDependencies": {
     "hono": "^4.13.1"
@@ -95,7 +96,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "pnpm build && cp ../../README.md README.md",
+    "prepack": "pnpm build && cp ../../README.md ../../CHANGELOG.md .",
     "test": "node --test test/*.test.mjs",
     "readme:layers": "node scripts/readme-layers.mjs",
     "readme:check": "node scripts/readme-layers.mjs --check",
