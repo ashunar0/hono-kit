@@ -7,8 +7,12 @@ import {
 } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
-/** 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす */
-const READ_NAME = /^(get|list)([A-Z]|$)/;
+/**
+ * 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす。
+ * get・list で始まっても、Or か And でつないだもの（getOrCreate・getAndUpdate）は「なければ作る」などの書き込み。
+ * Or・And の次が大文字のときだけ（getOrderById・getAndroidApps は読みのまま）
+ */
+const READ_NAME = /^(get|list)(?![A-Za-z]*(Or|And)[A-Z])([A-Z]|$)/;
 /** queries は ReadDb しか持たないので、名前に関係なく読み */
 const QUERIES_NAME = /Queries$/;
 
@@ -65,15 +69,75 @@ const serviceCallOf = (node, deps) => {
   return null;
 };
 
-const walk = (node, visit) => {
+/** 何回も走る子のキー。ループの本体や条件、要素ごとの callback（ids.map(...) の引数）。for の init や of の右側は 1 回 */
+const REPEATED = {
+  ForStatement: ["test", "update", "body"],
+  ForInStatement: ["body"],
+  ForOfStatement: ["body"],
+  WhileStatement: ["test", "body"],
+  DoWhileStatement: ["test", "body"],
+};
+/** 配列の要素ごとに callback を呼ぶ method */
+const ITERATING = new Set([
+  "map",
+  "flatMap",
+  "forEach",
+  "reduce",
+  "filter",
+  "some",
+  "every",
+]);
+
+const repeatedKeysOf = (node) => {
+  if (
+    node.type === "CallExpression" &&
+    node.callee?.type === "MemberExpression" &&
+    !node.callee.computed &&
+    ITERATING.has(node.callee.property?.name)
+  )
+    return ["arguments"];
+  return REPEATED[node.type] ?? [];
+};
+
+/** inLoop: ループの中か、要素ごとの callback の中（字面では 1 回でも、何回も走る） */
+const walk = (node, visit, inLoop = false) => {
   if (!node || typeof node.type !== "string") return;
-  visit(node);
+  visit(node, inLoop);
+  const repeated = repeatedKeysOf(node);
   for (const [key, value] of Object.entries(node)) {
     if (key === "parent") continue;
     for (const child of Array.isArray(value) ? value : [value]) {
-      if (child && typeof child.type === "string") walk(child, visit);
+      if (child && typeof child.type === "string")
+        walk(child, visit, inLoop || repeated.includes(key));
     }
   }
+};
+
+/** 本体で deps を分解した名前も足す。`const { books } = deps` / `const books = deps.books` */
+const addDestructured = (body, deps) => {
+  if (!deps.object) return;
+  walk(body, (n) => {
+    if (n.type !== "VariableDeclarator") return;
+    const init = unwrap(n.init);
+    if (
+      n.id?.type === "ObjectPattern" &&
+      init?.type === "Identifier" &&
+      init.name === deps.object
+    ) {
+      for (const p of n.id.properties) {
+        if (p.type === "Property" && p.value?.type === "Identifier")
+          deps.names.add(p.value.name);
+      }
+    }
+    if (
+      n.id?.type === "Identifier" &&
+      init?.type === "MemberExpression" &&
+      !init.computed &&
+      init.object?.type === "Identifier" &&
+      init.object.name === deps.object
+    )
+      deps.names.add(n.id.name);
+  });
 };
 
 /**
@@ -100,21 +164,32 @@ export default {
         if (isSystemEntry(config)) return;
         const deps = depsOf(handler);
         if (!deps) return;
+        addDestructured(handler.body, deps);
 
         const writes = [];
-        walk(handler.body, (n) => {
+        walk(handler.body, (n, inLoop) => {
           if (n.type !== "CallExpression") return;
           const call = serviceCallOf(n, deps);
           if (!call || QUERIES_NAME.test(call.service)) return;
           if (READ_NAME.test(call.method)) return;
-          writes.push({ node: n, name: `${call.service}.${call.method}` });
+          writes.push({
+            node: n,
+            name: `${call.service}.${call.method}`,
+            inLoop,
+          });
         });
 
+        for (const write of writes.filter((w) => w.inLoop)) {
+          report({
+            node: write.node,
+            message: `An HTTP handler writes through one call to one service, but ${write.name} runs once per item of a loop: if one fails, the ones before it stay done. Pass the whole list to one service call that writes it all or nothing`,
+          });
+        }
         const [first, ...rest] = writes;
-        for (const second of rest) {
+        for (const second of rest.filter((w) => !w.inLoop)) {
           report({
             node: second.node,
-            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads are named get… or list…`,
+            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads are named get… or list…, and a name that joins with Or / And (getOrCreate) is a write`,
           });
         }
       },
