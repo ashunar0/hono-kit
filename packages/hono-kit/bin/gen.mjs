@@ -1,7 +1,7 @@
 /**
  * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `hnk gen --watch`）。
  * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
- *   ディレクトリがパス、[id] は :id。_ で始まるファイルとディレクトリは読まない
+ *   ディレクトリがパス、[id] は :id、(名前) は URL に出ない（route group）。_ で始まるファイルとディレクトリは読まない
  * - src/routes/**\/_queries.ts: export された xxxQueries を db につなぐ（makeQueries）
  * - AppType: 全 endpoint の入力と応答。hc に渡す。チェーンせず、1 本ずつ & で並べる
  *
@@ -42,8 +42,27 @@ const byPath = (a, b) => {
   return x.length - y.length || METHODS.indexOf(a.method) - METHODS.indexOf(b.method);
 };
 
+/**
+ * ディレクトリから URL を作る。[id] は :id、(名前) は見た目のまとまり（route group）で URL に出さない。
+ * それ以外の括弧は黙って文字どおり登録せず、理由を出して止める
+ */
+const routePathOf = (dir, file, problems) => {
+  const segments = dir.split("/").filter(Boolean).flatMap((segment) => {
+    if (/^\(\w[\w-]*\)$/.test(segment)) return [];
+    const param = /^\[(\w+)\]$/.exec(segment);
+    if (param) return [`:${param[1]}`];
+    if (/^\[\.\.\.\w+\]$/.test(segment)) {
+      problems.push(`${file}: ${segment} (catch-all) is not supported yet. Use [name] for one segment`);
+    } else if (/[[\]()]/.test(segment)) {
+      problems.push(`${file}: ${segment} is not a path segment. Use [name] for a param, (name) for a group`);
+    }
+    return [segment];
+  });
+  return `/${segments.join("/")}`;
+};
+
 /** 生成するコード、または止める理由 */
-const generate = (src) => {
+export const generate = (src) => {
   const routesDir = path.join(src, "routes");
   const problems = [];
   const files = filesIn(routesDir).sort();
@@ -53,7 +72,7 @@ const generate = (src) => {
   const routeFiles = files.filter((f) => path.basename(f) === "index.ts");
   const endpoints = routeFiles.flatMap((file, i) => {
     const dir = path.relative(routesDir, path.dirname(file)).split(path.sep).join("/");
-    const routePath = `/${dir}`.replace(/\[(\w+)\]/g, ":$1").replace(/(.)\/$/, "$1");
+    const routePath = routePathOf(dir, file, problems);
     const names = valueExportsOf(file, problems);
 
     for (const name of names) {
@@ -63,8 +82,17 @@ const generate = (src) => {
     const found = METHODS.filter((m) => names.includes(m));
     if (found.length === 0) problems.push(`${file}: no ${METHODS.join(" / ")} export, so it is no endpoint`);
 
-    return found.map((method) => ({ path: routePath, method, module: `route${i}` }));
+    return found.map((method) => ({ path: routePath, method, module: `route${i}`, file }));
   });
+  // 1 つの URL は 1 つの index.ts。group を外した結果ぶつかったら、どちらが勝つか分からないので止める
+  const owners = new Map();
+  const clashes = new Set();
+  for (const e of endpoints) {
+    const owner = owners.get(e.path);
+    if (!owner) owners.set(e.path, e.file);
+    else if (owner !== e.file) clashes.add(`${e.file}: ${e.path} is also ${owner}. One URL, one index.ts`);
+  }
+  problems.push(...clashes);
   endpoints.sort(byPath);
 
   // queries
