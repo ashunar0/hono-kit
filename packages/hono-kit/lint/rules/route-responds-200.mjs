@@ -1,5 +1,10 @@
 import { reportWithDocs } from "../docs.mjs";
-import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
+import {
+  createEndpointNamesOf,
+  endpointCallOf,
+  isHttpEntry,
+  unwrap,
+} from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /**
@@ -10,10 +15,12 @@ export default {
   create(context) {
     const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
+    const createEndpointNames = createEndpointNamesOf();
 
     return {
+      Program: createEndpointNames.Program,
       CallExpression(node) {
-        const call = endpointCallOf(node);
+        const call = endpointCallOf(node, createEndpointNames.names);
         if (!call) return;
         const { config } = call;
         const responses = config.properties.find(

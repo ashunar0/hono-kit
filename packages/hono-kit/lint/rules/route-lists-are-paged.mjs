@@ -1,5 +1,10 @@
 import { reportWithDocs } from "../docs.mjs";
-import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
+import {
+  createEndpointNamesOf,
+  endpointCallOf,
+  isHttpEntry,
+  unwrap,
+} from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 const propOf = (object, name) =>
@@ -28,6 +33,7 @@ export default {
   create(context) {
     const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
+    const createEndpointNames = createEndpointNamesOf();
 
     // 同じファイルの変数が何で作られているか（query のスキーマを辿るため）
     const declared = new Map();
@@ -37,12 +43,13 @@ export default {
       node.callee.name === "pageQuerySchema";
 
     return {
+      Program: createEndpointNames.Program,
       VariableDeclarator(node) {
         if (node.id?.type === "Identifier" && node.init)
           declared.set(node.id.name, unwrap(node.init));
       },
       CallExpression(node) {
-        const call = endpointCallOf(node);
+        const call = endpointCallOf(node, createEndpointNames.names);
         if (!call) return;
         const { config } = call;
 

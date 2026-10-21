@@ -51,15 +51,50 @@ export const walkOwnScope = (node, visit) => {
 };
 
 /**
+ * ファイルの中で createEndpoint が束縛されている名前（alias 含む）を集める。
+ * `import { createEndpoint as ep } from "hono-kit"` でも ep を同じものとして見るため。
+ * Program で先に集めるので、import 文がファイルのどこにあっても同じに見る
+ */
+export const createEndpointNamesOf = () => {
+  const names = new Set();
+  return {
+    names,
+    Program(node) {
+      for (const statement of node.body) {
+        if (
+          statement.type !== "ImportDeclaration" ||
+          statement.source?.value !== "hono-kit"
+        )
+          continue;
+        for (const s of statement.specifiers ?? []) {
+          if (
+            s.type === "ImportSpecifier" &&
+            (s.imported?.name ?? s.imported?.value) === "createEndpoint"
+          )
+            names.add(s.local.name);
+        }
+      }
+    },
+  };
+};
+
+/**
  * endpoint の宣言の呼び出し `export const GET = createEndpoint(config, fn)`。
+ * createEndpointNames は createEndpointNamesOf() が返す names（alias 含む）。
  * 宣言が object で書かれていなければ null（読めないものは見ない）
  */
-export const endpointCallOf = (node) => {
+export const endpointCallOf = (node, createEndpointNames) => {
   const callee = node.callee;
-  if (callee?.type !== "Identifier" || callee.name !== "createEndpoint")
+  if (callee?.type !== "Identifier" || !createEndpointNames.has(callee.name))
     return null;
   const config = unwrap(node.arguments[0]);
   if (config?.type !== "ObjectExpression") return null;
 
   return { config, handler: node.arguments[1] };
 };
+
+/** `createEndpoint(...)` の呼び出しか（config の形は見ない。export の値が createEndpoint かだけ見るときに使う） */
+export const isCreateEndpointCall = (node, createEndpointNames) =>
+  node?.type === "CallExpression" &&
+  node.callee?.type === "Identifier" &&
+  createEndpointNames.has(node.callee.name);

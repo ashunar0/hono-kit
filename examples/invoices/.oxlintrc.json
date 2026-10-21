@@ -20,6 +20,7 @@
         "hnk/layer-imports": "error",
         "hnk/no-foreign-table-reads": "error",
         "hnk/no-clock-outside-app-entry": "error",
+        "hnk/route-exports-endpoints": "error",
         "hnk/route-lists-are-paged": "error",
         "hnk/route-replies-through-reply": "error",
         "hnk/route-declares-auth": "error",

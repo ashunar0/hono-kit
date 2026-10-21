@@ -119,19 +119,20 @@ async update(actor: Actor, id: PostId, input: PostInput, now: Date): Promise<Res
 
 Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 
-| Rule                          | Stops                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------ |
-| `layer-imports`               | Imports that break the direction of the arrows, per file role                  |
-| `route-declares-auth`         | Endpoints that do not declare who may call them                                |
-| `route-replies-through-reply` | `c.json` that bypasses the `responses` contract                                |
-| `route-lists-are-paged`       | List endpoints without a page limit                                            |
-| `no-clock-outside-app-entry`  | `new Date()` / `Date.now()` outside where the app is built                     |
-| `no-foreign-table-reads`      | Reading another domain's table directly                                        |
-| `no-id-cast`                  | Branding IDs with `as`                                                         |
-| `no-module-scope-state`       | Mutable state at module scope                                                  |
-| `route-responds-200`          | Success statuses other than 200 (201, 204)                                     |
-| `route-writes-once`           | An HTTP handler writing through two service calls (reads are `get…` / `list…`) |
-| `no-new-hono`                 | `new Hono()` instead of `createApp()`                                          |
+| Rule                          | Stops                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
+| `layer-imports`               | Imports that break the direction of the arrows, per file role                               |
+| `route-declares-auth`         | Endpoints that do not declare who may call them                                             |
+| `route-exports-endpoints`     | `index.ts` exports other than GET / POST / PUT / PATCH / DELETE built with `createEndpoint` |
+| `route-replies-through-reply` | `c.json` that bypasses the `responses` contract                                             |
+| `route-lists-are-paged`       | List endpoints without a page limit                                                         |
+| `no-clock-outside-app-entry`  | `new Date()` / `Date.now()` outside where the app is built                                  |
+| `no-foreign-table-reads`      | Reading another domain's table directly                                                     |
+| `no-id-cast`                  | Branding IDs with `as`                                                                      |
+| `no-module-scope-state`       | Mutable state at module scope                                                               |
+| `route-responds-200`          | Success statuses other than 200 (201, 204)                                                  |
+| `route-writes-once`           | An HTTP handler writing through two service calls (reads are `get…` / `list…`)              |
+| `no-new-hono`                 | `new Hono()` instead of `createApp()`                                                       |
 
 ### Who may import what
 
