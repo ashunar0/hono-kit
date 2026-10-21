@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
@@ -7,6 +8,7 @@ import { fileOf } from "../project.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
 
     return {
@@ -27,7 +29,7 @@ export default {
           if (p.type !== "Property") continue;
           const status = Number(p.key?.value ?? p.key?.name);
           if (status >= 200 && status < 300 && status !== 200)
-            context.report({
+            report({
               node: p.key,
               message: `Success is always 200. Create returns the created thing with 200; delete returns { ok: true } with 200. Declare 200 instead of ${status}`,
             });

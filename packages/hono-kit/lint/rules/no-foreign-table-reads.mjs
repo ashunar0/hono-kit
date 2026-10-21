@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { fileOf, placeOf, projectOf, resolveImport } from "../project.mjs";
 
 /**
@@ -8,6 +9,7 @@ import { fileOf, placeOf, projectOf, resolveImport } from "../project.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "layout.md");
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
@@ -58,7 +60,7 @@ export default {
             tables.has(node.name) &&
             !insideReferences(ancestors)
           ) {
-            context.report({
+            report({
               node,
               message: `Reads another domain's table ${node.name}. Use tables only inside foreign-key references(). To read, use the scoped read (…Within) that ${tables.get(node.name)} exports`,
             });

@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import {
   fileOf,
   packageOf,
@@ -33,6 +34,7 @@ const isTypeOnly = (node) =>
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "layout.md");
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
@@ -42,7 +44,10 @@ export default {
       // リソースのディレクトリに、役割の分からないファイルを置かせない
       return {
         Program(node) {
-          context.report({
+          reportWithDocs(
+            context,
+            "resources.md",
+          )({
             node,
             message:
               "Files in src/routes/<noun>/ are index.ts (the endpoints: export const GET = createEndpoint(...)) and, next to it, _response.ts (how things are shown), _errors.ts (failures only this entry point has) and _queries.ts (reads for the GET endpoints). Put rules in a domain's model, steps in its service",
@@ -60,7 +65,10 @@ export default {
       // domain の中に、役割の分からないファイルを置かせない
       return {
         Program(node) {
-          context.report({
+          reportWithDocs(
+            context,
+            "domains.md",
+          )({
             node,
             message:
               self.role === "errors"
@@ -94,12 +102,12 @@ export default {
         const list = Object.entries(allowed)
           .map(([k, v]) => (v === "type" ? `${show(k)} (types only)` : show(k)))
           .join(", ");
-        context.report({
+        report({
           node,
           message: `${self.role} imports ${show(target)}. ${hint ? `${hint}. ` : ""}${self.role} may import: ${list}`,
         });
       } else if (kind === "type" && !isTypeOnly(node)) {
-        context.report({
+        report({
           node,
           message: `${self.role} may only borrow types from ${show(target)}. Use import type`,
         });
@@ -109,7 +117,7 @@ export default {
           const name =
             spec.type === "ImportSpecifier" ? spec.imported.name : undefined;
           if (name !== undefined && WINDOW.test(name)) continue;
-          context.report({
+          report({
             node: spec,
             message: `${self.role} imports ${name ?? "everything"} from another domain's repo. From another domain's repo you may borrow only foreign-key tables (…Table) and scoped reads (…Within). Keep steps and mapping inside that domain; if needed, add a …Within there`,
           });

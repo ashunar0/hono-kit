@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import path from "node:path";
 import { fileOf, projectOf } from "../project.mjs";
 
@@ -7,6 +8,7 @@ import { fileOf, projectOf } from "../project.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "resources.md");
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
@@ -17,7 +19,7 @@ export default {
     return {
       NewExpression(node) {
         if (node.callee?.type === "Identifier" && node.callee.name === "Hono")
-          context.report({
+          report({
             node,
             message:
               "Do not write new Hono(). Make the app's root with createApp() from hono-kit (its Env is the app's), and write endpoints with createEndpoint under src/routes",

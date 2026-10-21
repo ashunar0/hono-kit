@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
@@ -25,6 +26,7 @@ const propOf = (object, name) =>
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
 
     // 同じファイルの変数が何で作られているか（query のスキーマを辿るため）
@@ -54,7 +56,7 @@ export default {
           query?.type === "Identifier" ? declared.get(query.name) : query;
         if (isPageQuery(schema)) return;
 
-        context.report({
+        report({
           node,
           message:
             "This list route has no limit. Wrap query in pageQuerySchema(filterSchema) (respond with pageResponseSchema and pageResponse). Keep the query schema in the same file. If the size is bounded elsewhere, put `// oxlint-disable-next-line hnk/route-lists-are-paged -- reason` above this line",

@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { endpointCallOf, isGuardName, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
@@ -14,6 +15,7 @@ import { fileOf } from "../project.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
 
     return {
@@ -34,7 +36,7 @@ export default {
         const guards = elements.filter(isGuardName);
 
         if (guards.length === 0) {
-          context.report({
+          report({
             node,
             message:
               "The endpoint does not declare auth. Put middleware: [requireAuth], or [allowAnonymous] if it is public",
@@ -42,13 +44,13 @@ export default {
           return;
         }
         if (guards.length > 1) {
-          context.report({
+          report({
             node: guards[1],
             message: `${guards.length} auth guards are declared. Pick one`,
           });
         }
         if (elements[0] !== guards[0]) {
-          context.report({
+          report({
             node: guards[0],
             message:
               "Put the auth guard first in middleware, so the declaration reads top to bottom",

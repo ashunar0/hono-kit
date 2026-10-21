@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import path from "node:path";
 import { fileOf, placeOf, projectOf } from "../project.mjs";
 
@@ -26,7 +27,10 @@ export default {
     if (ALLOWED.has(self.role)) return {};
 
     const report = (node, what) =>
-      context.report({
+      reportWithDocs(
+        context,
+        "rules.md",
+      )({
         node,
         message: `${self.role} reads the clock (${what}). The app reads it once, so tests can fix it: in a handler use c.get("now"), in a job the now it is passed, in service and below take now as an argument`,
       });

@@ -17,6 +17,7 @@ The rules every file keeps. Lint stops most of them; the rest are here.
 - **Unique constraints**: the table's `uniqueIndex` decides, never a check you wrote first (two requests can interleave). Wrap the repo's `insert` / `update` in `try/catch`; `uniqueViolationOf(error)` from `hono-kit/sqlite` returns the column it hit (`"members.email"`) or null. Return a failure value per column (rethrow on null), and service turns each into the domain's conflict `Failure`. So every column the docs call unique gets its own `uniqueIndex`
 - **Returning**: `reply(200, body)` and `reply.failure(...)`. Create and update return the thing as its GET shows it, read again through queries, with 200; delete returns `{ ok: true }` with 200
 - **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. queries take a `PageQuery` (and declare `type …ListQuery = PageQuery & { status?: …Status }`), read `limit + 1` rows and return `toPage(...)` from `hono-kit/page`
+- **Module scope**: keep no changing values there (`let`, a `Map`, an array you push to). One Worker serves concurrent requests, so it would be shared across them (`hnk/no-module-scope-state`). A dummy in tests that collects what was sent takes its array from the test
 - **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` in service
 
 ## When unsure

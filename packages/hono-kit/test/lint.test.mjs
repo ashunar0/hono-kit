@@ -73,3 +73,16 @@ for (const file of files) {
     }
   });
 }
+
+test("hnk の指摘は全部、読む docs のページを添えていて、そのページが在る", () => {
+  const hnk = diagnostics.filter((d) => d.code.startsWith("hnk("));
+  assert.ok(hnk.length > 0);
+  for (const d of hnk) {
+    const page = d.message.match(/More: node_modules\/hono-kit\/docs\/(\S+)$/)?.[1];
+    assert.ok(page, `${d.code} に docs のページが無い: ${d.message}`);
+    assert.ok(
+      fs.existsSync(path.join(here, "..", "docs", page)),
+      `${d.code} が指す docs/${page} が無い`,
+    );
+  }
+});

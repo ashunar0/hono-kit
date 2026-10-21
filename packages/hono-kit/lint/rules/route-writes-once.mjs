@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
@@ -80,6 +81,7 @@ const walk = (node, visit) => {
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
 
     return {
@@ -103,7 +105,7 @@ export default {
 
         const [first, ...rest] = writes;
         for (const second of rest) {
-          context.report({
+          report({
             node: second.node,
             message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads are named get… or list…`,
           });

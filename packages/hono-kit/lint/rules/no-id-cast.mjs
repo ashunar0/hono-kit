@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { fileOf, placeOf, projectOf } from "../project.mjs";
 
 /**
@@ -7,6 +8,7 @@ import { fileOf, placeOf, projectOf } from "../project.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "cross-domain.md");
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
@@ -19,7 +21,7 @@ export default {
         if (type?.type !== "TSTypeReference") return;
         const name = type.typeName?.name;
         if (!name || !/Id$/.test(name)) return;
-        context.report({
+        report({
           node,
           message: `${name} is applied with as. Brand IDs with the constructor in the owning domain's model (${name[0].toLowerCase()}${name.slice(1)}(value)). Where you cannot import values from another domain's model (service, ...), pass a plain string and brand it in deps.ts`,
         });

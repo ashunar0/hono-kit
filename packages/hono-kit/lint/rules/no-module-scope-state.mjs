@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { unwrap } from "../ast.mjs";
 
 /**
@@ -7,6 +8,7 @@ import { unwrap } from "../ast.mjs";
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     const MUTABLE = new Set(["Map", "Set", "WeakMap", "WeakSet", "Array"]);
 
     return {
@@ -19,7 +21,7 @@ export default {
           if (declaration?.type !== "VariableDeclaration") continue;
 
           if (declaration.kind !== "const") {
-            context.report({
+            report({
               node: declaration,
               message: `${declaration.kind} at module scope. It is shared across concurrent requests, so do not keep changing values here`,
             });
@@ -31,7 +33,7 @@ export default {
               init?.type === "NewExpression" &&
               MUTABLE.has(init.callee?.name)
             ) {
-              context.report({
+              report({
                 node: declarator,
                 message: `new ${init.callee.name}() at module scope. It is shared across concurrent requests, so do not keep mutable containers here`,
               });

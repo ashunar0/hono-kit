@@ -22,8 +22,9 @@ export const projectOf = (file) => {
     const tsconfig = path.join(dir, "tsconfig.json");
     if (fs.existsSync(tsconfig)) {
       const { compilerOptions } = JSON.parse(fs.readFileSync(tsconfig, "utf8"));
-      const imports = Object.entries(importsOf(dir)).flatMap(([alias, target]) =>
-        typeof target === "string" ? [[alias, [target]]] : [],
+      const imports = Object.entries(importsOf(dir)).flatMap(
+        ([alias, target]) =>
+          typeof target === "string" ? [[alias, [target]]] : [],
       );
       const project = {
         root: dir,

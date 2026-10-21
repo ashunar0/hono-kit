@@ -1,3 +1,4 @@
+import { reportWithDocs } from "../docs.mjs";
 import { isHttpEntry } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
@@ -9,6 +10,7 @@ const RESPONSE_METHODS = new Set(["json", "text", "body", "html", "redirect"]);
  */
 export default {
   create(context) {
+    const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
 
     return {
@@ -19,7 +21,7 @@ export default {
           return;
         const method = callee.property?.name;
         if (!RESPONSE_METHODS.has(method)) return;
-        context.report({
+        report({
           node,
           message: `Return with reply instead of c.${method}(): reply(200, body) or reply.failure(error)`,
         });
