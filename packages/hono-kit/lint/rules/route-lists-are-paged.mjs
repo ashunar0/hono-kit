@@ -43,7 +43,7 @@ export default {
       node.callee.name === "pageQuerySchema";
 
     return {
-      ImportDeclaration: createEndpointNames.ImportDeclaration,
+      Program: createEndpointNames.Program,
       VariableDeclarator(node) {
         if (node.id?.type === "Identifier" && node.init)
           declared.set(node.id.name, unwrap(node.init));

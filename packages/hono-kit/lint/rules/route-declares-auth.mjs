@@ -26,7 +26,7 @@ export default {
     const createEndpointNames = createEndpointNamesOf();
 
     return {
-      ImportDeclaration: createEndpointNames.ImportDeclaration,
+      Program: createEndpointNames.Program,
       CallExpression(node) {
         const call = endpointCallOf(node, createEndpointNames.names);
         if (!call) return;

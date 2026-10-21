@@ -53,20 +53,26 @@ export const walkOwnScope = (node, visit) => {
 /**
  * ファイルの中で createEndpoint が束縛されている名前（alias 含む）を集める。
  * `import { createEndpoint as ep } from "hono-kit"` でも ep を同じものとして見るため。
- * 名前で見るので、import 文を見た後の CallExpression でだけ使える
+ * Program で先に集めるので、import 文がファイルのどこにあっても同じに見る
  */
 export const createEndpointNamesOf = () => {
   const names = new Set();
   return {
     names,
-    ImportDeclaration(node) {
-      if (node.source?.value !== "hono-kit") return;
-      for (const s of node.specifiers ?? []) {
+    Program(node) {
+      for (const statement of node.body) {
         if (
-          s.type === "ImportSpecifier" &&
-          (s.imported?.name ?? s.imported?.value) === "createEndpoint"
+          statement.type !== "ImportDeclaration" ||
+          statement.source?.value !== "hono-kit"
         )
-          names.add(s.local.name);
+          continue;
+        for (const s of statement.specifiers ?? []) {
+          if (
+            s.type === "ImportSpecifier" &&
+            (s.imported?.name ?? s.imported?.value) === "createEndpoint"
+          )
+            names.add(s.local.name);
+        }
       }
     },
   };

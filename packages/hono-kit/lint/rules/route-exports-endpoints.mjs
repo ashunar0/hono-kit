@@ -36,7 +36,7 @@ export default {
     const createEndpointNames = createEndpointNamesOf();
 
     return {
-      ImportDeclaration: createEndpointNames.ImportDeclaration,
+      Program: createEndpointNames.Program,
       ExportDefaultDeclaration(node) {
         report({ node, message: NO_DEFAULT });
       },
