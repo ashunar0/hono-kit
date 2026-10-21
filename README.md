@@ -12,6 +12,15 @@ hono-kit fixes the shape up front and stops deviations with types and lint. Ever
 
 It is not a framework or a platform. It sits thinly on top of plain Hono, and what it puts into your app is `hono` only (the generator, `hnk gen`, reads files with `oxc-parser` on your machine).
 
+The routing is borrowed from [Void](https://void.cloud/guide/server-routing): directories under `src/routes/` are the URL, `export const GET` is the method, `[id]` is a param, `(name)` only groups, and files starting with `_` are not read. What hono-kit decides itself is the layer below: where domains go and which way they depend, how failures return (Result), who and when (actor and now), what each one may see (`…Within`), and the lint that keeps it.
+
+Where it differs from Void:
+
+- Success is 200 only (no 201 or 204)
+- Dependencies come as the handler's third argument (`async (c, reply, { invoices }) => …`)
+- One URL has one `index.ts` (no files like `[id].ts`)
+- No catch-all (`[...name]`) yet
+
 ## Getting started
 
 ```sh

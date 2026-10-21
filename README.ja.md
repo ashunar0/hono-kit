@@ -12,6 +12,15 @@ hono-kit は形を先に決め、外れたものを型と lint で止める。li
 
 フレームワークでもプラットフォームでもない。素の Hono の上に薄く載るだけで、アプリに載る依存は `hono` だけ（手元で打つ生成器 `hnk gen` は、ファイルを読むのに `oxc-parser` を使う）。
 
+ルーティングは [Void](https://void.cloud/guide/server-routing) と同じ形を借りている。`src/routes/` のディレクトリが URL になり、`export const GET` がメソッド、`[id]` が param になる。`(名前)` はまとめるだけで、`_` で始まるファイルは読まない。hono-kit が自分で決めているのは、その下の業務の層のほう。domain の置き場所と依存の向き、失敗の返し方（Result）、誰が・いつ（actor と now）、見える範囲（`〜Within`）、そしてそれを守らせる lint。
+
+Void と違えているところ：
+
+- 成功は 200 だけ（201・204 は使わない）
+- 依存は handler の 3 つ目の引数で受け取る（`async (c, reply, { invoices }) => …`）
+- 1 つの URL に `index.ts` は 1 つ（`[id].ts` のようなファイルは書かない）
+- catch-all（`[...name]`）はまだ無い
+
 ## 始め方
 
 ```sh
