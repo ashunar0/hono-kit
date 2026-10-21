@@ -220,11 +220,11 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **利用者とシステムには印を付ける**（`unique symbol`）。`{ kind: "system" }` のようなリテラルでは書けず、利用者を作れるのは `authenticatedUser` だけ。システムの型と値は hono-kit が持ち、アプリは作れず受け取るだけ（下の「HTTP 以外の入口」）
 - **domain は model / service / repo.<技術> で始め、2 つ目が現れたときだけ育てる**（上の「出発点と育ち方」）。HTTP の入口は domain の外のリソース（`src/routes/`）。
   名前は domains。URL で切る routes と並べて、もう 1 つの軸がドメインだと名前で分かるようにする。中のモノとルールのファイルは、まとまりの名前とぶつからないよう model.ts にする。features は「機能」で、複数のモノにまたがる操作の言葉なので使わない
-- **model は外を知らない**。import できるのは zod と `src/lib/` だけ。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
+- **model は外を知らない**。値として import できるのは zod と `src/lib/` だけ（`hono-kit/system`・`hono-kit/failures`・他 domain の model は型だけ。全部は英語 README の許可表）。ルールは zod で書き、フロントとも共有する。手順（How）は service に分ける
 - **業務を知らないものは `src/lib/` に置く**（日付、時刻、タイムゾーンの変換）。見分け方は「別のアプリにそのまま持っていけるか」で、スタッフの立場は staff のもの（コピーするか型を借りる）、暦の上の日付はどのアプリでも同じ（lib）。どこからでも値で import でき、lib 自身は zod と他の lib しか import しない。だから lib を通して domain どうしがつながることはない。ファイルは中身で名前を付け（`time.ts`）、`utils.ts` は作らない
 - **ID には印を付ける**（`InvoiceId` / `UserId` / `OrgId`。`string & { [brand]: true }`）。印を付けてよいのは、その domain の model が出す作る関数（`invoiceId(value)`）だけで、他の場所の `as XxxId` は lint `no-id-cast` が止める。素の `string` や別の ID は渡せない。domain の中では、他の domain の ID は素の `string`（`Payment.invoiceId`）。印を付けるのは入口で、リソースはどの domain の model も使えるので、持ち主の `…IdSchema` で受け取る（`invoiceIdSchema`）。cron・queue も他の domain の model の値を使えるので、`invoiceId(body.invoiceId)` を付けて渡す
 - **入力は検査済みの印（zod の brand）付きでしか service に渡せない**。どの入口から呼んでも、検査を飛ばすと型エラーになる
-- **service は hono を知らない**。hono-kit から使うのは `hono-kit/result` だけ
+- **service は hono を知らない**。hono-kit から値で使うのは `hono-kit/result` と `hono-kit/failures` だけ（`hono-kit/page`・`hono-kit/system` は型だけ）
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。
   `provideDeps` がリクエストごとに、使うときに 1 回だけ組み立てる
 - **アダプター（repo・gateway・mailer・queue）の形は service が宣言する**（Go の「interface は使う側が決める」）

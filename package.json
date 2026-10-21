@@ -1,4 +1,7 @@
 {
   "name": "hono-kit-monorepo",
-  "private": true
+  "private": true,
+  "engines": {
+    "node": ">=22.18"
+  }
 }
