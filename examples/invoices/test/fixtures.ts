@@ -1,14 +1,14 @@
 import { env } from "cloudflare:workers";
-import { scopeTo, wireDb } from "../src/db";
-import { invoiceId, type Invoice } from "../src/domains/invoices/model";
+import { scopeTo, wireDb } from "#src/db/index";
+import { invoiceId, type Invoice } from "#src/domains/invoices/model";
 import {
   invoicesRepository,
   invoiceSharesTable,
   invoicesTable,
-} from "../src/domains/invoices/repo.d1";
-import { makeDeps } from "../src/deps";
-import { buildApp } from "../src/index";
-import { authenticatedUser, orgId, userId, type User } from "../src/domains/users/model";
+} from "#src/domains/invoices/repo.d1";
+import { makeDeps } from "#src/deps";
+import { buildApp } from "#src/index";
+import { authenticatedUser, orgId, userId, type User } from "#src/domains/users/model";
 
 export const db = () => wireDb(env.DB);
 

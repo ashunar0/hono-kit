@@ -3,8 +3,8 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { Scope } from "../../db";
-import { invoicesTable } from "../invoices/repo.d1";
+import type { Scope } from "#src/db/index";
+import { invoicesTable } from "#src/domains/invoices/repo.d1";
 import { reminderStatuses } from "./model";
 import type { RemindersRepository } from "./service";
 

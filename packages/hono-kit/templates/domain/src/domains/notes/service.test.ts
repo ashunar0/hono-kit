@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { scopeTo } from "../../db";
+import { scopeTo } from "#src/db/index";
 import { db } from "../../../test/fixtures";
 import { noteId } from "./model";
 import { notesRepository, notesTable } from "./repo.d1";

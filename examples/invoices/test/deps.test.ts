@@ -5,7 +5,7 @@
  */
 import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
-import { makeDeps } from "../src/deps";
+import { makeDeps } from "#src/deps";
 
 it("deps の全部が組み上がる", () => {
   const deps = makeDeps(env);

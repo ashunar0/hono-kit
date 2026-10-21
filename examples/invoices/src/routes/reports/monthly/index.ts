@@ -3,8 +3,8 @@
  */
 import { createEndpoint } from "hono-kit";
 import { z } from "zod";
-import { requireRole } from "../../../middleware/auth";
-import { monthsBetween, type Month } from "../../../lib/month";
+import { requireRole } from "#src/middleware/auth";
+import { monthsBetween, type Month } from "#src/lib/month";
 
 /** 1 回に出せる月の数。重い集計で詰まらないように */
 const MAX_MONTHS = 24;

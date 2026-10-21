@@ -4,10 +4,10 @@
  */
 import { and, desc, eq, lt, or } from "drizzle-orm";
 import { toPage, type Page, type PageQuery } from "hono-kit/page";
-import type { ReadDb } from "../../db";
-import type { InvoiceId, InvoiceStatus } from "../../domains/invoices/model";
-import { invoicesWithin } from "../../domains/invoices/repo.d1";
-import type { Actor } from "../../domains/users/model";
+import type { ReadDb } from "#src/db/index";
+import type { InvoiceId, InvoiceStatus } from "#src/domains/invoices/model";
+import { invoicesWithin } from "#src/domains/invoices/repo.d1";
+import type { Actor } from "#src/domains/users/model";
 
 /** その人が触れる請求書を、画面に出す列だけで */
 const seen = (db: ReadDb, actor: Actor) => {

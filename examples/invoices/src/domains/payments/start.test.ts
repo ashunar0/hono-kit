@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { expect, it } from "vitest";
 import { err, ok } from "hono-kit/result";
-import { scopeTo } from "../../db";
+import { scopeTo } from "#src/db/index";
 import { paymentsRepository, paymentsTable } from "./repo.d1";
 import { paymentsService, type PayableInvoice, type PaymentGateway } from "./service";
 import { db, insertInvoices, invoice } from "../../../test/fixtures";

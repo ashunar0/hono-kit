@@ -3,8 +3,8 @@
  */
 import { createEndpoint, errorResponses, Forbidden, NotFound } from "hono-kit";
 import { z } from "zod";
-import { requireAuth } from "../../../middleware/auth";
-import { invoiceIdSchema, invoiceInputSchema } from "../../../domains/invoices/model";
+import { requireAuth } from "#src/middleware/auth";
+import { invoiceIdSchema, invoiceInputSchema } from "#src/domains/invoices/model";
 import { invoiceResponse, invoiceResponseSchema } from "../_response";
 
 // 受け取る形。本文の入力は model の invoiceInputSchema

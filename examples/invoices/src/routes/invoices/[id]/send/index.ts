@@ -3,8 +3,8 @@
  */
 import { createEndpoint, errorResponses, Forbidden, NotFound } from "hono-kit";
 import { z } from "zod";
-import { requireAuth } from "../../../../middleware/auth";
-import { invoiceIdSchema, NotDraft } from "../../../../domains/invoices/model";
+import { requireAuth } from "#src/middleware/auth";
+import { invoiceIdSchema, NotDraft } from "#src/domains/invoices/model";
 import { invoiceResponse, invoiceResponseSchema } from "../../_response";
 
 const invoiceParamsSchema = z.object({

@@ -1,7 +1,7 @@
-import { authenticatedUser, orgId, userId, type Actor } from "../src/domains/users/model";
+import { authenticatedUser, orgId, userId, type Actor } from "#src/domains/users/model";
 import { beforeAll, describe, expect, it } from "vitest";
-import { scopeTo } from "../src/db";
-import { paymentsTable } from "../src/domains/payments/repo.d1";
+import { scopeTo } from "#src/db/index";
+import { paymentsTable } from "#src/domains/payments/repo.d1";
 import { db, insertInvoices, invoice } from "./fixtures";
 
 /**

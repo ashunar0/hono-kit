@@ -3,8 +3,8 @@
  */
 import { createEndpoint, errorResponses, Forbidden, NotFound } from "hono-kit";
 import { z } from "zod";
-import { requireAuth } from "../../../../middleware/auth";
-import { invoiceIdSchema, shareLevels } from "../../../../domains/invoices/model";
+import { requireAuth } from "#src/middleware/auth";
+import { invoiceIdSchema, shareLevels } from "#src/domains/invoices/model";
 import { okResponseSchema } from "./_response";
 
 // 親のパスの :id も、ここで検査する

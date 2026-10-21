@@ -4,7 +4,7 @@
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
-import type { Actor, User } from "../users/model";
+import type { Actor, User } from "#src/domains/users/model";
 import {
   canEdit,
   canManage,

@@ -3,7 +3,17 @@ import path from "node:path";
 
 export const fileOf = (context) => context.filename ?? context.getFilename();
 
-/** 一番近い tsconfig.json のあるディレクトリと、その paths。アプリの根として使う */
+/** package.json の imports（`#src/*`）。無ければ空 */
+const importsOf = (dir) => {
+  const file = path.join(dir, "package.json");
+  if (!fs.existsSync(file)) return {};
+  return JSON.parse(fs.readFileSync(file, "utf8")).imports ?? {};
+};
+
+/**
+ * 一番近い tsconfig.json のあるディレクトリと、その paths と package.json の imports。アプリの根として使う。
+ * imports は paths と同じ形（{ "#src/*": ["./src/*.ts"] }）に揃えておく
+ */
 export const projectCache = new Map();
 export const projectOf = (file) => {
   let dir = path.dirname(file);
@@ -12,7 +22,13 @@ export const projectOf = (file) => {
     const tsconfig = path.join(dir, "tsconfig.json");
     if (fs.existsSync(tsconfig)) {
       const { compilerOptions } = JSON.parse(fs.readFileSync(tsconfig, "utf8"));
-      const project = { root: dir, paths: compilerOptions?.paths ?? {} };
+      const imports = Object.entries(importsOf(dir)).flatMap(([alias, target]) =>
+        typeof target === "string" ? [[alias, [target]]] : [],
+      );
+      const project = {
+        root: dir,
+        paths: { ...Object.fromEntries(imports), ...compilerOptions?.paths },
+      };
       projectCache.set(dir, project);
       return project;
     }
@@ -22,7 +38,7 @@ export const projectOf = (file) => {
   }
 };
 
-/** import 先をファイルの絶対パスに解決する。相対 import と tsconfig の paths。パッケージなら null */
+/** import 先をファイルの絶対パスに解決する。相対 import、tsconfig の paths、package.json の imports。パッケージなら null */
 export const resolveImport = (file, specifier, project) => {
   if (specifier.startsWith("."))
     return path.resolve(path.dirname(file), specifier);

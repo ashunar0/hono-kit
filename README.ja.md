@@ -102,6 +102,7 @@ async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promi
 URL の名詞（リソース）と、ドメインの名詞（domain）は別物なので、置き場所を分ける。
 
 - **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。ディレクトリがパスで、`[id]` は `:id`（`/invoices/:id/shares` → `routes/invoices/[id]/shares/`）。中は `index.ts`（endpoint。メソッドごとに `export const GET = createEndpoint(...)`）と、そばに置くもの。そばに置くものは `_` で始める：`_response.ts`（HTTP での見せ方）、`_queries.ts`（GET の読み取り）、要るときだけ `_errors.ts`（その入口だけの失敗）。登録は `pnpm hnk gen` が `src/routes.gen.ts` に書く。ディレクトリは名詞。ただし状態の遷移だけは動詞のディレクトリ（`[id]/send/`）で、`POST` だけを置く。Google の AIP-136 や Stripe と同じ形。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから。`PATCH { status }` では遷移させない
+- **import は、自分の domain・自分のリソースの中だけ相対で書き、外は `#src/` で書く**（`#src/domains/invoices/model`）。`#src/` は package.json の `imports`（`"#src/*": "./src/*.ts"`）で、Node の標準の仕組み。tsconfig の paths だと vitest がそのままでは読めず、設定を 2 か所に書くか依存を足すことになるので使わない。import を見れば、自分の持ち物かよそのものかが分かる
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
 - **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースが URL で名前を付けるのと同じく、きっかけで名前を付ける（`daily.ts`、`reminders-queue.ts`）。同じきっかけで動く仕事は同じファイルに並べる。domain の外に置き、service は deps から受け取る
 - **参照は入口（routes、jobs）→ domains の一方向だけ**。route は必要なだけ domain を使ってよい。domain どうしは呼び合わない

@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
-import type { AppEnv, AuthVariables } from "../env";
-import type { Role, User } from "../domains/users/model";
+import type { AppEnv, AuthVariables } from "#src/env";
+import type { Role, User } from "#src/domains/users/model";
 import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**

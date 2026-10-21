@@ -4,7 +4,7 @@
  */
 import { eq, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { Scope } from "../../db";
+import type { Scope } from "#src/db/index";
 import { noteId, type Note } from "./model";
 import type { NotesRepository } from "./service";
 

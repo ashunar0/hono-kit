@@ -1,5 +1,5 @@
 import { systemActor } from "hono-kit/testing";
-import type { User } from "../users/model";
+import type { User } from "#src/domains/users/model";
 import type { PaymentEvent } from "./model";
 import type { PaymentsService } from "./service";
 

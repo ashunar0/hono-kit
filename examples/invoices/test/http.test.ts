@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 import { systemActor } from "hono-kit/testing";
 import { expect, it } from "vitest";
-import { makeDeps } from "../src/deps";
-import { buildApp } from "../src/index";
+import { makeDeps } from "#src/deps";
+import { buildApp } from "#src/index";
 
 const app = buildApp(makeDeps);
 

@@ -4,8 +4,8 @@
  */
 import { and, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { ReadDb, Scope } from "../../db";
-import { orgId, userId, type Actor } from "../users/model";
+import type { ReadDb, Scope } from "#src/db/index";
+import { orgId, userId, type Actor } from "#src/domains/users/model";
 import {
   invoiceId,
   invoiceStatuses,

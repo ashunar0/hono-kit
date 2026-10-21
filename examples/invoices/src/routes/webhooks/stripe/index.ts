@@ -8,9 +8,9 @@
  */
 import { allowSystem, createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
-import { NotPayable } from "../../../domains/payments/model";
+import { NotPayable } from "#src/domains/payments/model";
 import { InvalidSignature } from "./_errors";
-import { invoiceId } from "../../../domains/invoices/model";
+import { invoiceId } from "#src/domains/invoices/model";
 
 const receivedSchema = z.object({ received: z.literal(true) });
 

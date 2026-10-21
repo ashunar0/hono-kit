@@ -19,7 +19,7 @@ import {
 import { openapiDocument } from "hono-kit/openapi";
 import * as v from "valibot";
 import { expect, it } from "vitest";
-import { allowAnonymous } from "../src/middleware/auth";
+import { allowAnonymous } from "#src/middleware/auth";
 
 const params = toStandardJsonSchema(v.object({ id: v.pipe(v.string(), v.minLength(2)) }));
 const query = toStandardJsonSchema(

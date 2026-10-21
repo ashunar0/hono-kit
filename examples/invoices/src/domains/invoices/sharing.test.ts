@@ -2,7 +2,7 @@ import { invoiceId, reachOf } from "./model";
 import { expect, it } from "vitest";
 import { invoicesWithin } from "./repo.d1";
 import { invoicesService } from "./service";
-import { authenticatedUser, orgId, type Actor } from "../users/model";
+import { authenticatedUser, orgId, type Actor } from "#src/domains/users/model";
 import {
   admin,
   alice,

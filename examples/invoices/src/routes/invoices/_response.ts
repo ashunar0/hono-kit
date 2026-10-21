@@ -2,7 +2,7 @@
  * 請求書を HTTP でどう見せるか。モノのルールではなく、送るときの見せ方なので、domain ではなくリソースの側に置く
  */
 import { z } from "zod";
-import { invoiceStatuses } from "../../domains/invoices/model";
+import { invoiceStatuses } from "#src/domains/invoices/model";
 import type { InvoiceRow } from "./_queries";
 
 export const invoiceResponseSchema = z.object({

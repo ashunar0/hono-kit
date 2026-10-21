@@ -14,6 +14,10 @@ The nouns in the URL (resources) and the nouns of the domain (domains) are diffe
 
 They often share a word (`routes/invoices/` and `domains/invoices/`) and often do not (`/customers/:customerId/invoices` is a customer's invoices, written with the invoices domain). Do not bend one to match the other.
 
+## Imports
+
+Inside your own domain (`src/domains/<name>/`) or your own resource (`src/routes/<noun>/` and everything under it), import with a relative path (`../_response`). Anything outside it goes through `#src/` (`#src/domains/invoices/model`, `#src/middleware/auth`), the subpath import in `package.json` (`"#src/*": "./src/*.ts"`). A directory is imported by its `index` (`#src/db/index`). So an import shows whether it is your own or someone else's.
+
 ## Reads and writes
 
 There are two paths.

@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
-import { scopeTo } from "../src/db";
-import { paymentsTable } from "../src/domains/payments/repo.d1";
-import { reportsQueries } from "../src/routes/reports/monthly/_queries";
+import { scopeTo } from "#src/db/index";
+import { paymentsTable } from "#src/domains/payments/repo.d1";
+import { reportsQueries } from "#src/routes/reports/monthly/_queries";
 import { admin, alice, db, insertInvoices, invoice, request } from "./fixtures";
 
 it("月ごとの請求額と入金額。データの無い月は 0、下書きと失敗した支払いは数えない", async () => {

@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#src/*": "./src/*.ts"
+  },
   "description": "hnk を使ったアプリの例。invoices の一覧・1件・作成・更新・削除",
   "scripts": {
     "typecheck": "tsc --noEmit",

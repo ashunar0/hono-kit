@@ -3,7 +3,7 @@
  * 手順も HTTP も DB も知らない。他のファイルは全部ここに向かう
  */
 import { z } from "zod";
-import type { Actor, OrgId, UserId } from "../users/model";
+import type { Actor, OrgId, UserId } from "#src/domains/users/model";
 
 /** 下書きではない請求書を送ろうとした。種類から HTTP の番号を決めるのは hnk */
 export const NotDraft = {

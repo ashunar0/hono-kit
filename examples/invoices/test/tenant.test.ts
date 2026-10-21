@@ -1,11 +1,11 @@
-import { orgId } from "../src/domains/users/model";
-import { invoiceId, reachOf } from "../src/domains/invoices/model";
+import { orgId } from "#src/domains/users/model";
+import { invoiceId, reachOf } from "#src/domains/invoices/model";
 import { expect, it } from "vitest";
-import { scopeTo } from "../src/db";
-import { invoicesService } from "../src/domains/invoices/service";
-import { paymentsTable } from "../src/domains/payments/repo.d1";
-import { invoicesQueries } from "../src/routes/invoices/_queries";
-import { reportsQueries } from "../src/routes/reports/monthly/_queries";
+import { scopeTo } from "#src/db/index";
+import { invoicesService } from "#src/domains/invoices/service";
+import { paymentsTable } from "#src/domains/payments/repo.d1";
+import { invoicesQueries } from "#src/routes/invoices/_queries";
+import { reportsQueries } from "#src/routes/reports/monthly/_queries";
 import { systemActor } from "hono-kit/testing";
 import { admin, admin2, alice, carol, db, insertInvoices, invoice, invoicesRepo } from "./fixtures";
 
