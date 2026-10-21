@@ -6,7 +6,7 @@
  *   hnk gen [--watch]       src/routes から src/routes.gen.ts（登録・queries のつなぎ・AppType）を書く（bin/gen.mjs）
  *
  * リソース（src/routes/<名詞>/）は生成しない。中身はどの domain を使うかで毎回違い、つなぐ先も
- * 親のリソースだったりするので、URL を見て書く（書き方は雛形の AGENTS.md）
+ * 親のリソースだったりするので、URL を見て書く（書き方は docs/resources.md）
  *
  * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → g domain → check を通す）。
  * 生成器がするのは、コピーと、語の置き換えと、// hnk: の行の上への追記だけ
@@ -14,7 +14,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { gen } from "./gen.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -133,7 +132,7 @@ const generateDomain = (plural) => {
   insertAbove(deps, "returns", [`${plural},`]);
 
   console.log(`✓ Added src/domains/${plural}/ and wired it into deps.ts (the bare shape of ${one})`);
-  console.log("  Fill in the thing, then write the resource under src/routes/ where the URL says (AGENTS.md)");
+  console.log("  Fill in the thing, then write the resource under src/routes/ where the URL says (node_modules/hono-kit/docs/resources.md)");
   console.log("  pnpm db:generate && pnpm exec prettier --write . && pnpm check");
 };
 
@@ -143,5 +142,6 @@ const [command, ...args] = process.argv.slice(2);
 
 if (command === "init") init(args[0]);
 else if (command === "g" && args[0] === "domain") generateDomain(args[1]);
-else if (command === "gen") gen({ watch: args.includes("--watch") });
+// gen だけが oxc-parser を使う。init と g domain は依存を読み込まずに動く（init は依存を入れる前に打つ）
+else if (command === "gen") (await import("./gen.mjs")).gen({ watch: args.includes("--watch") });
 else die("Usage: hnk init <dir> / hnk g domain <name> / hnk gen [--watch]");

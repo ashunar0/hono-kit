@@ -23,7 +23,7 @@
 
 ## Failures only an entry point has
 
-A failure that belongs to the entry point, not to a thing (a webhook signature that does not match), goes next to that entry point in `src/routes/<noun>/errors.ts` as `httpError(code, status, message)`. A domain has no `errors.ts`.
+A failure that belongs to the entry point, not to a thing (a webhook signature that does not match), goes next to that entry point in `src/routes/<noun>/_errors.ts` as `httpError(code, status, message)`. A domain has no `errors.ts`.
 
 ## Replacing external services in tests
 

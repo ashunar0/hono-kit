@@ -6,7 +6,7 @@ A complete example (a customer's invoices, billed from products):
 
 ```ts
 // src/routes/customers/invoices/index.ts: read from as many domains as needed, write once
-async (c, reply, { customers, products, invoices, invoiceQueries }) => {
+async (c, reply, { customers, products, invoices, invoicesQueries }) => {
   const actor = c.get("actor");
   const { customerId } = c.req.valid("param");
   const input = c.req.valid("json");
@@ -29,7 +29,7 @@ async (c, reply, { customers, products, invoices, invoiceQueries }) => {
   if (!result.ok) return reply.failure(result.error);
 
   // The write returns only the ID. Read it again the way its GET does
-  const invoice = await invoiceQueries.get(actor, result.value);
+  const invoice = await invoicesQueries.get(actor, result.value);
   if (invoice === null)
     throw new Error(`invoice ${result.value} is gone right after the write`);
 
@@ -46,7 +46,7 @@ export type Billed = {
 ## Reading
 
 - A handler may take as many services from deps as it needs (`{ customers, products, invoices }`). It never imports a service or repo
-- A GET reads through its resource's queries instead (AGENTS.md, "Reads and writes")
+- A GET reads through its resource's queries instead ([layout.md](layout.md#reads-and-writes))
 - A thing named in the URL that does not exist is a 404 returned in the handler, before calling the writing service. Write it out in each handler; do not hide it in middleware
 - If the other thing is not visible to the actor, treat it as absent: `NOT_FOUND`
 
@@ -108,7 +108,7 @@ export const invoicesWithin = (db: ReadDb, actor: Actor) =>
     .where(within(reachOf(actor)))
     .as("invoices_within");
 
-// routes/invoices/queries.d1.ts: the reader reads it like a table
+// routes/invoices/_queries.ts: the reader reads it like a table
 const invoices = invoicesWithin(db, actor);
 const rows = await db
   .select()
@@ -133,7 +133,7 @@ const rows = await db
 Windows join like tables. A count window has no row for what has none, so use `leftJoin` and `coalesce`:
 
 ```ts
-// routes/books/queries.d1.ts: each book with the copies on loan
+// routes/books/_queries.ts: each book with the copies on loan
 const books = booksWithin(db, { q });
 const onLoan = onLoanByBookWithin(db);
 const rows = await db
@@ -154,9 +154,9 @@ A reach narrows what is shown, never what a rule computes.
 
 ## Things that hang under a parent (comments, ...)
 
-- The resource nests under the parent's: `src/routes/issues/comments/index.ts`, mounted by the parent with `.route("/:issueId/comments", issueCommentsRouter)`. The child's paths are the rest only (`"/"`, `"/:id"`), and `request.param` lists the parent's param too (`{ issueId, id }`)
-- Whether the parent is visible: a GET asks the parent resource's queries (`issueQueries.get(actor, issueId)`), a write asks the parent's service (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
+- The resource nests under the parent's: `src/routes/issues/[issueId]/comments/index.ts` (`/issues/:issueId/comments`) and `…/comments/[id]/index.ts`. `request.param` lists the parent's param too (`{ issueId, id }`)
+- Whether the parent is visible: a GET asks the parent resource's queries (`issuesQueries.get(actor, issueId)`), a write asks the parent's service (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
 - The child list is read by the child resource's queries, through the child's window, filtered by the parent ID (`commentsWithin(db)` with `where(eq(comments.issueId, issueId))`)
 - The child repo keeps only the writes and the reads a rule needs. It filters by **parent ID**, not by reach: `findOf(parentId, id)` instead of `find(reach, id)`
 - The parent ID is a plain `string` inside the child domain. Permission checks ("the author or an admin") are pure functions in model
-- `pnpm hnk g domain comments` writes only the domain. Write the resource in `src/routes/issues/comments/` and mount it from the parent
+- `pnpm hnk g domain comments` writes only the domain. Write the resource in `src/routes/issues/[issueId]/comments/`; `pnpm hnk gen` registers it

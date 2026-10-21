@@ -38,7 +38,7 @@ write (POST, PATCH, DELETE): route → service → model → repo    keeps the r
 read (GET):                  route → queries → …Within          keeps the reach
 ```
 
-What a GET returns is the resource's business, so the read lives next to the resource (`queries.<tech>.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. When it returns the select as is, the row type (`InvoiceRow`) is inferred from the select; a shape put together in JS (a summary merged from several selects, like `MonthlySummary`) is written by hand. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns. A write service does not return the thing for showing, only what the caller needs to act next (the ID for a create, otherwise `void`); showing is the job of queries.
+What a GET returns is the resource's business, so the read lives next to the resource (`_queries.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. When it returns the select as is, the row type (`InvoiceRow`) is inferred from the select; a shape put together in JS (a summary merged from several selects, like `MonthlySummary`) is written by hand. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns. A write service does not return the thing for showing, only what the caller needs to act next (the ID for a create, otherwise `void`); showing is the job of queries.
 
 `pnpm hnk g domain posts` starts a domain, bare: a thing with only an id and timestamps, wired into `src/deps.ts`. It does not write a resource; you write that where the URL says.
 
@@ -48,9 +48,9 @@ src/domains/posts/          (generated)
 ├─ service.ts    steps, and the shape of the adapters they need
 └─ repo.d1.ts    adapter: table and D1 implementation. Fulfills the shape service declares
 src/routes/posts/           (written by hand)
-├─ index.ts      entry point: the router (HTTP input, handlers). Decides who is acting and calls services
-├─ response.ts   how a post is shown over HTTP
-└─ queries.d1.ts the reads of the GET endpoints
+├─ index.ts      entry point: the endpoints (export const GET = createEndpoint(...)). Decides who is acting and calls services
+├─ _response.ts  how a post is shown over HTTP
+└─ _queries.ts   the reads of the GET endpoints
 ```
 
 ```
@@ -64,11 +64,9 @@ One rule: **every arrow points to model and service.** model knows nothing outsi
 ## What the code looks like
 
 ```ts
-// src/routes/posts/index.ts
-export const postsRouter = createRouter().endpoint(
+// src/routes/posts/[id]/index.ts (/posts/:id)
+export const PUT = createEndpoint(
   {
-    method: "put",
-    path: "/:id",
     middleware: [requireAuth],
     request: { param: postParamsSchema, json: postInputSchema },
     responses: {
@@ -76,7 +74,7 @@ export const postsRouter = createRouter().endpoint(
       ...errorResponses(NotFound),
     },
   },
-  async (c, reply, { posts, postQueries }) => {
+  async (c, reply, { posts, postsQueries }) => {
     const actor = c.get("actor");
     const { id } = c.req.valid("param");
     const input = c.req.valid("json");
@@ -86,7 +84,7 @@ export const postsRouter = createRouter().endpoint(
     if (!result.ok) return reply.failure(result.error);
 
     // After a write, read it again the way its GET does
-    const post = await postQueries.get(actor, id);
+    const post = await postsQueries.get(actor, id);
     if (post === null)
       throw new Error(`post ${id} is gone right after the write`);
 
@@ -95,6 +93,7 @@ export const postsRouter = createRouter().endpoint(
 );
 ```
 
+- The method is the export name and the path is where the file sits, so neither is written. `pnpm hnk gen` registers every endpoint in `src/routes.gen.ts` and writes the type for `hc` there.
 - `responses` is the contract. If the handler returns something else, the wrong value gets the red squiggle.
 - The 401 from `requireAuth` and the 400 from input validation are declared for you. You only write domain failures.
 - Who is acting (`actor`) and when (`now`) are decided at the entry point and passed down as arguments.
@@ -136,7 +135,7 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 
 ### Who may import what
 
-Each file in a domain is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`), a `response` (`response.ts`), `queries` (`queries.<tech>.ts`, the reads of the GET endpoints) or `errors` (`errors.ts`, failures only that entry point has). `layer-imports` allows only the imports below; everything else is an error.
+Each file in a domain is classified by its name prefix (its role); each file in `src/routes/` is a `resource` (`index.ts`), a `response` (`_response.ts`), `queries` (`_queries.ts`, the reads of the GET endpoints) or `errors` (`_errors.ts`, failures only that entry point has). `layer-imports` allows only the imports below; everything else is an error.
 
 <!-- layers:start (generated from packages/hono-kit/lint/layers.mjs; do not edit by hand) -->
 
@@ -161,7 +160,7 @@ Each file in a domain is classified by its name prefix (its role); each file in 
 
 Runs typecheck, lint, format check and tests in one go, and lists all failures at the end. With AI, "make `pnpm check` pass" is the one instruction you need.
 
-The generated app also includes `AGENTS.md` (and a `CLAUDE.md` that points to it): the commands, the shape and the rules, kept short. Longer guides that are read only when needed ship inside the package (`node_modules/hono-kit/docs/`).
+The generated app also includes `AGENTS.md` (and a `CLAUDE.md` that points to it): only the commands and "read `node_modules/hono-kit/docs/index.md` before writing". The rules themselves ship inside the package (`node_modules/hono-kit/docs/`), so they change with the installed version; a copy made at `hnk init` would stay old when hono-kit is upgraded.
 
 ## Scope
 

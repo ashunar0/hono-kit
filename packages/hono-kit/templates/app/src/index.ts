@@ -5,6 +5,7 @@ import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
 import { withUser } from "./middleware/auth";
+import { registerRoutes } from "./routes.gen";
 
 /**
  * Builds the app. It takes how to build deps, how to decide the signed-in user and the clock from outside, so
@@ -24,8 +25,10 @@ export const buildApp = (
     })
     .use("*", provideDeps(makeDeps))
     .use("*", authenticate)
-    // Mount the top nouns here, one line each: .route("/invoices", invoicesRouter). Children go in their parent
     .onError(onError);
+
+  // Every endpoint under src/routes. routes.gen.ts is written by pnpm hnk gen (pnpm check runs it first)
+  registerRoutes(app);
 
   // Built from the registered route declarations. Read on every request, so registration order does not matter
   app.get("/openapi.json", (c) =>
@@ -35,7 +38,8 @@ export const buildApp = (
   return app;
 };
 
-export type ApiApp = ReturnType<typeof buildApp>;
+/** The type to pass to hc. routes.gen.ts lists every endpoint side by side */
+export type { AppType as ApiApp } from "./routes.gen";
 
 const app = buildApp(makeDeps);
 

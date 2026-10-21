@@ -1,5 +1,6 @@
 import { wireDb } from "./db";
 import type { AppEnv } from "./env";
+import { makeQueries } from "./routes.gen";
 // hnk:imports
 
 /**
@@ -16,11 +17,12 @@ import type { AppEnv } from "./env";
  */
 export const makeDeps = (env: AppEnv["Bindings"]) => {
   const db = wireDb(env.DB);
-  void db;
   // hnk:deps
 
   return {
     // hnk:returns
+    // The reads of the GET endpoints (every _queries.ts, wired by pnpm hnk gen). They take db as ReadDb, so they cannot write
+    ...makeQueries(db),
   };
 };
 

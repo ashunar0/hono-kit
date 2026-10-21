@@ -5,6 +5,8 @@
 import { spawnSync } from "node:child_process";
 
 const steps = [
+  // With a stale routes.gen.ts, types and tests see old routes
+  ["routes.gen.ts", ["pnpm", "hnk", "gen"]],
   ["typecheck", ["pnpm", "typecheck"]],
   ["lint", ["pnpm", "lint"]],
   ["format:check", ["pnpm", "format:check"]],

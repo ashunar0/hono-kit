@@ -1,0 +1,33 @@
+# Rules
+
+The rules every file keeps. Lint stops most of them; the rest are here.
+
+- **service**: arguments go "as whom (`actor`) → what → how → when (`now`)". Knows no HTTP status. A handler takes `now` from `c.get("now")`; nothing reads the clock (`hnk/no-clock-outside-app-entry`)
+- **actor**: the guard sets `c.get("actor")` (every endpoint declares one: `requireAuth`, `requireRole(...)` or `allowAnonymous`). When no rule of the app depends on who is acting (no sign-in, no reach), services take no `actor`; add it when sign-in arrives
+  - `User` holds only who is signed in and the role. A business person (a member, a staff, a patient) is a row of its own domain that holds `userId`; never put a business row's ID on `User` (a session keeps an old ID after the row is deleted). A reach of "only their own" goes through that row
+  - **Permissions come in two kinds.** Decided by the role alone (only an admin adds a member): the guard, `middleware: [requireRole("admin")]`. Needs the row, or mixes in an "or" (an admin or the author): all of it in service, as a pure function in model (`mayCancel(actor, reservation)`) and `err(Forbidden.code)`. Never put half of an "or" in the guard: it would turn away the other half. So `grep` of the guards lists who may call each endpoint; compare it with the permission table of the docs
+- **Failures**: expected ones (not found, no permission, an external service not answering) are returned as `Result` (`err(NotFound.code)`). Unexpected ones (the DB is down) are thrown
+  - 401, 403, 404 are hono-kit standards (`Unauthorized` / `Forbidden` / `NotFound`). A failure of this thing goes in **model.ts** as `{ code, kind, message } as const`, and hono-kit decides the status from `kind`
+  - `conflict` (409): it clashes with the thing's current state (taken, already sent, out of stock, a newer version). `unprocessable` (422): the request itself breaks a rule, whatever the state (past the deadline, outside opening hours). A rule of the clock is 422 even when waiting would let it pass: reading again does not change the answer
+  - What you cannot see is `NOT_FOUND` (its existence is not revealed); what you can see but may not touch is `FORBIDDEN`
+- **Check order**: the guard (401 signed out → 403 a role that may not) → input validation 400 (schema) → NOT_FOUND → FORBIDDEN (a permission that needs the row) → unprocessable → conflict. The guard's 403 does not depend on the ID, so it reveals nothing
+- **Entry checks** (the customer in the URL exists → 404): write them in each handler, in order, as plain calls. Do not hide them in middleware, even when the same lines repeat. Ask "is this check needed when cron calls it too?": if not, it goes in the handler; if so (a permission that needs the row, a rule across things), it stays in service
+- **Writes**: a handler of a user's request may read from as many services as it needs, but writes through **one call to one service**. Never write through two services in a row: if the second fails, the first stays half done. Name a service's reads `get…` or `list…`: any other call is counted as a write (`hnk/route-writes-once`; a webhook behind `allowSystem` is not counted). One repo call writes all or nothing (the repo receives `batch` from `wireBatch(db)` when it writes several statements)
+- **Reach**: put "someone else's" into the WHERE and do it in one statement (`find(reach, id)` / `update(reach, id, changes)` / `delete(reach, id)`). Never check first and write in a second statement. Repo methods take `reach` first
+- **Unique constraints**: the table's `uniqueIndex` decides, never a check you wrote first (two requests can interleave). Wrap the repo's `insert` / `update` in `try/catch`; `uniqueViolationOf(error)` from `hono-kit/sqlite` returns the column it hit (`"members.email"`) or null. Return a failure value per column (rethrow on null), and service turns each into the domain's conflict `Failure`. So every column the docs call unique gets its own `uniqueIndex`
+- **Returning**: `reply(200, body)` and `reply.failure(...)`. Create and update return the thing as its GET shows it, read again through queries, with 200; delete returns `{ ok: true }` with 200
+- **Lists**: routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. queries take a `PageQuery` (and declare `type …ListQuery = PageQuery & { status?: …Status }`), read `limit + 1` rows and return `toPage(...)` from `hono-kit/page`
+- **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` in service
+
+## When unsure
+
+| Question       | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Where tests go | HTTP tests next to the resource. Tests of model and service stay in the domain (`service.test.ts`), even when they need rows of other domains: make those rows through the other domains' services. Lines across domains, the whole app and `src/lib/` go in `test/`. Use the real local D1. HTTP via `request(user, method, path, body, at)`; pass `at` whenever the answer depends on the date. To act as the system, use `systemActor` from `hono-kit/testing` |
+
+## Do not
+
+- Edit `node_modules/hono-kit`. If something is missing, tell the user
+- Copy libs or helpers into the project
+- Scatter failure codes as strings (take them from a domain `Failure` or a hono-kit standard)
+- Change the shape for looks. Keep the shapes above and rewrite the contents

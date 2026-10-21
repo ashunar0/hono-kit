@@ -3,7 +3,7 @@
  * It knows no steps, HTTP or DB. Every other file points here.
  *
  * Add the fields, the input schemas (zod), the failures (Failure) and, when someone may touch only some
- * notes, who reaches what (reachOf). How: AGENTS.md
+ * notes, who reaches what (reachOf). How: node_modules/hono-kit/docs/domains.md
  */
 import { z } from "zod";
 
