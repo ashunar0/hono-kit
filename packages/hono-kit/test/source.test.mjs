@@ -57,6 +57,8 @@ const CASTS = {
   "endpoint.ts": 10,
   // 登録された handler に貼った宣言（ROUTE）を読む。Hono の handler の型は、hnk の印を知らない
   "openapi.ts": 1,
+  // createEndpoint が返す配列に DECLARATION を型だけで載せる。実行時に持たせる値は無い印なので
+  "router.ts": 1,
 };
 
 test("as never / as unknown as は、決めた場所と数だけ", () => {

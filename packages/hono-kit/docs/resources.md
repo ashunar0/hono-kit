@@ -24,6 +24,8 @@ export const GET = createEndpoint(
 );
 ```
 
+`index.ts` exports only method constants built with createEndpoint (`GET` / `POST` / `PUT` / `PATCH` / `DELETE`); anything else there — a helper, a re-export, a default export — is stopped by lint `route-exports-endpoints`.
+
 `index.ts` holds the endpoints. Everything else next to it starts with `_`:
 
 | File           | Role                                                                            |

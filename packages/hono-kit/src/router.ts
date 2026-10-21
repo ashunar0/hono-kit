@@ -78,9 +78,13 @@ type AsRoute<
 
 declare const DECLARATION: unique symbol;
 
-/** The handlers to register, in order (middleware, input validation, the handler). The declaration rides along in the type */
+/**
+ * The handlers to register, in order (middleware, input validation, the handler). The declaration rides along in the type.
+ * The brand is required, not just carried: a plain `H[]` built by hand (no auth, no responses contract) must not
+ * type-check where an Endpoint is expected. Only createEndpoint may produce one
+ */
 export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
-  readonly [DECLARATION]?: D;
+  readonly [DECLARATION]: D;
 };
 
 /**
@@ -94,11 +98,12 @@ export const createEndpoint = <const D extends EndpointDeclaration>(
   const [route, handler] = buildEndpoint(config as AsRoute<D>, fn);
   const middleware = [route.middleware ?? []].flat();
 
+  // DECLARATION is a brand with no runtime value: nothing to assign, only to assert
   return [
     ...middleware,
     ...validatorsOf(route),
     Object.assign(handler, { [ROUTE]: route }),
-  ];
+  ] as unknown as Endpoint<D>;
 };
 
 /**

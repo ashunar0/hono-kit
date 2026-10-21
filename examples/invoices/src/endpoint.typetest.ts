@@ -52,3 +52,9 @@ export const undeclared = createEndpoint(
     return reply(200, { ok: true });
   },
 );
+
+// createEndpoint を通らない素の配列は、handler の形が同じでも endpoint ではない
+// （宣言が無い＝認証も responses の契約も無い）。registerEndpoint の行で止める
+const plain = [async () => new Response("public")];
+// @ts-expect-error createEndpoint で作っていない。宣言（認証・responses）が無い
+registerEndpoint(app, "GET", "/public", plain);

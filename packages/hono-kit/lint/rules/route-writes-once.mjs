@@ -1,5 +1,10 @@
 import { reportWithDocs } from "../docs.mjs";
-import { endpointCallOf, isHttpEntry, unwrap } from "../ast.mjs";
+import {
+  createEndpointNamesOf,
+  endpointCallOf,
+  isHttpEntry,
+  unwrap,
+} from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
 /** 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす */
@@ -83,10 +88,12 @@ export default {
   create(context) {
     const report = reportWithDocs(context, "rules.md");
     if (!isHttpEntry(fileOf(context))) return {};
+    const createEndpointNames = createEndpointNamesOf();
 
     return {
+      ImportDeclaration: createEndpointNames.ImportDeclaration,
       CallExpression(node) {
-        const call = endpointCallOf(node);
+        const call = endpointCallOf(node, createEndpointNames.names);
         if (!call) return;
         const { config, handler } = call;
         if (!handler) return;
