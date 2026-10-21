@@ -34,11 +34,11 @@ Entry points (routes and jobs) use domains, never the other way. A route may use
 On top of the two axes run two paths:
 
 ```
-write (POST, PATCH, DELETE): route → service → model → repo    keeps the rules
-read (GET):                  route → queries → …Within          keeps the reach
+write (POST, PUT, DELETE): route → service → model → repo    keeps the rules
+read (GET):                route → queries → …Within          keeps the reach
 ```
 
-What a GET returns is the resource's business, so the read lives next to the resource (`_queries.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. When it returns the select as is, the row type (`InvoiceRow`) is inferred from the select; a shape put together in JS (a summary merged from several selects, like `MonthlySummary`) is written by hand. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PATCH returns what its GET returns. A write service does not return the thing for showing, only what the caller needs to act next (the ID for a create, otherwise `void`); showing is the job of queries.
+What a GET returns is the resource's business, so the read lives next to the resource (`_queries.ts`). It gets a SELECT-only db and reads tables only through their owner's window (`invoicesWithin(db, actor)`), so the reach cannot be left out. When it returns the select as is, the row type (`InvoiceRow`) is inferred from the select; a shape put together in JS (a summary merged from several selects, like `MonthlySummary`) is written by hand. Reads before a write (an entry check, materials for a rule) go through services; the read after a write, to show the result, goes through queries, so a POST or PUT returns what its GET returns. A write service does not return the thing for showing, only what the caller needs to act next (the ID for a create, otherwise `void`); showing is the job of queries.
 
 `pnpm hnk g domain posts` starts a domain, bare: a thing with only an id and timestamps, wired into `src/deps.ts`. It does not write a resource; you write that where the URL says.
 

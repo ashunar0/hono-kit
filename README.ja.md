@@ -101,7 +101,7 @@ async update(actor: Actor, id: InvoiceId, input: InvoiceInput, now: Date): Promi
 
 URL の名詞（リソース）と、ドメインの名詞（domain）は別物なので、置き場所を分ける。
 
-- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。ディレクトリがパスで、`[id]` は `:id`（`/invoices/:id/shares` → `routes/invoices/[id]/shares/`）。括弧のディレクトリ（`(signed-in)/`）は見やすくまとめるだけで URL に出ない（route group）。まとめる以外の意味は無く、認証は endpoint ごとに書く。同じ URL になる 2 つのディレクトリと、`[...name]`（catch-all、まだ未対応）は `hnk gen` が止める。中は `index.ts`（endpoint。メソッドごとに `export const GET = createEndpoint(...)`）と、そばに置くもの。そばに置くものは `_` で始める：`_response.ts`（HTTP での見せ方）、`_queries.ts`（GET の読み取り）、要るときだけ `_errors.ts`（その入口だけの失敗）。登録は `pnpm hnk gen` が `src/routes.gen.ts` に書く。ディレクトリは名詞。ただし状態の遷移だけは動詞のディレクトリ（`[id]/send/`）で、`POST` だけを置く。Google の AIP-136 や Stripe と同じ形。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから。`PATCH { status }` では遷移させない
+- **リソース**（`src/routes/<名詞>/`）: クライアントが何を指すか。URL で切る。ディレクトリがパスで、`[id]` は `:id`（`/invoices/:id/shares` → `routes/invoices/[id]/shares/`）。括弧のディレクトリ（`(signed-in)/`）は見やすくまとめるだけで URL に出ない（route group）。まとめる以外の意味は無く、認証は endpoint ごとに書く。同じ URL になる 2 つのディレクトリと、`[...name]`（catch-all、まだ未対応）は `hnk gen` が止める。中は `index.ts`（endpoint。メソッドごとに `export const GET = createEndpoint(...)`）と、そばに置くもの。そばに置くものは `_` で始める：`_response.ts`（HTTP での見せ方）、`_queries.ts`（GET の読み取り）、要るときだけ `_errors.ts`（その入口だけの失敗）。登録は `pnpm hnk gen` が `src/routes.gen.ts` に書く。ディレクトリは名詞。ただし状態の遷移だけは動詞のディレクトリ（`[id]/send/`）で、`POST` だけを置く。Google の AIP-136 や Stripe と同じ形。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから。`PATCH { status }` では遷移させない。更新は `PUT` で、作成と同じ入力（`invoiceInputSchema`）を丸ごと受け取る。一部の欄だけを変えたい場面が来たときだけ `PATCH` を使う
 - **import は、自分の domain・自分のリソースの中だけ相対で書き、外は `#src/` で書く**（`#src/domains/invoices/model`）。`#src/` は package.json の `imports`（`"#src/*": "./src/*.ts"`）で、Node の標準の仕組み。tsconfig の paths だと vitest がそのままでは読めず、設定を 2 か所に書くか依存を足すことになるので使わない。import を見れば、自分の持ち物かよそのものかが分かる
 - **domain**（`src/domains/<名前>/`）: 誰がどのルールを守るか。ドメインで切る
 - **jobs**（`src/jobs/<名前>.ts`）: HTTP 以外の入口（cron、キュー）。リソースが URL で名前を付けるのと同じく、きっかけで名前を付ける（`daily.ts`、`reminders-queue.ts`）。同じきっかけで動く仕事は同じファイルに並べる。domain の外に置き、service は deps から受け取る
@@ -116,13 +116,13 @@ jobs を domain の中に置かないのも同じ理由。cron やキューの�
 道は 2 本ある。
 
 ```
-書き込み（POST・PATCH・DELETE）: route → service → model → repo   ルールを守る
-読み取り（GET）:                  route → queries → 〜Within         範囲を守る
+書き込み（POST・PUT・DELETE）: route → service → model → repo   ルールを守る
+読み取り（GET）:                route → queries → 〜Within         範囲を守る
 ```
 
 GET が返す形はリソースの都合なので、読み取りはリソースの隣の `queries.<技術>.ts` に書く（CQRS の、コードと型だけを分ける段階）。
 queries は SELECT だけの db（`ReadDb`）を受け取り、持ち主の窓口（`〜Within(db, actor)`）を通して画面の 1 行を返す。表は直接読めないので、範囲の付け忘れが書けない。1 行の型（`InvoiceRow`）は、select をそのまま返すなら select から推論する。JS で組み立てる形（`MonthlySummary` のような、複数の集計を合わせたもの）は手で書く。ルールは作らず、要るときは model から借りる。
-書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PATCH は、その GET と同じ形を返し、見せ方（_response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
+書く前の読み（入口の確認、ルールの材料）は service を通し、書いた後の読み（結果を見せる）は queries を通す。だから POST や PUT は、その GET と同じ形を返し、見せ方（_response.ts）は queries の行の型だけを受け取る。ルールのための読み取り（貸せるかどうか数える）は domain の repo に残す。
 書き込みの service は、見せるためのモノを返さない。返すのは、呼び出し元が次に動くための値だけ（作成なら ID、無ければ void）。見せるのは queries。
 
 ### 出発点: model・service・repo とリソース

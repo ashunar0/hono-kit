@@ -24,6 +24,8 @@ export const GET = createEndpoint(
 );
 ```
 
+An update is `PUT` with the whole input, the same schema as the create (`invoiceInputSchema`); use `PATCH` only when a client must change some fields and leave the rest. A change of state is not an update: it is a verb (state.md).
+
 `index.ts` exports only method constants built with createEndpoint (`GET` / `POST` / `PUT` / `PATCH` / `DELETE`); anything else there — a helper, a re-export, a default export — is stopped by lint `route-exports-endpoints`.
 
 `index.ts` holds the endpoints. Everything else next to it starts with `_`:
