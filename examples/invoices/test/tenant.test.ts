@@ -1,4 +1,4 @@
-import { orgId } from "#src/domains/users/model";
+import { orgId } from "#src/domains/accounts/model";
 import { invoiceId, reachOf } from "#src/domains/invoices/model";
 import { expect, it } from "vitest";
 import { scopeTo } from "#src/db/index";

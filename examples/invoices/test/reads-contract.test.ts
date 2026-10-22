@@ -1,4 +1,4 @@
-import { authenticatedUser, orgId, userId, type Actor } from "#src/domains/users/model";
+import { authenticatedAccount, orgId, accountId, type Actor } from "#src/domains/accounts/model";
 import { beforeAll, describe, expect, it } from "vitest";
 import { scopeTo } from "#src/db/index";
 import { paymentsTable } from "#src/domains/payments/repo.d1";
@@ -22,9 +22,9 @@ const reads = Object.entries(domains).flatMap(([path, exports]) =>
 /** 組織 1 の alice と bob、組織 2 の carol。支払いは請求書ごとに 1 件 */
 beforeAll(async () => {
   await insertInvoices([
-    invoice({ id: "ct1-alice", orgId: orgId("org1"), ownerId: userId("alice"), status: "sent" }),
-    invoice({ id: "ct1-bob", orgId: orgId("org1"), ownerId: userId("bob"), status: "sent" }),
-    invoice({ id: "ct2-carol", orgId: orgId("org2"), ownerId: userId("carol"), status: "sent" }),
+    invoice({ id: "ct1-alice", orgId: orgId("org1"), ownerId: accountId("alice"), status: "sent" }),
+    invoice({ id: "ct1-bob", orgId: orgId("org1"), ownerId: accountId("bob"), status: "sent" }),
+    invoice({ id: "ct2-carol", orgId: orgId("org2"), ownerId: accountId("carol"), status: "sent" }),
   ]);
   const payments = scopeTo(db(), paymentsTable);
   for (const id of ["ct1-alice", "ct1-bob", "ct2-carol"]) {
@@ -40,7 +40,7 @@ describe.each(reads)("$name", ({ read }) => {
   const rows = async (actor: Actor) => JSON.stringify(await db().select().from(read(db(), actor)));
 
   it("組織の admin には、自分の組織のものだけが出る", async () => {
-    const result = await rows(authenticatedUser(userId("admin"), orgId("org1"), "admin"));
+    const result = await rows(authenticatedAccount(accountId("admin"), orgId("org1"), "admin"));
 
     expect(result).toContain("ct1-alice");
     expect(result).toContain("ct1-bob");
@@ -48,7 +48,7 @@ describe.each(reads)("$name", ({ read }) => {
   });
 
   it("member には、自分のものだけが出る", async () => {
-    const result = await rows(authenticatedUser(userId("alice"), orgId("org1"), "member"));
+    const result = await rows(authenticatedAccount(accountId("alice"), orgId("org1"), "member"));
 
     expect(result).toContain("ct1-alice");
     expect(result).not.toContain("ct1-bob");

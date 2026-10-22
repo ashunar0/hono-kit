@@ -1,10 +1,10 @@
 import { invoiceId, invoiceInputSchema } from "./model";
 import { systemActor } from "hono-kit/testing";
-import type { User } from "#src/domains/users/model";
+import type { Account } from "#src/domains/accounts/model";
 import type { InvoicesService } from "./service";
 
 // HTTP を通らずに service を呼ぶ場面（cron、CSV の取り込みなど）
-export async function fromCron(invoices: InvoicesService, actor: User, raw: unknown, now: Date) {
+export async function fromCron(invoices: InvoicesService, actor: Account, raw: unknown, now: Date) {
   const unchecked = {
     title: "t",
     body: "b",
@@ -25,7 +25,7 @@ export async function fromCron(invoices: InvoicesService, actor: User, raw: unkn
 
 // システムは利用者ではないので、請求書の所有者になれない
 export async function systemCannotCreate(invoices: InvoicesService, raw: unknown) {
-  // @ts-expect-error create が受け取るのは User だけ
+  // @ts-expect-error create が受け取るのは Account だけ
   await invoices.create(systemActor, invoiceInputSchema.parse(raw), new Date());
 }
 
@@ -33,12 +33,12 @@ export async function systemCannotCreate(invoices: InvoicesService, raw: unknown
 export async function cannotForgeActors(invoices: InvoicesService) {
   // @ts-expect-error { kind: "system" } と書いてもシステムにはなれない
   await invoices.listOverdue({ kind: "system" }, new Date());
-  // @ts-expect-error { kind: "user", ... } と書いても利用者にはなれない
-  await invoices.listOverdue({ kind: "user", id: "x", role: "admin" }, new Date());
+  // @ts-expect-error { kind: "account", ... } と書いても利用者にはなれない
+  await invoices.listOverdue({ kind: "account", id: "x", role: "admin" }, new Date());
 }
 
 // 請求書の ID は印付き。素の string は渡せない
-export async function idsAreNotInterchangeable(invoices: InvoicesService, actor: User) {
+export async function idsAreNotInterchangeable(invoices: InvoicesService, actor: Account) {
   // @ts-expect-error 素の string は請求書の ID ではない
   await invoices.remove(actor, "x");
   // @ts-expect-error 利用者の ID も請求書の ID としては渡せない
@@ -49,7 +49,7 @@ export async function idsAreNotInterchangeable(invoices: InvoicesService, actor:
 }
 
 // 支払い済みにできるのはシステム（webhook）だけ。利用者の route からは呼べない
-export async function usersCannotMarkPaid(invoices: InvoicesService, actor: User) {
+export async function usersCannotMarkPaid(invoices: InvoicesService, actor: Account) {
   // @ts-expect-error markPaid が受け取るのは System だけ
   await invoices.markPaid(actor, invoiceId("x"), new Date());
 

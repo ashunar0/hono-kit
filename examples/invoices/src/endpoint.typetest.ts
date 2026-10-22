@@ -2,7 +2,7 @@ import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
 import { allowAnonymous, requireAuth } from "./middleware/auth";
-import type { User } from "./domains/users/model";
+import type { Account } from "./domains/accounts/model";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();
@@ -80,7 +80,7 @@ export const authAndMiddleware = createEndpoint(
     responses: { 200: ok },
   },
   async (c, reply) => {
-    c.get("actor") satisfies User;
+    c.get("actor") satisfies Account;
     c.get("traceId") satisfies string;
 
     return reply(200, { ok: true });

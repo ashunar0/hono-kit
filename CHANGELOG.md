@@ -7,6 +7,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Breaking
 
 - `createEndpoint` takes the guard in a required `auth` key: `middleware: [requireAuth]` becomes `auth: requireAuth`. Leaving it out is a type error, so a public endpoint writes `auth: allowAnonymous`. `middleware` stays for other middleware and runs after `auth`. Rewrite with `perl -pi -e 's/middleware: \[(\w+(?:\([^)]*\))?)\]( as const)?/auth: $1/' src/routes/**/index.ts`
+- The template's `User` is renamed `Account`, because it is not the user record of the auth provider: only who is signed in (an ID, and a role if the rules need one). `src/domains/users/` → `src/domains/accounts/`, `User` → `Account`, `UserId` → `AccountId`, `userId()` → `accountId()`, `authenticatedUser` → `authenticatedAccount`, `withUser` → `withAccount`, `kind: "user"` → `kind: "account"`, the context variable `c.get("user")` → `c.get("account")`. These live in your app, so renaming is optional; the docs use the new names
 - The lint `route-declares-auth` is gone (the type does its work). Remove `"hnk/route-declares-auth"` from `.oxlintrc.json`. Guards no longer need names starting with `require` / `allow`
 
 ### Removed

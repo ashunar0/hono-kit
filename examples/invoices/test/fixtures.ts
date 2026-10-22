@@ -8,7 +8,7 @@ import {
 } from "#src/domains/invoices/repo.d1";
 import { makeDeps } from "#src/deps";
 import { buildApp } from "#src/index";
-import { authenticatedUser, orgId, userId, type User } from "#src/domains/users/model";
+import { authenticatedAccount, orgId, accountId, type Account } from "#src/domains/accounts/model";
 
 export const db = () => wireDb(env.DB);
 
@@ -16,12 +16,12 @@ export const db = () => wireDb(env.DB);
 export const invoicesRepo = () =>
   invoicesRepository(scopeTo(db(), invoicesTable), scopeTo(db(), invoiceSharesTable));
 
-export const alice = authenticatedUser(userId("alice"), orgId("org1"), "member");
-export const bob = authenticatedUser(userId("bob"), orgId("org1"), "member");
-export const admin = authenticatedUser(userId("admin"), orgId("org1"), "admin");
+export const alice = authenticatedAccount(accountId("alice"), orgId("org1"), "member");
+export const bob = authenticatedAccount(accountId("bob"), orgId("org1"), "member");
+export const admin = authenticatedAccount(accountId("admin"), orgId("org1"), "admin");
 /** 別の組織の人たち */
-export const carol = authenticatedUser(userId("carol"), orgId("org2"), "member");
-export const admin2 = authenticatedUser(userId("admin2"), orgId("org2"), "admin");
+export const carol = authenticatedAccount(accountId("carol"), orgId("org2"), "member");
+export const admin2 = authenticatedAccount(accountId("admin2"), orgId("org2"), "admin");
 
 /** 請求書を 1 件。テストで気にしない項目は既定値で埋める */
 export const invoice = (over: Omit<Partial<Invoice>, "id"> & { id: string }): Invoice => ({
@@ -48,11 +48,11 @@ export const insertInvoices = async (invoices: Invoice[]) => {
  * この利用者としてログインした状態のアプリ（本物の deps と D1）。
  * null ならログインしていない。認証の提供元の代わりにセッションの user を積むだけで、あとは本番と同じ
  */
-export const appAs = (user: User | null, at?: Date) =>
+export const appAs = (account: Account | null, at?: Date) =>
   buildApp(
     makeDeps,
     async (c, next) => {
-      c.set("user", user);
+      c.set("account", account);
       await next();
     },
     at ? () => at : undefined,
@@ -60,13 +60,13 @@ export const appAs = (user: User | null, at?: Date) =>
 
 /** appAs で JSON を送る。env は本物の D1 を指す */
 export const request = (
-  user: User | null,
+  account: Account | null,
   method: string,
   path: string,
   body?: unknown,
   at?: Date,
 ) =>
-  appAs(user, at).request(
+  appAs(account, at).request(
     path,
     {
       method,

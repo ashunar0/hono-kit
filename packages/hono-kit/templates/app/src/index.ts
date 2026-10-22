@@ -4,18 +4,18 @@ import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
-import { withUser } from "./middleware/auth";
+import { withAccount } from "./middleware/auth";
 import { registerRoutes } from "./routes.gen";
 
 /**
- * Builds the app. It takes how to build deps, how to decide the signed-in user and the clock from outside, so
- * production passes makeDeps and withUser, and tests pass stand-ins.
- * authenticate is the middleware that sets the session user (null when signed out). This is where an auth provider plugs in.
+ * Builds the app. It takes how to build deps, how to decide the signed-in account and the clock from outside, so
+ * production passes makeDeps and withAccount, and tests pass stand-ins.
+ * authenticate is the middleware that sets the session's account (null when signed out). This is where an auth provider plugs in.
  * clock is read once per request into c.get("now"). Tests pass a fixed time
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
-  authenticate: MiddlewareHandler<AppEnv> = withUser,
+  authenticate: MiddlewareHandler<AppEnv> = withAccount,
   clock: () => Date = () => new Date(),
 ) => {
   const app = createApp()

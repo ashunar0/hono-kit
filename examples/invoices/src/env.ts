@@ -1,9 +1,9 @@
-import type { User } from "./domains/users/model";
+import type { Account } from "./domains/accounts/model";
 
-/** withUser が積む文脈変数。ハンドラ側で書き写さないための単一定義 */
+/** withAccount が積む文脈変数。ハンドラ側で書き写さないための単一定義 */
 export type AuthVariables = {
-  /** セッションの利用者。ログインしていなければ null。handler は読まず、guard が actor に決める */
-  user: User | null;
+  /** セッションのアカウント。ログインしていなければ null。handler は読まず、guard が actor に決める */
+  account: Account | null;
 };
 
 /** buildApp が 1 リクエストに 1 回だけ積む今の時刻。handler は new Date() ではなくこれを使うので、テストで固定できる */

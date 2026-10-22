@@ -3,7 +3,7 @@
  * 手順も HTTP も DB も知らない。他のファイルは全部ここに向かう
  */
 import { z } from "zod";
-import type { Actor, OrgId, UserId } from "#src/domains/users/model";
+import type { Actor, OrgId, AccountId } from "#src/domains/accounts/model";
 
 /** 下書きではない請求書を送ろうとした。種類から HTTP の番号を決めるのは hnk */
 export const NotDraft = {
@@ -46,7 +46,7 @@ export type Invoice = {
   id: InvoiceId;
   /** 属する組織。作った人の組織で、変わらない */
   orgId: OrgId;
-  ownerId: UserId;
+  ownerId: AccountId;
   title: string;
   body: string;
   /** 請求額（円） */
@@ -110,7 +110,7 @@ export type InvoiceAccess = "manage" | ShareLevel;
 export type InvoiceReach =
   | { kind: "all" }
   | { kind: "org"; orgId: OrgId }
-  | { kind: "member"; orgId: OrgId; userId: UserId };
+  | { kind: "member"; orgId: OrgId; userId: AccountId };
 
 /** システムは全組織に、admin は自分の組織の全員のものに、member は自分のものと共有されたものに触れる */
 export const reachOf = (actor: Actor): InvoiceReach => {
@@ -127,7 +127,7 @@ export const canEdit = (access: InvoiceAccess) => access === "manage" || access 
 export const canManage = (access: InvoiceAccess) => access === "manage";
 
 /** 送付できるのは admin だけ */
-export const canSend = (actor: Actor) => actor.kind === "user" && actor.role === "admin";
+export const canSend = (actor: Actor) => actor.kind === "account" && actor.role === "admin";
 
 /** 送付できるのは下書きだけ */
 export const isSendable = (invoice: Invoice) => invoice.status === "draft";

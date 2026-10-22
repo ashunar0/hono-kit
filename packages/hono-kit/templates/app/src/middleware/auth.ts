@@ -1,37 +1,37 @@
 import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthVariables } from "#src/env";
-import type { Role, User } from "#src/domains/users/model";
+import type { Role, Account } from "#src/domains/accounts/model";
 import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
- * The auth of this app. Rewrite these for your auth stack (how the session is read, what a User holds,
+ * The auth of this app. Rewrite these for your auth stack (how the session is read, what an Account holds,
  * which guards exist): hono-kit fixes only that each endpoint names one in `auth` and that it sets actor.
  *
- * withUser sets the session user in the context. Lets signed-out requests through.
+ * withAccount sets the session's account in the context (null when signed out). Lets signed-out requests through.
  *
  * TODO: once domains/auth/ decodes the cookie session,
  * set its result here. Until there is an auth provider, this is always null
  */
-export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
-  c.set("user", null);
+export const withAccount: MiddlewareHandler<AppEnv> = async (c, next) => {
+  c.set("account", null);
   await next();
 };
 
 /**
  * Requires sign-in. Put it in an endpoint's auth (`auth: requireAuth`) and, in the handler after it,
- * actor (who is acting) becomes a User (user itself still includes null).
+ * actor (who is acting) becomes an Account (account itself still includes null).
  * Unauthorized is added to responses automatically
  */
 export const requireAuth = guard(
   [Unauthorized],
   createMiddleware<{
-    Variables: AuthVariables & { actor: User };
+    Variables: AuthVariables & { actor: Account };
   }>(async (c, next) => {
-    const user = c.get("user");
-    if (user === null) throw fail(Unauthorized);
+    const account = c.get("account");
+    if (account === null) throw fail(Unauthorized);
 
-    c.set("actor", user);
+    c.set("actor", account);
     await next();
   }),
 );
@@ -46,13 +46,13 @@ export const requireRole = (...roles: Role[]) =>
   guard(
     [Unauthorized, Forbidden],
     createMiddleware<{
-      Variables: AuthVariables & { actor: User };
+      Variables: AuthVariables & { actor: Account };
     }>(async (c, next) => {
-      const user = c.get("user");
-      if (user === null) throw fail(Unauthorized);
-      if (!roles.includes(user.role)) throw fail(Forbidden);
+      const account = c.get("account");
+      if (account === null) throw fail(Unauthorized);
+      if (!roles.includes(account.role)) throw fail(Forbidden);
 
-      c.set("actor", user);
+      c.set("actor", account);
       await next();
     }),
   );

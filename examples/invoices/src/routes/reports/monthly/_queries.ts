@@ -8,7 +8,7 @@ import type { ReadDb } from "#src/db/index";
 import { billedStatuses } from "#src/domains/invoices/model";
 import { invoicesWithin } from "#src/domains/invoices/repo.d1";
 import { paymentsWithin } from "#src/domains/payments/repo.d1";
-import type { Actor } from "#src/domains/users/model";
+import type { Actor } from "#src/domains/accounts/model";
 import { monthsBetween, nextMonth, startOfMonth, type Month } from "#src/lib/month";
 
 /** 1 か月分の集計 */

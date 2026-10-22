@@ -4,7 +4,7 @@ import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
-import { withUser } from "./middleware/auth";
+import { withAccount } from "./middleware/auth";
 import { enqueueOverdueReminders } from "./jobs/daily";
 import type { ReminderJob } from "./domains/reminders/model";
 import { sendReminder } from "./jobs/reminders-queue";
@@ -21,13 +21,13 @@ const dateAsString = (ctx: {
 
 /**
  * アプリを組み立てる。依存の組み立て方と、ログイン状態の決め方を外から受け取るので、
- * 本番は makeDeps と withUser を、テストは偽物を渡す。
- * authenticate はセッションの user（ログインしていなければ null）を文脈に積む middleware。認証の提供元を差し込む場所。
+ * 本番は makeDeps と withAccount を、テストは偽物を渡す。
+ * authenticate はセッションの account（ログインしていなければ null）を文脈に積む middleware。認証の提供元を差し込む場所。
  * clock は 1 リクエストに 1 回だけ読み、c.get("now") に積む。テストは固定の時刻を渡す
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
-  authenticate: MiddlewareHandler<AppEnv> = withUser,
+  authenticate: MiddlewareHandler<AppEnv> = withAccount,
   clock: () => Date = () => new Date(),
 ) => {
   const root = createApp();

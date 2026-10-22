@@ -5,7 +5,7 @@ import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type { ReadDb, Scope } from "#src/db/index";
 import { invoicesTable, invoicesWithin } from "#src/domains/invoices/repo.d1";
-import type { Actor } from "#src/domains/users/model";
+import type { Actor } from "#src/domains/accounts/model";
 import { paymentStatuses, type Payment } from "./model";
 import type { PaymentsRepository } from "./service";
 

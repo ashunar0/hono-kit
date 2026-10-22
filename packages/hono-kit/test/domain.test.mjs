@@ -56,7 +56,7 @@ test("単数形が怪しいときは止まり、--singular で決められる", 
   const looksSingular = g(app, "status");
   assert.equal(looksSingular.status, 1);
   assert.match(looksSingular.stderr, /status looks singular/);
-  assert.equal(fs.existsSync(path.join(app, "src/domains")) && fs.readdirSync(path.join(app, "src/domains")).join(), "users");
+  assert.equal(fs.existsSync(path.join(app, "src/domains")) && fs.readdirSync(path.join(app, "src/domains")).join(), "accounts");
 
   const given = g(app, "data", "--singular", "datum");
   assert.equal(given.status, 0);

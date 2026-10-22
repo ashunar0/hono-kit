@@ -2,7 +2,7 @@ import { invoiceId, reachOf } from "./model";
 import { expect, it } from "vitest";
 import { invoicesWithin } from "./repo.d1";
 import { invoicesService } from "./service";
-import { authenticatedUser, orgId, type Actor } from "#src/domains/users/model";
+import { authenticatedAccount, orgId, type Actor } from "#src/domains/accounts/model";
 import {
   admin,
   alice,
@@ -110,7 +110,7 @@ it("違う組織の人に共有しても、その人には見えない", async (
     error: "NOT_FOUND",
   });
   // 同じ id の人が組織を移っても、組織の線は越えない
-  const carolInOrg1 = authenticatedUser(carol.id, orgId("org1"), "member");
+  const carolInOrg1 = authenticatedAccount(carol.id, orgId("org1"), "member");
   expect(await sees(carolInOrg1, "s6")).toBe(true);
 });
 

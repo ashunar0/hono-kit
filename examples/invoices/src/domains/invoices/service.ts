@@ -4,7 +4,7 @@
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
-import type { Actor, User } from "#src/domains/users/model";
+import type { Actor, Account } from "#src/domains/accounts/model";
 import {
   canEdit,
   canManage,
@@ -81,7 +81,7 @@ export function invoicesService(repo: InvoicesRepository) {
     },
 
     /** 作成。作った人が所有者になる */
-    async create(actor: User, input: InvoiceInput, now: Date): Promise<InvoiceId> {
+    async create(actor: Account, input: InvoiceInput, now: Date): Promise<InvoiceId> {
       const created = await repo.insert({
         id: newInvoiceId(),
         orgId: actor.orgId,

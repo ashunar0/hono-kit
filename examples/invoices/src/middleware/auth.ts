@@ -1,34 +1,34 @@
 import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthVariables } from "#src/env";
-import type { Role, User } from "#src/domains/users/model";
+import type { Role, Account } from "#src/domains/accounts/model";
 import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
- * セッションの利用者を文脈に積む。未ログインでも通す。
+ * セッションのアカウントを文脈に積む。未ログインでも通す。
  *
  * TODO: domains/auth/ が cookie のセッションを解いて返すようになったら、
  * その結果を積む。認証提供元がまだ無いあいだは常に null
  */
-export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
-  c.set("user", null);
+export const withAccount: MiddlewareHandler<AppEnv> = async (c, next) => {
+  c.set("account", null);
   await next();
 };
 
 /**
  * ログインを要求する。endpoint の auth に置くと（`auth: requireAuth`）、その先の handler で
- * actor（誰として操作するか）が User になる（user は null を含んだまま）。
+ * actor（誰として操作するか）が Account になる（account は null を含んだまま）。
  * Unauthorized は responses に自動で足される
  */
 export const requireAuth = guard(
   [Unauthorized],
   createMiddleware<{
-    Variables: AuthVariables & { actor: User };
+    Variables: AuthVariables & { actor: Account };
   }>(async (c, next) => {
-    const user = c.get("user");
-    if (user === null) throw fail(Unauthorized);
+    const account = c.get("account");
+    if (account === null) throw fail(Unauthorized);
 
-    c.set("actor", user);
+    c.set("actor", account);
     await next();
   }),
 );
@@ -41,13 +41,13 @@ export const requireRole = (...roles: Role[]) =>
   guard(
     [Unauthorized, Forbidden],
     createMiddleware<{
-      Variables: AuthVariables & { actor: User };
+      Variables: AuthVariables & { actor: Account };
     }>(async (c, next) => {
-      const user = c.get("user");
-      if (user === null) throw fail(Unauthorized);
-      if (!roles.includes(user.role)) throw fail(Forbidden);
+      const account = c.get("account");
+      if (account === null) throw fail(Unauthorized);
+      if (!roles.includes(account.role)) throw fail(Forbidden);
 
-      c.set("actor", user);
+      c.set("actor", account);
       await next();
     }),
   );

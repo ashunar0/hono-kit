@@ -5,7 +5,7 @@
 import { and, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { ReadDb, Scope } from "#src/db/index";
-import { orgId, userId, type Actor } from "#src/domains/users/model";
+import { orgId, accountId, type Actor } from "#src/domains/accounts/model";
 import {
   invoiceId,
   invoiceStatuses,
@@ -71,7 +71,7 @@ type InvoiceRow = typeof invoicesTable.$inferSelect;
 const toInvoice = (row: InvoiceRow): Invoice => ({
   id: invoiceId(row.id),
   orgId: orgId(row.orgId),
-  ownerId: userId(row.ownerId),
+  ownerId: accountId(row.ownerId),
   title: row.title,
   body: row.body,
   amount: row.amount,
