@@ -19,7 +19,6 @@ Where it differs from Void:
 - Success is 200 only (no 201 or 204)
 - Dependencies come as the handler's third argument (`async (c, reply, { invoices }) => …`)
 - One URL has one `index.ts` (no files like `[id].ts`)
-- No catch-all (`[...name]`) yet
 
 ## Getting started
 

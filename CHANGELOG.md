@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Added
+
+- Catch-all routes: `src/routes/files/[...path]/index.ts` is `/files/:path{.+}`, one segment or more with slashes. Declare `path` in `request.param`. It must be the last segment, and is registered after the static and `[id]` routes beside it
+
 ## 0.7.0
 
 ### Breaking

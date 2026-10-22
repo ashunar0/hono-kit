@@ -45,9 +45,21 @@ test("group を外して同じ URL になったら止まる", () => {
   assert.match(problems[0], /\(b\)\/users\/index\.ts: \/users is also .*\(a\)\/users\/index\.ts\. One URL, one index\.ts/);
 });
 
-test("catch-all はまだ止める", () => {
-  const { problems } = generate(appWith({ "files/[...path]/index.ts": ENDPOINT }));
-  assert.match(problems[0], /\[\.\.\.path\] \(catch-all\) is not supported yet/);
+test("[...path] は :path{.+}、:param より後", () => {
+  const { code } = generate(
+    appWith({
+      "files/[...path]/index.ts": ENDPOINT,
+      "files/[id]/meta/index.ts": ENDPOINT,
+      "files/latest/index.ts": ENDPOINT,
+    }),
+  );
+  assert.deepEqual(registered(code), ["GET /files/latest", "GET /files/:id/meta", "GET /files/:path{.+}"]);
+  assert.match(code, /EndpointSchema<"get", "\/files\/:path\{\.\+\}"/);
+});
+
+test("catch-all の下に段があったら止まる", () => {
+  const { problems } = generate(appWith({ "files/[...path]/meta/index.ts": ENDPOINT }));
+  assert.match(problems[0], /\[\.\.\.path\] \(catch-all\) takes the rest of the path, so it must be the last segment/);
 });
 
 test("読めない括弧は文字どおり登録せず止める", () => {

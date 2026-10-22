@@ -1,7 +1,8 @@
 /**
  * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`）。
  * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
- *   ディレクトリがパス、[id] は :id、(名前) は URL に出ない（route group）。_ で始まるファイルとディレクトリは読まない
+ *   ディレクトリがパス、[id] は :id、[...path] は残り全部（:path{.+}）、(名前) は URL に出ない（route group）。
+ *   _ で始まるファイルとディレクトリは読まない
  * - src/routes/**\/_queries.ts: export された xxxQueries を db につなぐ（makeQueries）
  * - AppType: 全 endpoint の入力と応答。hc に渡す。チェーンせず、1 本ずつ & で並べる
  *
@@ -32,8 +33,11 @@ const valueExportsOf = (file, problems) => {
     .flatMap((entry) => (entry.exportName.name ? [entry.exportName.name] : []));
 };
 
-/** :param より静的な段を先に。/invoices/overdue が /invoices/:id に負けないように */
-const rank = (p) => p.split("/").map((s) => (s.startsWith(":") ? "1" : `0${s}`));
+/**
+ * 静的な段、:param、catch-all の順。/invoices/overdue が /invoices/:id に、/files/:id/meta が /files/:path{.+} に
+ * 負けないように（Hono は登録した順に試す）
+ */
+const rank = (p) => p.split("/").map((s) => (s.endsWith("{.+}") ? "2" : s.startsWith(":") ? "1" : `0${s}`));
 const byPath = (a, b) => {
   const [x, y] = [rank(a.path), rank(b.path)];
   for (let i = 0; i < Math.min(x.length, y.length); i++) {
@@ -43,17 +47,23 @@ const byPath = (a, b) => {
 };
 
 /**
- * ディレクトリから URL を作る。[id] は :id、(名前) は見た目のまとまり（route group）で URL に出さない。
- * それ以外の括弧は黙って文字どおり登録せず、理由を出して止める
+ * ディレクトリから URL を作る。[id] は :id、[...path] は 1 段以上の残り全部で :path{.+}、
+ * (名前) は見た目のまとまり（route group）で URL に出さない。
+ * catch-all の下の段と、それ以外の括弧は、黙って文字どおり登録せず、理由を出して止める
  */
 const routePathOf = (dir, file, problems) => {
-  const segments = dir.split("/").filter(Boolean).flatMap((segment) => {
+  const parts = dir.split("/").filter(Boolean);
+  const segments = parts.flatMap((segment, i) => {
     if (/^\(\w[\w-]*\)$/.test(segment)) return [];
     const param = /^\[(\w+)\]$/.exec(segment);
     if (param) return [`:${param[1]}`];
-    if (/^\[\.\.\.\w+\]$/.test(segment)) {
-      problems.push(`${file}: ${segment} (catch-all) is not supported yet. Use [name] for one segment`);
-    } else if (/[[\]()]/.test(segment)) {
+    const rest = /^\[\.\.\.(\w+)\]$/.exec(segment);
+    if (rest) {
+      if (i < parts.length - 1)
+        problems.push(`${file}: ${segment} (catch-all) takes the rest of the path, so it must be the last segment`);
+      return [`:${rest[1]}{.+}`];
+    }
+    if (/[[\]()]/.test(segment)) {
       problems.push(`${file}: ${segment} is not a path segment. Use [name] for a param, (name) for a group`);
     }
     return [segment];
