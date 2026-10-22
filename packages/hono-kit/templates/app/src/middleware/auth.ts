@@ -5,7 +5,10 @@ import type { Role, User } from "#src/domains/users/model";
 import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
- * Sets the session user in the context. Lets signed-out requests through.
+ * The auth of this app. Rewrite these for your auth stack (how the session is read, what a User holds,
+ * which guards exist): hono-kit fixes only that each endpoint names one in `auth` and that it sets actor.
+ *
+ * withUser sets the session user in the context. Lets signed-out requests through.
  *
  * TODO: once domains/auth/ decodes the cookie session,
  * set its result here. Until there is an auth provider, this is always null
@@ -16,7 +19,7 @@ export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 /**
- * Requires sign-in. Put it in an endpoint's middleware and, in the handler after it,
+ * Requires sign-in. Put it in an endpoint's auth (`auth: requireAuth`) and, in the handler after it,
  * actor (who is acting) becomes a User (user itself still includes null).
  * Unauthorized is added to responses automatically
  */
@@ -57,8 +60,7 @@ export const requireRole = (...roles: Role[]) =>
 /**
  * Says explicitly that no auth is required. Does nothing.
  *
- * It exists so every endpoint declares exactly one auth guard. It separates forgetting from
- * "meant to be public", which would otherwise look the same. grep it to list
- * every unauthenticated endpoint in this app
+ * auth is required, so a public endpoint says so with `auth: allowAnonymous`.
+ * grep it to list every unauthenticated endpoint in this app
  */
 export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();

@@ -16,7 +16,7 @@ export const withUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 /**
- * ログインを要求する。.endpoint の middleware に置くと、その先の handler で
+ * ログインを要求する。endpoint の auth に置くと（`auth: requireAuth`）、その先の handler で
  * actor（誰として操作するか）が User になる（user は null を含んだまま）。
  * Unauthorized は responses に自動で足される
  */
@@ -55,8 +55,7 @@ export const requireRole = (...roles: Role[]) =>
 /**
  * 認証を要求しないことを明示する。何もしない。
  *
- * 置く意味は、opener の認証の引数を必ず 1 つにすること。書き忘れと「公開したい」が
- * 「書いていない」という同じ姿で現れるのを分ける。grep すればこのアプリの
- * 無認証エンドポイントが列挙できる
+ * auth は必須なので、公開の endpoint は `auth: allowAnonymous` と書く。
+ * grep すればこのアプリの無認証エンドポイントが列挙できる
  */
 export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();

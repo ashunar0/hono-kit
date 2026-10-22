@@ -4,7 +4,7 @@ import { InvalidSignature } from "./_errors";
 
 export const POST = createEndpoint(
   {
-    middleware: [requireAuth] as const,
+    auth: requireAuth,
     responses: {},
   },
   async () => {

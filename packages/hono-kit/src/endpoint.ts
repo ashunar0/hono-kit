@@ -169,7 +169,7 @@ export type Guard<
 };
 
 /**
- * Gives a middleware the failures it may return. Put it in an endpoint's middleware and
+ * Gives a middleware the failures it may return. Put it in an endpoint's auth (or middleware) and
  * those failures are added to responses automatically. `export const requireAuth = guard([Unauthorized], ...)`
  */
 export const guard = <
@@ -197,6 +197,7 @@ type HasInput<R> = R extends { request: infer Q }
 
 /** Failures added automatically: those of the guards, and ValidationError when there is input */
 type AutoErrors<R> =
+  | GuardErrorsOf<R extends { auth: infer A } ? A : never>
   | GuardErrorsOf<R extends { middleware: infer M } ? M : never>
   | (HasInput<R> extends true ? typeof ValidationError : never);
 
@@ -216,7 +217,7 @@ type WithAutoErrors<R extends RouteConfig> = Omit<R, "responses"> & {
  * need not be written in responses. Write only domain failures
  */
 const createRoute = <const R extends RouteConfig>(config: R) => {
-  const middleware = [config.middleware ?? []].flat() as {
+  const middleware = [config.auth, config.middleware ?? []].flat() as {
     [GUARD_ERRORS]?: readonly AnyFailure[];
   }[];
   const auto: HttpError[] = middleware.flatMap((m) =>

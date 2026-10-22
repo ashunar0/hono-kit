@@ -5,7 +5,7 @@ declare const id: string;
 
 // Reads from as many services as needed (get…, list…, queries), then one write
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, _reply, { books, loans, bookQueries }) => {
     await books.get(id);
     await loans.listActive(id);

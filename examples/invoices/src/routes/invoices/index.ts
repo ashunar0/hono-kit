@@ -20,7 +20,7 @@ const listInvoicesResponseSchema = pageResponseSchema(invoiceResponseSchema);
 /** 一覧 */
 export const GET = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { query: listInvoicesQuerySchema },
     responses: {
       200: listInvoicesResponseSchema,
@@ -37,7 +37,7 @@ export const GET = createEndpoint(
 /** 作成 */
 export const POST = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { json: invoiceInputSchema },
     responses: {
       200: invoiceResponseSchema,

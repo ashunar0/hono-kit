@@ -21,7 +21,7 @@ const shareInputSchema = z.object({
 /** 共有 */
 export const PUT = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: invoiceParamsSchema, json: shareInputSchema },
     responses: {
       200: okResponseSchema,

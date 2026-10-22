@@ -3,7 +3,7 @@ import { requireAuth } from "../../middleware/auth";
 
 export const POST = createEndpoint(
   {
-    middleware: [requireAuth] as const,
+    auth: requireAuth,
     responses: {},
   },
   async () => {

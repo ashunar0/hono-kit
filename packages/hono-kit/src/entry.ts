@@ -32,7 +32,7 @@ export const runScheduled = (
 
 /**
  * Declares an entry point that verifies the caller another way (a signed webhook, ...).
- * Like allowAnonymous, put it first in the route's middleware; the handler reads `c.get("actor")` (the same name as with requireAuth).
+ * Like allowAnonymous, put it in the endpoint's auth (`auth: allowSystem`); the handler reads `c.get("actor")` (the same name as with requireAuth).
  * Verifying the signature is the handler's job: do not use actor before verifying
  */
 export const allowSystem = createMiddleware<{ Variables: { actor: System } }>(

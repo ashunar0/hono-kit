@@ -20,7 +20,7 @@ const deleteInvoiceResponseSchema = z.object({
 /** 1件 */
 export const GET = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: invoiceParamsSchema },
     responses: {
       200: invoiceResponseSchema,
@@ -41,7 +41,7 @@ export const GET = createEndpoint(
 /** 更新 */
 export const PUT = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: invoiceParamsSchema, json: invoiceInputSchema },
     responses: {
       200: invoiceResponseSchema,
@@ -67,7 +67,7 @@ export const PUT = createEndpoint(
 /** 削除 */
 export const DELETE = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: invoiceParamsSchema },
     responses: {
       200: deleteInvoiceResponseSchema,

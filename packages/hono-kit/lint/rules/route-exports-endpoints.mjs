@@ -13,7 +13,7 @@ const otherExport = (name) =>
   `${name} is exported from an HTTP entry file (index.ts). Only GET / POST / PUT / PATCH / DELETE may be exported here, each created with createEndpoint. Move other exports to a file that starts with _ (e.g. _response.ts), or keep it unexported`;
 
 const notCreateEndpoint = (name) =>
-  `${name} is exported but its value is not created with createEndpoint. Declare it as \`export const ${name} = createEndpoint({ middleware, responses }, handler)\`, so auth and the responses contract are not skipped`;
+  `${name} is exported but its value is not created with createEndpoint. Declare it as \`export const ${name} = createEndpoint({ auth, responses }, handler)\`, so auth and the responses contract are not skipped`;
 
 const RE_EXPORT =
   "Do not re-export from an HTTP entry file. Only GET / POST / PUT / PATCH / DELETE, each created with createEndpoint, may be exported here";

@@ -14,7 +14,7 @@ const invoiceParamsSchema = z.object({
 /** 送付 */
 export const POST = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: invoiceParamsSchema },
     responses: {
       200: invoiceResponseSchema,

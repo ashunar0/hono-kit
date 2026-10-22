@@ -7,7 +7,7 @@ import { allowAnonymous } from "#src/middleware/auth";
 
 export const GET = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     request: { param: z.object({ path: z.string() }) },
     responses: { 200: z.object({ path: z.string() }) },
   },

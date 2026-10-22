@@ -9,7 +9,7 @@ import { noteResponse, noteResponseSchema } from "../_response";
 
 export const GET = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: z.object({ id: noteIdSchema }) },
     responses: { 200: noteResponseSchema, ...errorResponses(NotFound) },
   },

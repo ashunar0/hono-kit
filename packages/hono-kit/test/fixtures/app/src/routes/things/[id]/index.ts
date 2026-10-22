@@ -8,7 +8,7 @@ const params = z.object({ id: z.string() });
 
 export const GET = createEndpoint(
   {
-    middleware: [requireAuth] as const,
+    auth: requireAuth,
     request: { param: params },
     responses: {},
   },

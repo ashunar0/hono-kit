@@ -36,7 +36,7 @@ const item = toStandardJsonSchema(v.object({ name: v.string() }));
 
 const postItem = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     request: { param: params, query, json: input },
     responses: { 200: output, ...errorResponses(NotFound) },
   },
@@ -57,7 +57,7 @@ const postItem = createEndpoint(
 // hnk のページ送りの部品は、valibot の絞り込みと 1 件の形も包める
 const listItems = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     request: {
       query: pageQuerySchema(toStandardJsonSchema(v.object({ q: v.optional(v.string()) }))),
     },

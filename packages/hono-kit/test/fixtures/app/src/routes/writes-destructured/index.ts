@@ -7,7 +7,7 @@ declare const id: string;
 
 // deps taken whole and taken apart in the body: still two services written
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, _reply, deps) => {
     const { books, loans } = deps;
     const members = deps.members;

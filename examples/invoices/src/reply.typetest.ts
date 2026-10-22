@@ -7,7 +7,7 @@ const ok = z.object({ ok: z.literal(true) });
 // 宣言した失敗は返せる
 export const declared = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     responses: { 200: ok, ...errorResponses(NotFound) },
   },
   async (_c, reply) => reply.failure("NOT_FOUND"),
@@ -15,7 +15,7 @@ export const declared = createEndpoint(
 
 // 失敗を何も宣言していない endpoint では、赤線の文言が「宣言が無い。errorResponses を足す」になる
 export const none = createEndpoint(
-  { middleware: [allowAnonymous], responses: { 200: ok } },
+  { auth: allowAnonymous, responses: { 200: ok } },
   // @ts-expect-error 失敗の宣言が無い
   async (_c, reply) => reply.failure("NOT_FOUND"),
 );
@@ -23,7 +23,7 @@ export const none = createEndpoint(
 // 一部だけ宣言している endpoint では、宣言していないコードは通らない
 export const some = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     responses: { 200: ok, ...errorResponses(NotFound) },
   },
   // @ts-expect-error FORBIDDEN は宣言していない

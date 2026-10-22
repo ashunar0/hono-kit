@@ -15,7 +15,7 @@ const shareParamsSchema = z.object({
 /** 共有をやめる */
 export const DELETE = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: shareParamsSchema },
     responses: {
       200: okResponseSchema,

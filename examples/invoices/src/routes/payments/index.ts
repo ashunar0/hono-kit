@@ -23,7 +23,7 @@ const startPaymentResponseSchema = z.object({
 /** 支払いを始める */
 export const POST = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { json: startPaymentInputSchema },
     responses: {
       200: startPaymentResponseSchema,

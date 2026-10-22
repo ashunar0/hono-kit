@@ -6,7 +6,7 @@ declare const id: string;
 
 // getOrCreate starts with get but may write; getOrderById and getAndroidApps are reads
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, _reply, { members, loans, orders }) => {
     await orders.getOrderById(id);
     await orders.getAndroidApps();

@@ -4,7 +4,7 @@ import { createEndpoint } from "hono-kit";
 
 export const POST = createEndpoint(
   {
-    middleware: [allowAnonymous] as const,
+    auth: allowAnonymous,
     responses: { 201: {} },
   },
   async () => {

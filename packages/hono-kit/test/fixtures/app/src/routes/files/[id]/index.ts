@@ -4,14 +4,14 @@ import { requireAuth } from "../../../middleware/auth";
 
 // [id] の GET は 1 件なので、上限は要らない
 export const GET = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async () => {
     throw new Error("fixture");
   },
 );
 
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (c, reply, { files, logs }) => {
     await files.create();
     await logs.add();

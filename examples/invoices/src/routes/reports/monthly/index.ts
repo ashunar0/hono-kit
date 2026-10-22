@@ -38,7 +38,7 @@ const monthlyResponseSchema = z.object({
 export const GET = createEndpoint(
   {
     // レポートを見られるのは admin だけ。役割だけで決まるので guard に置く
-    middleware: [requireRole("admin")],
+    auth: requireRole("admin"),
     request: { query: monthlyQuerySchema },
     responses: { 200: monthlyResponseSchema },
   },

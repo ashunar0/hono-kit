@@ -7,7 +7,7 @@ import { noteResponse, noteResponseSchema } from "./_response";
 
 /** Create. Read back through the same path as the GET */
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: { 200: noteResponseSchema } },
+  { auth: requireAuth, responses: { 200: noteResponseSchema } },
   async (c, reply, { notes, notesQueries }) => {
     const id = await notes.create(c.get("now"));
 

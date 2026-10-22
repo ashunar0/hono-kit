@@ -17,7 +17,7 @@ const receivedSchema = z.object({ received: z.literal(true) });
 /** 通知を受ける */
 export const POST = createEndpoint(
   {
-    middleware: [allowSystem],
+    auth: allowSystem,
     responses: {
       200: receivedSchema,
       ...errorResponses(InvalidSignature, NotFound, NotPayable),

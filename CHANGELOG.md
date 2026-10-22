@@ -4,6 +4,11 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Breaking
+
+- `createEndpoint` takes the guard in a required `auth` key: `middleware: [requireAuth]` becomes `auth: requireAuth`. Leaving it out is a type error, so a public endpoint writes `auth: allowAnonymous`. `middleware` stays for other middleware and runs after `auth`. Rewrite with `perl -pi -e 's/middleware: \[(\w+(?:\([^)]*\))?)\]( as const)?/auth: $1/' src/routes/**/index.ts`
+- The lint `route-declares-auth` is gone (the type does its work). Remove `"hnk/route-declares-auth"` from `.oxlintrc.json`. Guards no longer need names starting with `require` / `allow`
+
 ### Removed
 
 - The lint `route-lists-are-paged`. Whether a list is paged is up to the app; a paged list still uses `pageQuerySchema` / `pageResponseSchema` / `pageResponse`. Remove `"hnk/route-lists-are-paged"` from `.oxlintrc.json` and the `oxlint-disable-next-line hnk/route-lists-are-paged` lines, or oxlint stops on the unknown rule

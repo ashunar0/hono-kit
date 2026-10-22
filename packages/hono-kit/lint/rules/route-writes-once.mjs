@@ -24,14 +24,10 @@ const propertyOf = (config, name) =>
       p.key.name === name,
   );
 
-/** middleware に allowSystem がある＝再送してくる相手（webhook）の入口 */
+/** auth が allowSystem＝再送してくる相手（webhook）の入口 */
 const isSystemEntry = (config) => {
-  const list = unwrap(propertyOf(config, "middleware")?.value);
-  const elements =
-    list?.type === "ArrayExpression" ? list.elements : list ? [list] : [];
-  return elements.some(
-    (e) => e?.type === "Identifier" && e.name === "allowSystem",
-  );
+  const auth = unwrap(propertyOf(config, "auth")?.value);
+  return auth?.type === "Identifier" && auth.name === "allowSystem";
 };
 
 /** handler の 3 つ目の引数から、deps の名前を集める。`{ books, loans }` か `deps` */

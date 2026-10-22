@@ -7,7 +7,7 @@ declare const id: string;
 
 // Two writes from a user's request: the second can fail after the first is done
 export const PATCH = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, _reply, { books, loans }) => {
     await books.getStock(id);
     await books.update(id);
@@ -17,7 +17,7 @@ export const PATCH = createEndpoint(
 );
 
 export const DELETE = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, _reply, deps) => {
     await deps.books.remove(id);
     await deps.loans.cancel(id);

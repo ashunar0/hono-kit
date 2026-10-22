@@ -5,6 +5,6 @@ import { requireAuth } from "#src/middleware/auth";
 import { aTable } from "#src/domains/a/repo.d1";
 
 export const POST = createEndpoint(
-  { middleware: [requireAuth], responses: {} },
+  { auth: requireAuth, responses: {} },
   async (_c, reply) => reply(200, { t: aTable }),
 );

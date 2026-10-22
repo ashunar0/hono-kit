@@ -8,7 +8,7 @@ The generator writes no resource. Create the directory the URL says, by hand: `s
 // src/routes/invoices/[id]/index.ts
 export const GET = createEndpoint(
   {
-    middleware: [requireAuth],
+    auth: requireAuth,
     request: { param: z.object({ id: invoiceIdSchema }) },
     responses: { 200: invoiceResponseSchema, ...errorResponses(NotFound) },
   },

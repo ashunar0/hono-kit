@@ -4,7 +4,7 @@ import { requireRole } from "../../middleware/auth";
 // A guard built by a call counts as the one auth guard
 export const POST = createEndpoint(
   {
-    middleware: [requireRole("admin")] as const,
+    auth: requireRole("admin"),
     responses: {},
   },
   async () => {

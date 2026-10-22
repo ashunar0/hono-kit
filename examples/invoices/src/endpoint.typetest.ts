@@ -1,6 +1,8 @@
 import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
-import { allowAnonymous } from "./middleware/auth";
+import { createMiddleware } from "hono/factory";
+import { allowAnonymous, requireAuth } from "./middleware/auth";
+import type { User } from "./domains/users/model";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();
@@ -8,7 +10,7 @@ const app = createApp();
 // path の :id と param の id が合っていれば通る
 export const matched = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     request: { param: z.object({ id: z.string() }) },
     responses: { 200: ok },
   },
@@ -27,7 +29,7 @@ registerEndpoint(app, "GET", "/users/:userId", matched);
 // 親のパスにある param（:storeId）も、request.param に書く
 export const nested = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     request: { param: z.object({ storeId: z.string(), date: z.string() }) },
     responses: { 200: ok },
   },
@@ -42,7 +44,7 @@ registerEndpoint(app, "GET", "/orgs/:orgId/users/:id", matched);
 // 宣言していない入力は読めない（json を宣言していないのに valid("json") を呼ぶ）
 export const undeclared = createEndpoint(
   {
-    middleware: [allowAnonymous],
+    auth: allowAnonymous,
     responses: { 200: ok },
   },
   async (c, reply) => {
@@ -58,3 +60,29 @@ export const undeclared = createEndpoint(
 const plain = [async () => new Response("public")];
 // @ts-expect-error createEndpoint で作っていない。宣言（認証・responses）が無い
 registerEndpoint(app, "GET", "/public", plain);
+
+// 誰が呼べるか（auth）を書かない endpoint は作れない。公開なら allowAnonymous を書く
+export const noAuth = createEndpoint(
+  // @ts-expect-error auth が無い
+  { responses: { 200: ok } },
+  async (_c, reply) => reply(200, { ok: true }),
+);
+
+// auth の後に middleware を足しても、両方が入れたものを handler が読める
+const withTraceId = createMiddleware<{ Variables: { traceId: string } }>(async (c, next) => {
+  c.set("traceId", "t");
+  await next();
+});
+export const authAndMiddleware = createEndpoint(
+  {
+    auth: requireAuth,
+    middleware: [withTraceId],
+    responses: { 200: ok },
+  },
+  async (c, reply) => {
+    c.get("actor") satisfies User;
+    c.get("traceId") satisfies string;
+
+    return reply(200, { ok: true });
+  },
+);

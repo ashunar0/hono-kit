@@ -13,19 +13,6 @@ export const unwrap = (node) => {
   return cur;
 };
 
-/**
- * guard の名前。「guard は要求するものの名前を持つ」に乗るので、
- * 維持するリストを持たない。requireAdmin を足しても規則の変更は要らない
- */
-const GUARD_NAME = /^(require|allow)[A-Z]/;
-
-/** `requireAuth`, or a guard built by a call (`requireRole("admin")`) */
-export const isGuardName = (node) =>
-  (node?.type === "Identifier" && GUARD_NAME.test(node.name)) ||
-  (node?.type === "CallExpression" &&
-    node.callee?.type === "Identifier" &&
-    GUARD_NAME.test(node.callee.name));
-
 export const FUNCTIONS = new Set([
   "FunctionDeclaration",
   "FunctionExpression",

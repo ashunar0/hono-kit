@@ -39,6 +39,9 @@ export type ResponseEntry =
 export type RouteConfig = {
   method: "get" | "post" | "put" | "patch" | "delete";
   path: string;
+  /** Who may call it: a guard (requireAuth, allowAnonymous, ...). It runs first and sets actor */
+  auth: H;
+  /** Other middleware, run after auth */
   middleware?: H | H[];
   request?: {
     param?: AnySchema;
@@ -112,7 +115,7 @@ type DeepSimplify<T> = {
     : T[K];
 } & {};
 
-type OfHandlerType<T extends MiddlewareHandler> =
+type OfHandlerType<T> =
   T extends MiddlewareHandler<infer E, infer P, infer I>
     ? { env: E; path: P; input: I }
     : never;
@@ -143,7 +146,9 @@ type MiddlewareToHandlerType<M extends MiddlewareHandler<any, any, any>[]> =
       : MiddlewareHandler<Env>;
 
 type RouteMiddlewareParams<R extends RouteConfig> = OfHandlerType<
-  MiddlewareToHandlerType<AsArray<R["middleware"]>>
+  MiddlewareToHandlerType<
+    [R["auth"], ...(R extends { middleware: infer M } ? AsArray<M> : [])]
+  >
 >;
 
 export type RouteConfigToEnv<R extends RouteConfig> =

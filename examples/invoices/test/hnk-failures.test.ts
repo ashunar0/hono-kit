@@ -25,7 +25,7 @@ registerEndpoint(
   "/:which",
   createEndpoint(
     {
-      middleware: [allowAnonymous] as const,
+      auth: allowAnonymous,
       request: { param: z.object({ which: z.enum(["first", "second"]) }) },
       responses: {
         200: z.object({ ok: z.literal(true) }),
@@ -60,7 +60,7 @@ it("model の Failure は、種類から決まった番号と、自分のコー�
     "/",
     createEndpoint(
       {
-        middleware: [allowAnonymous] as const,
+        auth: allowAnonymous,
         responses: { 200: z.object({ ok: z.literal(true) }), ...errorResponses(Stale) },
       },
       async (_c, reply) => reply.failure("STALE"),
