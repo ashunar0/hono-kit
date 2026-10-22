@@ -19,6 +19,7 @@
 
 - File name: `mailer.<tech>.ts` (`mailer.dummy.ts` before the provider is decided). It may import only `hono-kit/result`, model types and service types
 - service declares the shape it sends (`send(to, subject, body): Promise<Result<void, "MAIL_FAILED">>`), and `deps.ts` wires it. The failure is a `Failure` with `kind: "upstream"` (502)
+- A side effect outside goes "record first → call outside → settle with the result", so what happened can be traced afterwards. When the outside takes an idempotency key, pass one (the payment ID to Stripe, a key with the date for a reminder mail). Whether a failure midway may send twice or may miss one is a business decision: write it in a comment in service
 - When a dummy "collects what was sent", **it cannot keep an array at module scope** (`no-module-scope-state`). Take the outbox as an argument, like `dummy(outbox: Mail[])`
 
 ## Failures only an entry point has

@@ -158,5 +158,6 @@ A reach narrows what is shown, never what a rule computes.
 - Whether the parent is visible: a GET asks the parent resource's queries (`issuesQueries.get(actor, issueId)`), a write asks the parent's service (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
 - The child list is read by the child resource's queries, through the child's window, filtered by the parent ID (`commentsWithin(db)` with `where(eq(comments.issueId, issueId))`)
 - The child repo keeps only the writes and the reads a rule needs. It filters by **parent ID**, not by reach: `findOf(parentId, id)` instead of `find(reach, id)`
+- When the parent is deleted and its children go with it, give the child's foreign key `onDelete: "cascade"` (`references(() => issuesTable.id, { onDelete: "cascade" })`). The child domain declares it on its own table, so the parent's repo never writes the child's table. If a child must outlive its parent, pick another value and write why next to it
 - The parent ID is a plain `string` inside the child domain. Permission checks ("the author or an admin") are pure functions in model
 - `pnpm hnk g domain comments` writes only the domain. Write the resource in `src/routes/issues/[issueId]/comments/`; `pnpm hnk gen` registers it
