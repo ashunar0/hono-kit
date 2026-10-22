@@ -152,6 +152,8 @@ A reach narrows what is shown, never what a rule computes.
 
 `within(reach)` is used in the WHERE of reads and of `update` / `delete`. Multiple conditions like "creator or assignee" can be written with `or(...)`, but the same condition also means **once you unassign yourself, you can no longer see it, and can no longer write it**.
 
+Reach is what you can see, not what you may change. When some of what you see is not yours to change (anyone reads a published article, only its author edits it), the permission that needs the row narrows it: `find(reach, id)` (absent → `NOT_FOUND`) → `may…(actor, thing)` (no → `FORBIDDEN`) → `update(reach, id, changes)` with the same reach. The `FORBIDDEN` of rules.md comes from that `may…`, never from a second, narrower reach.
+
 ## Things that hang under a parent (comments, ...)
 
 - The resource nests under the parent's: `src/routes/issues/[issueId]/comments/index.ts` (`/issues/:issueId/comments`) and `…/comments/[id]/index.ts`. `request.param` lists the parent's param too (`{ issueId, id }`)
