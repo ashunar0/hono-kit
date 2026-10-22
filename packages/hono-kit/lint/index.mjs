@@ -10,7 +10,6 @@ import noModuleScopeState from "./rules/no-module-scope-state.mjs";
 import noNewHono from "./rules/no-new-hono.mjs";
 import routeDeclaresAuth from "./rules/route-declares-auth.mjs";
 import routeExportsEndpoints from "./rules/route-exports-endpoints.mjs";
-import routeListsArePaged from "./rules/route-lists-are-paged.mjs";
 import routeRepliesThroughReply from "./rules/route-replies-through-reply.mjs";
 import routeResponds200 from "./rules/route-responds-200.mjs";
 import routeWritesOnce from "./rules/route-writes-once.mjs";
@@ -22,7 +21,6 @@ export default {
     "no-foreign-table-reads": noForeignTableReads,
     "no-clock-outside-app-entry": noClockOutsideAppEntry,
     "route-exports-endpoints": routeExportsEndpoints,
-    "route-lists-are-paged": routeListsArePaged,
     "route-replies-through-reply": routeRepliesThroughReply,
     "no-id-cast": noIdCast,
     "no-module-scope-state": noModuleScopeState,

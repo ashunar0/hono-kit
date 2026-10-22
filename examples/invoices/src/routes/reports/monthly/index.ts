@@ -35,7 +35,6 @@ const monthlyResponseSchema = z.object({
 });
 
 /** 月ごとの請求と入金 */
-// oxlint-disable-next-line hnk/route-lists-are-paged -- 件数は期間の月数で決まり、MAX_MONTHS（24）で上限を検査している
 export const GET = createEndpoint(
   {
     // レポートを見られるのは admin だけ。役割だけで決まるので guard に置く

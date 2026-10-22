@@ -133,7 +133,6 @@ Shipped as an [oxlint](https://oxc.rs) plugin (`hono-kit/lint`).
 | `route-declares-auth`         | Endpoints that do not declare who may call them                                             |
 | `route-exports-endpoints`     | `index.ts` exports other than GET / POST / PUT / PATCH / DELETE built with `createEndpoint` |
 | `route-replies-through-reply` | `c.json` that bypasses the `responses` contract                                             |
-| `route-lists-are-paged`       | List endpoints without a page limit                                                         |
 | `no-clock-outside-app-entry`  | `new Date()` / `Date.now()` outside where the app is built                                  |
 | `no-foreign-table-reads`      | Reading another domain's table directly                                                     |
 | `no-id-cast`                  | Branding IDs with `as`                                                                      |

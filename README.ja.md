@@ -239,7 +239,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **lint は `hono-kit/lint` で提供する**。domain の中のファイルは、名前の頭で役割（model / service / repo / gateway / mailer / queue）を決める。`src/routes/` の中は `index.ts`（resource）と `_response.ts`（response）と `_errors.ts`（errors）と `_queries.ts`（queries）だけ。
   役割の分からないファイルは置けない。依存の向きは役割ごとの許可表（`layer-imports`）で守らせ、表に無い import は全部だめ。
   相対 import も tsconfig の paths 経由も同じに見る。HTTP の入口（`src/routes/` の `index.ts`）には、endpoint に認証の指定、`c.json` 禁止、を求める。domain から `src/routes/` は import できない。どこでも、モジュールの一番上に変わる状態を置かない。
-  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、上限の無い一覧を書かない（`route-lists-are-paged`）、成功に 200 以外を使わない（`route-responds-200`）、利用者の HTTP の handler で service に 2 回書かない（`route-writes-once`。service の読みは `get…`・`list…` で始め、それ以外と、`Or`・`And` でつないだ `getOrCreate` などは書き込みとみなす）、`new Hono()` を書かない（`no-new-hono`）、`index.ts` から `GET` / `POST` / `PUT` / `PATCH` / `DELETE`（`createEndpoint` で作ったもの）以外を export しない（`route-exports-endpoints`）も、lint で止める
+  他 domain の表を直接読まない（`no-foreign-table-reads`）、ID の印を `as` で付けない（`no-id-cast`）、アプリを組み立てる所の外で時計を読まない（`no-clock-outside-app-entry`）、成功に 200 以外を使わない（`route-responds-200`）、利用者の HTTP の handler で service に 2 回書かない（`route-writes-once`。service の読みは `get…`・`list…` で始め、それ以外と、`Or`・`And` でつないだ `getOrCreate` などは書き込みとみなす）、`new Hono()` を書かない（`no-new-hono`）、`index.ts` から `GET` / `POST` / `PUT` / `PATCH` / `DELETE`（`createEndpoint` で作ったもの）以外を export しない（`route-exports-endpoints`）も、lint で止める
 
 役割ごとに import してよい相手の表は、英語の [README の「Who may import what」](README.md#who-may-import-what) にある（`packages/hono-kit/lint/layers.mjs` から生成）。
 
@@ -247,7 +247,7 @@ domain は互いを呼ばない。つなぐのは入口（handler、cron、queue
 - **一覧のページ送りは hono-kit の部品**（`hono-kit/page` と `pageQuerySchema` / `pageResponseSchema` / `pageResponse`）。
   `pageQuerySchema(絞り込みのスキーマ)` が cursor と limit を足し、`pageResponseSchema(1 件のスキーマ)` が `{ items, nextCursor }` を作る。中身はアプリのスキーマ（zod でも valibot でも）。
   一覧は `PageQuery`（`limit` は必須）を受け取って `Page` を返す。query に展開すると `limit` に既定（20）と上限（100）が付く。
-  queries は `limit + 1` 件読んで `toPage` に渡す。一覧の endpoint（`GET` で、ディレクトリの最後が `[param]` でないもの）の query が `pageQuerySchema(...)` の呼び出し（か、同じファイルでそれを入れた変数）でないと、lint `route-lists-are-paged` が止める。件数が別の所で決まっているもの（月ごとの集計は `MAX_MONTHS` で検査している）は、`// oxlint-disable-next-line hnk/route-lists-are-paged -- 理由` で外す。**試しに強く付けてある**。例外で困る場面が多ければ、このルールを外す
+  queries は `limit + 1` 件読んで `toPage` に渡す。決めているのはページ送りの形だけで、どの一覧をページ送りにするかはアプリが決める。上限を付けるかは運用の判断で、付けなくても hono-kit の形は崩れないから、lint では止めない
 - **ログイン状態は `buildApp(makeDeps, authenticate)` で差し込む**。`authenticate` はセッションの user（未ログインは null）を文脈に積む middleware で、
   本番は `withUser`（認証の提供元ができるまでは仮実装）、テストは `appAs(user)`（`test/fixtures.ts`）で本物の deps と D1 のまま利用者だけ差し替える。
   route 層は HTTP 越しに試せる。置き場所はテスト相手の隣（`src/routes/invoices/index.test.ts`）。model と service のテストは domain に残す（Go の _test.go と同じ）

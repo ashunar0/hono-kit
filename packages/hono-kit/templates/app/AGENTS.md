@@ -12,4 +12,4 @@ pnpm exec prettier --write .           # once after editing, before check
 pnpm check                             # typecheck, lint, format check, tests
 ```
 
-**Do not stop until `pnpm check` prints `All checks passed`.** Every lint message says how to fix it. Do not silence lint (the only exception is `route-lists-are-paged`, with a reason).
+**Do not stop until `pnpm check` prints `All checks passed`.** Every lint message says how to fix it. Do not silence lint.

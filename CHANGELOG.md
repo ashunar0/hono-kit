@@ -4,6 +4,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Removed
+
+- The lint `route-lists-are-paged`. Whether a list is paged is up to the app; a paged list still uses `pageQuerySchema` / `pageResponseSchema` / `pageResponse`. Remove `"hnk/route-lists-are-paged"` from `.oxlintrc.json` and the `oxlint-disable-next-line hnk/route-lists-are-paged` lines, or oxlint stops on the unknown rule
+
 ### Added
 
 - Catch-all routes: `src/routes/files/[...path]/index.ts` is `/files/:path{.+}`, one segment or more with slashes. Declare `path` in `request.param`. It must be the last segment, and is registered after the static and `[id]` routes beside it
