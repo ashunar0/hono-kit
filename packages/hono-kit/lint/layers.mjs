@@ -145,7 +145,7 @@ for (const from of ["model", "service"]) {
 }
 
 /**
- * 許可表の補足。README の表の「import してよいもの」の後ろに付く。
+ * 許可表の補足。docs/layout.md の表の「import してよいもの」の後ろに付く。
  * 表そのものは LAYERS から作るので、ここには表で言い切れないことだけを書く
  */
 export const NOTES = {

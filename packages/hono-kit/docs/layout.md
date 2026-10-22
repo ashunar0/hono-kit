@@ -18,6 +18,27 @@ They often share a word (`routes/invoices/` and `domains/invoices/`) and often d
 
 Inside your own domain (`src/domains/<name>/`) or your own resource (`src/routes/<noun>/` and everything under it), import with a relative path (`../_response`). Anything outside it goes through `#src/` (`#src/domains/invoices/model`, `#src/middleware/auth`), the subpath import in `package.json` (`"#src/*": "./src/*.ts"`). A directory is imported by its `index` (`#src/db/index`). So an import shows whether it is your own or someone else's.
 
+What each file may import is decided by its role. A file in a domain gets its role from its name prefix; a file in `src/routes/` is a `resource` (`index.ts`), a `response` (`_response.ts`), `queries` (`_queries.ts`) or `errors` (`_errors.ts`). `hnk/layer-imports` allows only the imports below; everything else is an error.
+
+<!-- layers:start (generated from lint/layers.mjs; do not edit by hand) -->
+
+| Role     | May import                                                                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| model    | zod, hono-kit/system (types only), hono-kit/failures (types only), another domain's model (types only), lib                                                                                                                                                                                                       |
+| service  | hono-kit/result, hono-kit/failures, hono-kit/page (types only), hono-kit/system (types only), model, another domain's model (types only), lib                                                                                                                                                                     |
+| repo     | drizzle-orm, hono-kit/page, db (types only), hono-kit/sqlite, model, service (types only), another domain's repo, another domain's model, lib. From another domain's repo, only foreign-key tables (…Table) and scoped reads (…Within); from another domain's model, only SQL constants and types                 |
+| gateway  | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                                                    |
+| mailer   | hono-kit/result, model (types only), service (types only), lib                                                                                                                                                                                                                                                    |
+| queue    | model (types only), service (types only), lib. Puts jobs on a queue. What takes them off is a job in src/jobs/                                                                                                                                                                                                    |
+| resource | hono-kit, zod, errors, middleware, another domain's model, resource, response, queries (types only), lib. `src/routes/<noun>/index.ts`, outside domains: `export const GET = createEndpoint(...)`, one per method. Services come from deps (the handler's third argument), never imported                         |
+| response | hono-kit, zod, another domain's model, response, queries (types only), lib. `src/routes/<noun>/_response.ts`: how a thing is shown over HTTP                                                                                                                                                                      |
+| queries  | drizzle-orm, hono-kit/page, db (types only), another domain's repo, another domain's model, lib. `src/routes/<noun>/_queries.ts`: the reads of the GET endpoints, wired into deps by `hnk gen`. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...) |
+| job      | hono-kit (types only), another domain's model, lib. `src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps                                                                                 |
+| errors   | hono-kit, lib. `src/routes/<noun>/_errors.ts`: failures only that entry point has (webhook signatures, ...). Failures of the thing go in model.ts as a Failure. Ones that mean the same in every domain (401, 403, 404) are hono-kit standards (NotFound, ...)                                                    |
+| lib      | zod, lib. Code that knows nothing of this app's business, so it could move to another app as is (dates, times, time zones). Anything that names a thing of this app (a role, a status) belongs to its domain instead                                                                                              |
+
+<!-- layers:end -->
+
 ## Reads and writes
 
 There are two paths.
