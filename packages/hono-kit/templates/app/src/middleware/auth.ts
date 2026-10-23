@@ -58,9 +58,12 @@ export const requireRole = (...roles: Role[]) =>
   );
 
 /**
- * Says explicitly that no auth is required. Does nothing.
+ * Says explicitly that no auth is required. Lets everyone through, and actor is null (whoever it is).
  *
  * auth is required, so a public endpoint says so with `auth: allowAnonymous`.
  * grep it to list every unauthenticated endpoint in this app
  */
-export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();
+export const allowAnonymous = createMiddleware<{ Variables: { actor: null } }>(async (c, next) => {
+  c.set("actor", null);
+  await next();
+});

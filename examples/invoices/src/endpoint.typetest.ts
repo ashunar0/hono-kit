@@ -1,7 +1,7 @@
 import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
-import { allowAnonymous, requireAuth } from "./middleware/auth";
+import { allowAnonymous, requireAuth, withAccount } from "./middleware/auth";
 import type { Account } from "./domains/accounts/model";
 
 const ok = z.object({ ok: z.literal(true) });
@@ -66,6 +66,33 @@ export const noAuth = createEndpoint(
   // @ts-expect-error auth が無い
   { responses: { 200: ok } },
   async (_c, reply) => reply(200, { ok: true }),
+);
+
+// auth は actor を入れるもの。withAccount は account を積むだけで誰も弾かないので、auth には書けない
+export const authWithoutActor = createEndpoint(
+  // @ts-expect-error withAccount は actor を入れない
+  { auth: withAccount, responses: { 200: ok } },
+  async (_c, reply) => reply(200, { ok: true }),
+);
+
+// 型引数の無い createMiddleware は Env が any。actor を入れるように見えてしまうので、auth には書けない
+const untyped = createMiddleware(async (_c, next) => {
+  await next();
+});
+export const authUntyped = createEndpoint(
+  // @ts-expect-error Env が any
+  { auth: untyped, responses: { 200: ok } },
+  async (_c, reply) => reply(200, { ok: true }),
+);
+
+// allowAnonymous の actor は null
+export const anonymous = createEndpoint(
+  { auth: allowAnonymous, responses: { 200: ok } },
+  async (c, reply) => {
+    c.get("actor") satisfies null;
+
+    return reply(200, { ok: true });
+  },
 );
 
 // auth の後に middleware を足しても、両方が入れたものを handler が読める

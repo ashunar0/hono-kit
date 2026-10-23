@@ -53,9 +53,12 @@ export const requireRole = (...roles: Role[]) =>
   );
 
 /**
- * 認証を要求しないことを明示する。何もしない。
+ * 認証を要求しないことを明示する。誰でも通し、actor は null（誰かは問わない）。
  *
  * auth は必須なので、公開の endpoint は `auth: allowAnonymous` と書く。
  * grep すればこのアプリの無認証エンドポイントが列挙できる
  */
-export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();
+export const allowAnonymous = createMiddleware<{ Variables: { actor: null } }>(async (c, next) => {
+  c.set("actor", null);
+  await next();
+});

@@ -92,9 +92,10 @@ export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
  * routes.gen.ts registers it with registerEndpoint
  */
 export const createEndpoint = <const D extends EndpointDeclaration>(
-  config: D,
+  checked: D & AuthSetsActor<D>,
   fn: EndpointFn<AsRoute<D>>,
 ): Endpoint<D> => {
+  const config: D = checked;
   const [route, handler] = buildEndpoint(config as AsRoute<D>, fn);
   const middleware = [route.auth, route.middleware ?? []].flat();
 
@@ -127,6 +128,34 @@ export const registerEndpoint = <
     ...endpoint,
   );
 };
+
+/** The Env a middleware was given. `any` when it was not typed (`createMiddleware(async (c, next) => ...)` with no type argument) */
+type EnvOf<M> = M extends MiddlewareHandler<infer E, any, any, any> ? E : never;
+
+/** True only for `any`. A plain `extends any` matches everything, so this needs the `0 extends 1 & T` shape */
+type IsAny<T> = 0 extends 1 & T ? true : false;
+
+/**
+ * auth decides who is acting, so its middleware must set actor (Account, System, null for anyone, ...).
+ * withAccount only loads the session and sets account, so it cannot stand in for a guard.
+ * An untyped middleware (Env `any`) is refused too: it would seem to set actor, and leave every c.get(...) in the handler `any`.
+ * When it does not hold, auth is underlined with this message
+ */
+type AuthSetsActor<D> = D extends { auth: infer A }
+  ? IsAny<EnvOf<A>> extends true
+    ? {
+        readonly auth: {
+          readonly "auth's Env is any": "give it one, e.g. createMiddleware<{ Variables: { actor: Account } }>(...)";
+        };
+      }
+    : EnvOf<A> extends { Variables: { actor: unknown } }
+      ? unknown
+      : {
+          readonly auth: {
+            readonly "auth must set actor": "a guard sets who is acting: createMiddleware<{ Variables: { actor: Account } }>(...), or actor: null for anyone";
+          };
+        }
+  : unknown;
 
 /** The keys of request.param */
 type ParamKeysOf<D> = D extends {
