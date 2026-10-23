@@ -1,5 +1,6 @@
 /**
- * The account: who is signed in, and only what the rules need (here, the organization and the role).
+ * The account: who is signed in, and only what the rules need. Here only the ID; add what your rules need
+ * (a role, an organization: examples/invoices has both).
  * It is not the user record of the auth provider (email, name, ...). A business person (a member, a staff, a patient)
  * is a row of its own domain that holds the account's ID, and "only their own" reaches go through it.
  * Never put a business row's ID here: a session, once issued, would keep an old ID after the row is deleted.
@@ -8,26 +9,16 @@
  */
 import type { System } from "hono-kit/system";
 
-/** Role. admin can touch everything in their organization; member only their own */
-export const roles = ["member", "admin"] as const;
-
-export type Role = (typeof roles)[number];
-
 /**
- * Brands for account and organization IDs. Mixing them up with a plain string or each other is a type error.
- * Only accountId / orgId below may apply the brand
+ * The brand for account IDs. Mixing one up with a plain string is a type error.
+ * Only accountId below may apply the brand
  */
 declare const accountIdBrand: unique symbol;
-declare const orgIdBrand: unique symbol;
 
 export type AccountId = string & { readonly [accountIdBrand]: true };
-export type OrgId = string & { readonly [orgIdBrand]: true };
 
 /** Brands a string from outside or from the DB as an account ID. The only place that writes `as` */
 export const accountId = (value: string) => value as AccountId;
-
-/** Same, for organization IDs */
-export const orgId = (value: string) => value as OrgId;
 
 /**
  * The brand. Its name is invisible outside this file, so a literal like `{ kind: "system" }`
@@ -39,15 +30,11 @@ declare const verified: unique symbol;
 export type Account = {
   readonly kind: "account";
   readonly id: AccountId;
-  /** The organization. Each account belongs to exactly one */
-  readonly orgId: OrgId;
-  readonly role: Role;
   readonly [verified]: true;
 };
 
 /** Creates an authenticated account. Called only by the auth middleware (and tests) */
-export const authenticatedAccount = (id: AccountId, orgId: OrgId, role: Role) =>
-  ({ kind: "account", id, orgId, role }) as Account;
+export const authenticatedAccount = (id: AccountId) => ({ kind: "account", id }) as Account;
 
 /**
  * Who is acting right now: an account or the system.

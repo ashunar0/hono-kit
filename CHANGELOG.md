@@ -21,6 +21,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 - Catch-all routes: `src/routes/files/[...path]/index.ts` is `/files/:path{.+}`, one segment or more with slashes. Declare `path` in `request.param`. It must be the last segment, and is registered after the static and `[id]` routes beside it
 - `hnk gen --if-missing`: writes `src/routes.gen.ts` only if it does not exist yet; otherwise does nothing. Cannot be combined with `--watch` or `--check`
 
+### Changed (template)
+
+- A new app's `Account` holds only its ID: `orgId`, `role`, `requireRole` and the `admin` / `carol` fixtures are gone, since an app without organizations or roles had to delete them by hand. Add them when your rules need them (examples/invoices has both). Existing apps keep their own files; nothing to change
+
 ### Fixed (template)
 
 - `postinstall` ran plain `hnk gen`, which rewrites `src/routes.gen.ts` on every `pnpm install`. On CI (`pnpm install` then `pnpm check`), this silently refreshed a stale committed `routes.gen.ts` before `hnk gen --check` ran, so `--check` always passed even on a stale commit. Change `package.json`: `"postinstall": "hnk gen --if-missing"`

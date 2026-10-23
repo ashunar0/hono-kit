@@ -2,15 +2,12 @@ import { env } from "cloudflare:workers";
 import { wireDb } from "#src/db/index";
 import { buildApp } from "#src/index";
 import { makeDeps } from "#src/deps";
-import { authenticatedAccount, orgId, accountId, type Account } from "#src/domains/accounts/model";
+import { authenticatedAccount, accountId, type Account } from "#src/domains/accounts/model";
 
 export const db = () => wireDb(env.DB);
 
-export const alice = authenticatedAccount(accountId("alice"), orgId("org1"), "member");
-export const bob = authenticatedAccount(accountId("bob"), orgId("org1"), "member");
-export const admin = authenticatedAccount(accountId("admin"), orgId("org1"), "admin");
-/** Someone in another organization */
-export const carol = authenticatedAccount(accountId("carol"), orgId("org2"), "member");
+export const alice = authenticatedAccount(accountId("alice"));
+export const bob = authenticatedAccount(accountId("bob"));
 
 /**
  * The app, signed in as this account (real deps and D1).
