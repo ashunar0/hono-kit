@@ -17,6 +17,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ### Added
 
+- The lint `hnk/route-no-domain-failures`: a handler does not return a failure from a domain's model itself (`reply.failure(ProfileRequired.code)`, `throw fail(ProfileRequired)`). The rule is the domain's, so its service decides it and the handler returns `result.error`; otherwise the rule does not hold from another entry point. Add `"hnk/route-no-domain-failures": "error"` to `.oxlintrc.json`. A failure only that entry has stays in `_errors.ts`
 - Catch-all routes: `src/routes/files/[...path]/index.ts` is `/files/:path{.+}`, one segment or more with slashes. Declare `path` in `request.param`. It must be the last segment, and is registered after the static and `[id]` routes beside it
 - `hnk gen --if-missing`: writes `src/routes.gen.ts` only if it does not exist yet; otherwise does nothing. Cannot be combined with `--watch` or `--check`
 

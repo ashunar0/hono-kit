@@ -8,6 +8,7 @@ import noForeignTableReads from "./rules/no-foreign-table-reads.mjs";
 import noIdCast from "./rules/no-id-cast.mjs";
 import noModuleScopeState from "./rules/no-module-scope-state.mjs";
 import noNewHono from "./rules/no-new-hono.mjs";
+import routeNoDomainFailures from "./rules/route-no-domain-failures.mjs";
 import routeExportsEndpoints from "./rules/route-exports-endpoints.mjs";
 import routeRepliesThroughReply from "./rules/route-replies-through-reply.mjs";
 import routeResponds200 from "./rules/route-responds-200.mjs";
@@ -25,6 +26,7 @@ export default {
     "no-module-scope-state": noModuleScopeState,
     "route-responds-200": routeResponds200,
     "route-writes-once": routeWritesOnce,
+    "route-no-domain-failures": routeNoDomainFailures,
     "no-new-hono": noNewHono,
   },
 };

@@ -24,6 +24,7 @@
         "hnk/route-replies-through-reply": "error",
         "hnk/route-responds-200": "error",
         "hnk/route-writes-once": "error",
+        "hnk/route-no-domain-failures": "error",
         "hnk/no-new-hono": "error",
         "hnk/no-module-scope-state": "error",
         "hnk/no-id-cast": "error"

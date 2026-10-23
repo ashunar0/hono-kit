@@ -58,6 +58,17 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
   - Values the handler read from the DB that do not match (`member.storeId !== store.id`) → a bug: `throw`
 - Ask "is this check needed when cron calls it too?" If not (404 for an ID in the URL), it goes in the handler. If so (a permission that needs the row, a rule across things), it stays in the service. A permission the role alone decides is the endpoint guard (`requireRole`)
+- A rule that needs another domain's thing ("only a person with a profile writes an article") is a rule of the domain that writes. The handler reads the thing and passes it, the service decides, and the failure is that domain's own copy ([IDs and values](#ids-and-values-from-other-domains)). The handler never returns a domain's failure itself (`hnk/route-no-domain-failures`): from another entry point the rule would not hold
+
+  ```ts
+  // src/routes/articles/index.ts
+  const profile = await profiles.get(actor); // a read: null when there is none
+  const result = await articles.create(actor, profile, input, now);
+  if (!result.ok) return reply.failure(result.error);
+
+  // src/domains/articles/service.ts (ProfileRequired is in domains/articles/model)
+  if (profile === null) return err(ProfileRequired.code);
+  ```
 - Writes that must happen together go inside that one call, in one batch (the repo receives `batch`: `wireBatch(db)`, next to its scopes). One repo call writes all or nothing; how is the store's business (D1 sends a fixed batch, a store with transactions could read and decide inside one)
 
 ### Where the domain line goes
@@ -91,7 +102,7 @@ await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sen
 ## IDs and values from other domains
 
 - **In routes**: use the owner domain's `…IdSchema` for params and bodies (`customerIdSchema` from `domains/customers/model`). Routes may import any domain's model values
-- **Inside a domain** (`model` / `service`): another domain's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another domain (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another domain (`roles`, ...), keep **your own copy** and make types check that the values match
+- **Inside a domain** (`model` / `service`): another domain's ID is a plain `string` (`Invoice.customerId`). Only **types** may be borrowed from another domain (`import type`; `hnk/layer-imports` enforces it). For enum values shared with another domain (`roles`, ...), keep **your own copy** and make types check that the values match. A failure two domains return (`PROFILE_REQUIRED` from articles and comments) is copied the same way, one in each model
 - **Code that knows nothing of this app's business** (calendar dates, times of day, time-zone conversion) goes in `src/lib/` and may be imported as values from anywhere. The test is "could it move to another app as is?": a staff role belongs to staff (copy it or borrow its type), a calendar day is the same in any app (lib). `src/lib/` imports only zod and other lib files, so domains can never reach each other through it
 - Another domain's table: only inside foreign-key `references()`. To read it, go through its window (next section)
 
