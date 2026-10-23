@@ -1,7 +1,12 @@
 import { Hono, type MiddlewareHandler, type ToSchema } from "hono";
 import { validator } from "hono/validator";
 import type { H, ParamKeys } from "hono/types";
-import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
+import {
+  AUTH,
+  buildEndpoint,
+  type BuiltRoute,
+  type EndpointFn,
+} from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
 import type { RegisteredEnv } from "./register.js";
 import type { InferInput } from "./standard-schema.js";
@@ -95,6 +100,12 @@ export const createEndpoint = <const D extends EndpointDeclaration>(
   config: D,
   fn: EndpointFn<AsRoute<D>>,
 ): Endpoint<D> => {
+  if (!config.auth?.[AUTH])
+    throw new Error(
+      "auth must be a middleware wrapped in defineAuth(...) (requireAuth, allowAnonymous, ...). " +
+        "The type normally catches this; it slipped through here (plain JS, or an `as any`).",
+    );
+
   const [route, handler] = buildEndpoint(config as AsRoute<D>, fn);
   const middleware = [route.auth, route.middleware ?? []].flat();
 

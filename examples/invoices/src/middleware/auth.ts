@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthVariables } from "#src/env";
 import type { Role, Account } from "#src/domains/accounts/model";
-import { fail, Forbidden, guard, Unauthorized } from "hono-kit";
+import { defineAuth, fail, Forbidden, guard, Unauthorized } from "hono-kit";
 
 /**
  * セッションのアカウントを文脈に積む。未ログインでも通す。
@@ -20,17 +20,19 @@ export const withAccount: MiddlewareHandler<AppEnv> = async (c, next) => {
  * actor（誰として操作するか）が Account になる（account は null を含んだまま）。
  * Unauthorized は responses に自動で足される
  */
-export const requireAuth = guard(
-  [Unauthorized],
-  createMiddleware<{
-    Variables: AuthVariables & { actor: Account };
-  }>(async (c, next) => {
-    const account = c.get("account");
-    if (account === null) throw fail(Unauthorized);
+export const requireAuth = defineAuth(
+  guard(
+    [Unauthorized],
+    createMiddleware<{
+      Variables: AuthVariables & { actor: Account };
+    }>(async (c, next) => {
+      const account = c.get("account");
+      if (account === null) throw fail(Unauthorized);
 
-    c.set("actor", account);
-    await next();
-  }),
+      c.set("actor", account);
+      await next();
+    }),
+  ),
 );
 
 /**
@@ -38,18 +40,20 @@ export const requireAuth = guard(
  * 行を見る権限（所有者か共有された人）は service に置く。Unauthorized と Forbidden は responses に自動で足される
  */
 export const requireRole = (...roles: Role[]) =>
-  guard(
-    [Unauthorized, Forbidden],
-    createMiddleware<{
-      Variables: AuthVariables & { actor: Account };
-    }>(async (c, next) => {
-      const account = c.get("account");
-      if (account === null) throw fail(Unauthorized);
-      if (!roles.includes(account.role)) throw fail(Forbidden);
+  defineAuth(
+    guard(
+      [Unauthorized, Forbidden],
+      createMiddleware<{
+        Variables: AuthVariables & { actor: Account };
+      }>(async (c, next) => {
+        const account = c.get("account");
+        if (account === null) throw fail(Unauthorized);
+        if (!roles.includes(account.role)) throw fail(Forbidden);
 
-      c.set("actor", account);
-      await next();
-    }),
+        c.set("actor", account);
+        await next();
+      }),
+    ),
   );
 
 /**
@@ -58,4 +62,5 @@ export const requireRole = (...roles: Role[]) =>
  * auth は必須なので、公開の endpoint は `auth: allowAnonymous` と書く。
  * grep すればこのアプリの無認証エンドポイントが列挙できる
  */
-export const allowAnonymous: MiddlewareHandler<AppEnv> = (_c, next) => next();
+const doNothing: MiddlewareHandler<AppEnv> = (_c, next) => next();
+export const allowAnonymous = defineAuth(doNothing);
