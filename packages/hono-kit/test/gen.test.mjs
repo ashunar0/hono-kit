@@ -82,3 +82,24 @@ test("--check は書かずに比べ、古ければ落ちる", () => {
   assert.equal(stale.status, 1);
   assert.match(stale.stderr, /is out of date with src\/routes\. Run pnpm hnk gen and commit it/);
 });
+
+test("--if-missing は無ければ作り、あれば古くても触らない（postinstall が --check を誤魔化さないように）", () => {
+  const src = appWith({ "invoices/index.ts": ENDPOINT });
+  const gen = (...args) => spawnSync("node", [hnk, "gen", ...args], { cwd: path.dirname(src), encoding: "utf8" });
+  const out = path.join(src, "routes.gen.ts");
+
+  assert.equal(gen("--if-missing").status, 0);
+  assert.equal(fs.existsSync(out), true);
+
+  fs.writeFileSync(out, "stale");
+  assert.equal(gen("--if-missing").status, 0);
+  assert.equal(fs.readFileSync(out, "utf8"), "stale");
+});
+
+test("--if-missing は --watch / --check と一緒に使えない", () => {
+  const src = appWith({ "invoices/index.ts": ENDPOINT });
+  const gen = (...args) => spawnSync("node", [hnk, "gen", ...args], { cwd: path.dirname(src), encoding: "utf8" });
+
+  assert.equal(gen("--if-missing", "--watch").status, 1);
+  assert.equal(gen("--if-missing", "--check").status, 1);
+});

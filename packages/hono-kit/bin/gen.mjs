@@ -1,5 +1,6 @@
 /**
- * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`）。
+ * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`、
+ * 無ければ作るだけなら `--if-missing`。postinstall 用（CI の --check を書き直して誤魔化さないように）。--watch / --check とは一緒に使えない）。
  * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
  *   ディレクトリがパス、[id] は :id、[...path] は残り全部（:path{.+}）、(名前) は URL に出ない（route group）。
  *   _ で始まるファイルとディレクトリは読まない
@@ -173,11 +174,20 @@ const run = (src, { check = false } = {}) => {
   return true;
 };
 
-export const gen = ({ watch, check }) => {
+export const gen = ({ watch, check, ifMissing }) => {
   const src = "src";
+  if (ifMissing && (watch || check)) {
+    console.error("✗ --if-missing cannot be combined with --watch or --check");
+    process.exit(1);
+  }
   if (!fs.existsSync(path.join(src, "routes"))) {
     console.error("✗ Run this at the app root (where src/routes is)");
     process.exit(1);
+  }
+  // postinstall 用。既にあれば書かない（install のたびに routes.gen.ts を書き直して、CI の --check を誤魔化さないように）
+  if (ifMissing && fs.existsSync(path.join(src, "routes.gen.ts"))) {
+    console.log(`✓ ${path.join(src, "routes.gen.ts")} already exists, left as is`);
+    return;
   }
   if (!watch) {
     if (!run(src, { check })) process.exit(1);
