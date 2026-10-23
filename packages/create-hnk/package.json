@@ -1,6 +1,6 @@
 {
   "name": "create-hnk",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Start a hono-kit app: pnpm create hnk <dir>",
   "license": "MIT",
   "author": "ashunar0",
