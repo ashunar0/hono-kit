@@ -1,8 +1,8 @@
-import { createEndpoint, createApp, defineAuth, registerEndpoint } from "hono-kit";
+import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
 import { allowAnonymous, requireAuth, withAccount } from "./middleware/auth";
-import { accountId, authenticatedAccount, orgId, type Account } from "./domains/accounts/model";
+import type { Account } from "./domains/accounts/model";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();
@@ -68,38 +68,28 @@ export const noAuth = createEndpoint(
   async (_c, reply) => reply(200, { ok: true }),
 );
 
-// withAccount は誰を通すか決めない（session を積むだけ）。defineAuth で包んでいないので auth には書けない
-export const authNotWrapped = createEndpoint(
-  // @ts-expect-error withAccount は defineAuth で包んでいない
+// auth は actor を入れるもの。withAccount は account を積むだけで誰も弾かないので、auth には書けない
+export const authWithoutActor = createEndpoint(
+  // @ts-expect-error withAccount は actor を入れない
   { auth: withAccount, responses: { 200: ok } },
   async (_c, reply) => reply(200, { ok: true }),
 );
 
-// 素の createMiddleware（型引数なし）は Env が any。defineAuth で包んでいない時点で auth には書けない
-const rawMiddleware = createMiddleware(async (_c, next) => {
+// 型引数の無い createMiddleware は Env が any。actor を入れるように見えてしまうので、auth には書けない
+const untyped = createMiddleware(async (_c, next) => {
   await next();
 });
-export const authRawMiddleware = createEndpoint(
-  // @ts-expect-error defineAuth で包んでいない
-  { auth: rawMiddleware, responses: { 200: ok } },
+export const authUntyped = createEndpoint(
+  // @ts-expect-error Env が any
+  { auth: untyped, responses: { 200: ok } },
   async (_c, reply) => reply(200, { ok: true }),
 );
 
-// defineAuth で包んでも、Env が any のままでは通さない（c.get がすべて any になるのを防ぐ）
-// @ts-expect-error Env が any
-defineAuth(rawMiddleware);
-
-// 型を付けた Env なら defineAuth が通り、handler で c.get("actor") の型が付く
-const typedMiddleware = createMiddleware<{ Variables: { actor: Account } }>(async (c, next) => {
-  c.set("actor", authenticatedAccount(accountId("u1"), orgId("o1"), "member"));
-  await next();
-});
-export const authTyped = createEndpoint(
-  { auth: defineAuth(typedMiddleware), responses: { 200: ok } },
+// allowAnonymous の actor は null
+export const anonymous = createEndpoint(
+  { auth: allowAnonymous, responses: { 200: ok } },
   async (c, reply) => {
-    c.get("actor") satisfies Account;
-    // @ts-expect-error actor は Account、number ではない
-    c.get("actor") satisfies number;
+    c.get("actor") satisfies null;
 
     return reply(200, { ok: true });
   },

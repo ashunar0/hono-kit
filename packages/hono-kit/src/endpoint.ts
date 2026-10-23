@@ -169,9 +169,8 @@ export type Guard<
 };
 
 /**
- * Gives a middleware the failures it may return. Those failures are added to responses automatically.
- * A guard put in an endpoint's `auth` also needs defineAuth: `export const requireAuth = defineAuth(guard([Unauthorized], ...))`.
- * guard itself does not brand for `auth`, since a guard may also sit in `middleware`
+ * Gives a middleware the failures it may return. Put it in an endpoint's auth (or middleware) and
+ * those failures are added to responses automatically. `export const requireAuth = guard([Unauthorized], ...)`
  */
 export const guard = <
   const F extends readonly AnyFailure[],
@@ -180,38 +179,6 @@ export const guard = <
   failures: F,
   middleware: M,
 ): Guard<M, F> => Object.assign(middleware, { [GUARD_ERRORS]: failures });
-
-/** Exported so router.ts can check it at runtime for callers that bypass the type (plain JS, `as any`) */
-export const AUTH: unique symbol = Symbol("hnk.auth");
-
-/** Middleware allowed in an endpoint's `auth`. Only defineAuth produces one */
-export type Auth<M extends MiddlewareHandler = MiddlewareHandler> = M & {
-  readonly [AUTH]: true;
-};
-
-/** The Env a middleware was given. `any` when it was not typed (`createMiddleware(async (c, next) => ...)` with no type argument) */
-type EnvOfMiddleware<M extends MiddlewareHandler> =
-  M extends MiddlewareHandler<infer E, any, any, any> ? E : never;
-
-/** True only for `any`. A plain `extends any` matches everything, so this needs the `0 extends 1 & T` shape */
-type IsAny<T> = 0 extends 1 & T ? true : false;
-
-/** Blocks an untyped middleware (Env `any`) from becoming Auth: `c.get(...)` in the handler would be `any` too */
-type RejectAnyEnv<M extends MiddlewareHandler> =
-  IsAny<EnvOfMiddleware<M>> extends true
-    ? {
-        readonly "defineAuth: this middleware's Env is `any`": "give it one, e.g. createMiddleware<{ Variables: { actor: Account } }>(...)";
-      }
-    : unknown;
-
-/**
- * Marks a middleware as allowed in an endpoint's `auth`: `export const requireAuth = defineAuth(guard([Unauthorized], ...))`.
- * A middleware with no Env (`createMiddleware(async (c, next) => ...)` with no type argument) is rejected, so `c.get("actor")`
- * cannot silently become `any`. `guard` itself does not brand: a guard may also sit in `middleware`
- */
-export const defineAuth = <M extends MiddlewareHandler>(
-  middleware: M & RejectAnyEnv<M>,
-): Auth<M> => Object.assign(middleware, { [AUTH]: true as const });
 
 type GuardErrorsOf<M> = M extends readonly unknown[]
   ? GuardErrorsOf<M[number]>

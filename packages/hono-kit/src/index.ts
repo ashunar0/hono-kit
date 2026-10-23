@@ -12,14 +12,7 @@ export type { System } from "./system.js";
 export type { Cursor, Page, PageQuery } from "./page.js";
 
 export type { Register } from "./register.js";
-export {
-  defineAuth,
-  errorResponses,
-  guard,
-  provideDeps,
-  type Auth,
-  type Guard,
-} from "./endpoint.js";
+export { errorResponses, guard, provideDeps, type Guard } from "./endpoint.js";
 export {
   createEndpoint,
   createApp,

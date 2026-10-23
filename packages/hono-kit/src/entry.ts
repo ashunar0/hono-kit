@@ -1,6 +1,5 @@
 import { createMiddleware } from "hono/factory";
 
-import { defineAuth } from "./endpoint.js";
 import type { RegisteredDeps } from "./register.js";
 import { systemActor } from "./system-value.js";
 import type { System } from "./system.js";
@@ -36,9 +35,9 @@ export const runScheduled = (
  * Like allowAnonymous, put it in the endpoint's auth (`auth: allowSystem`); the handler reads `c.get("actor")` (the same name as with requireAuth).
  * Verifying the signature is the handler's job: do not use actor before verifying
  */
-export const allowSystem = defineAuth(
-  createMiddleware<{ Variables: { actor: System } }>(async (c, next) => {
+export const allowSystem = createMiddleware<{ Variables: { actor: System } }>(
+  async (c, next) => {
     c.set("actor", systemActor);
     await next();
-  }),
+  },
 );

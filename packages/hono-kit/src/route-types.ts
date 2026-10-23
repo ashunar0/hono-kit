@@ -14,7 +14,6 @@ import type { H } from "hono/types";
 import type { StatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
-import type { Auth } from "./endpoint.js";
 import type {
   InferInput,
   InferOutput,
@@ -40,8 +39,8 @@ export type ResponseEntry =
 export type RouteConfig = {
   method: "get" | "post" | "put" | "patch" | "delete";
   path: string;
-  /** Who may call it: a guard wrapped in defineAuth (requireAuth, allowAnonymous, ...). It runs first and sets actor */
-  auth: Auth;
+  /** Who may call it: a guard (requireAuth, allowAnonymous, ...). It runs first and sets actor */
+  auth: H;
   /** Other middleware, run after auth */
   middleware?: H | H[];
   request?: {
