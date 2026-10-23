@@ -35,6 +35,12 @@ const valueExportsOf = (file, problems) => {
 };
 
 /**
+ * :param と catch-all の名前を揃えた形。[id] と [itemId]、[...path] と [...rest] は名前が違うだけで
+ * 同じ URL を奪い合うので、同じ形として clash を見つけるために使う（catch-all とただの :param は区別したまま）
+ */
+const shapeOf = (p) => p.split("/").map((s) => (s.endsWith("{.+}") ? "*" : s.startsWith(":") ? ":" : s)).join("/");
+
+/**
  * 静的な段、:param、catch-all の順。/invoices/overdue が /invoices/:id に、/files/:id/meta が /files/:path{.+} に
  * 負けないように（Hono は登録した順に試す）
  */
@@ -95,13 +101,18 @@ export const generate = (src) => {
 
     return found.map((method) => ({ path: routePath, method, module: `route${i}`, file }));
   });
-  // 1 つの URL は 1 つの index.ts。group を外した結果ぶつかったら、どちらが勝つか分からないので止める
+  // 1 つの URL は 1 つの index.ts。group を外した結果ぶつかったら、[id] と [itemId] のように param 名だけ
+  // 違う場合も同じ URL なので、形で比べて止める
   const owners = new Map();
   const clashes = new Set();
   for (const e of endpoints) {
-    const owner = owners.get(e.path);
-    if (!owner) owners.set(e.path, e.file);
-    else if (owner !== e.file) clashes.add(`${e.file}: ${e.path} is also ${owner}. One URL, one index.ts`);
+    const shape = shapeOf(e.path);
+    const owner = owners.get(shape);
+    if (!owner) owners.set(shape, { file: e.file, path: e.path });
+    else if (owner.file !== e.file) {
+      const also = owner.path === e.path ? owner.file : `${owner.path} in ${owner.file}`;
+      clashes.add(`${e.file}: ${e.path} is also ${also}. One URL, one index.ts`);
+    }
   }
   problems.push(...clashes);
   endpoints.sort(byPath);

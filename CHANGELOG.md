@@ -23,6 +23,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 - `postinstall` ran plain `hnk gen`, which rewrites `src/routes.gen.ts` on every `pnpm install`. On CI (`pnpm install` then `pnpm check`), this silently refreshed a stale committed `routes.gen.ts` before `hnk gen --check` ran, so `--check` always passed even on a stale commit. Change `package.json`: `"postinstall": "hnk gen --if-missing"`
 
+### Fixed
+
+- `hnk gen` stops when two directories end up at the same URL but differ only in a param's name (`[id]` vs `[itemId]`, or `[...path]` vs `[...rest]`), instead of registering both and silently losing the second
+
 ## 0.7.0
 
 ### Breaking
