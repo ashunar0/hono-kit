@@ -1,5 +1,6 @@
 /**
- * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`）。
+ * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`、
+ * 無ければ作るだけなら `--if-missing`。postinstall 用（CI の --check を書き直して誤魔化さないように）。--watch / --check とは一緒に使えない）。
  * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
  *   ディレクトリがパス、[id] は :id、[...path] は残り全部（:path{.+}）、(名前) は URL に出ない（route group）。
  *   _ で始まるファイルとディレクトリは読まない
@@ -32,6 +33,12 @@ const valueExportsOf = (file, problems) => {
     .filter((entry) => !entry.isType)
     .flatMap((entry) => (entry.exportName.name ? [entry.exportName.name] : []));
 };
+
+/**
+ * :param と catch-all の名前を揃えた形。[id] と [itemId]、[...path] と [...rest] は名前が違うだけで
+ * 同じ URL を奪い合うので、同じ形として clash を見つけるために使う（catch-all とただの :param は区別したまま）
+ */
+const shapeOf = (p) => p.split("/").map((s) => (s.endsWith("{.+}") ? "*" : s.startsWith(":") ? ":" : s)).join("/");
 
 /**
  * 静的な段、:param、catch-all の順。/invoices/overdue が /invoices/:id に、/files/:id/meta が /files/:path{.+} に
@@ -94,13 +101,18 @@ export const generate = (src) => {
 
     return found.map((method) => ({ path: routePath, method, module: `route${i}`, file }));
   });
-  // 1 つの URL は 1 つの index.ts。group を外した結果ぶつかったら、どちらが勝つか分からないので止める
+  // 1 つの URL は 1 つの index.ts。group を外した結果ぶつかったら、[id] と [itemId] のように param 名だけ
+  // 違う場合も同じ URL なので、形で比べて止める
   const owners = new Map();
   const clashes = new Set();
   for (const e of endpoints) {
-    const owner = owners.get(e.path);
-    if (!owner) owners.set(e.path, e.file);
-    else if (owner !== e.file) clashes.add(`${e.file}: ${e.path} is also ${owner}. One URL, one index.ts`);
+    const shape = shapeOf(e.path);
+    const owner = owners.get(shape);
+    if (!owner) owners.set(shape, { file: e.file, path: e.path });
+    else if (owner.file !== e.file) {
+      const also = owner.path === e.path ? owner.file : `${owner.path} in ${owner.file}`;
+      clashes.add(`${e.file}: ${e.path} is also ${also}. One URL, one index.ts`);
+    }
   }
   problems.push(...clashes);
   endpoints.sort(byPath);
@@ -173,11 +185,20 @@ const run = (src, { check = false } = {}) => {
   return true;
 };
 
-export const gen = ({ watch, check }) => {
+export const gen = ({ watch, check, ifMissing }) => {
   const src = "src";
+  if (ifMissing && (watch || check)) {
+    console.error("✗ --if-missing cannot be combined with --watch or --check");
+    process.exit(1);
+  }
   if (!fs.existsSync(path.join(src, "routes"))) {
     console.error("✗ Run this at the app root (where src/routes is)");
     process.exit(1);
+  }
+  // postinstall 用。既にあれば書かない（install のたびに routes.gen.ts を書き直して、CI の --check を誤魔化さないように）
+  if (ifMissing && fs.existsSync(path.join(src, "routes.gen.ts"))) {
+    console.log(`✓ ${path.join(src, "routes.gen.ts")} already exists, left as is`);
+    return;
   }
   if (!watch) {
     if (!run(src, { check })) process.exit(1);
