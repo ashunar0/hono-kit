@@ -18,6 +18,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 - Catch-all routes: `src/routes/files/[...path]/index.ts` is `/files/:path{.+}`, one segment or more with slashes. Declare `path` in `request.param`. It must be the last segment, and is registered after the static and `[id]` routes beside it
 
+### Fixed
+
+- `hnk gen` stops when two directories end up at the same URL but differ only in a param's name (`[id]` vs `[itemId]`, or `[...path]` vs `[...rest]`), instead of registering both and silently losing the second
+
 ## 0.7.0
 
 ### Breaking
