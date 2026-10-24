@@ -78,11 +78,32 @@ test("hnk の指摘は全部、読む docs のページを添えていて、そ�
   const hnk = diagnostics.filter((d) => d.code.startsWith("hnk("));
   assert.ok(hnk.length > 0);
   for (const d of hnk) {
-    const page = d.message.match(/More: node_modules\/hono-kit\/docs\/(\S+)$/)?.[1];
+    const page = d.message.match(
+      /More: node_modules\/hono-kit\/docs\/(\S+)$/,
+    )?.[1];
     assert.ok(page, `${d.code} に docs のページが無い: ${d.message}`);
     assert.ok(
       fs.existsSync(path.join(here, "..", "docs", page)),
       `${d.code} が指す docs/${page} が無い`,
     );
   }
+});
+
+test("recommended.json は hnk の全部のルールを有効にしている（ルールを足したら、アプリ側の設定を書き換えずに効く）", async () => {
+  const { default: plugin } = await import("../lint/index.mjs");
+  const recommended = JSON.parse(
+    fs.readFileSync(path.join(here, "..", "lint", "recommended.json"), "utf8"),
+  );
+  const enabled = recommended.overrides
+    .flatMap((o) => Object.keys(o.rules))
+    .concat(Object.keys(recommended.rules))
+    .filter((name) => name.startsWith("hnk/"))
+    .sort();
+
+  assert.deepEqual(
+    enabled,
+    Object.keys(plugin.rules)
+      .map((name) => `hnk/${name}`)
+      .sort(),
+  );
 });

@@ -4,6 +4,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Added
+
+- `hono-kit/lint/recommended.json`: the lint settings of hono-kit's rules (every `hnk/*` rule on `src/**/*.ts`, `import/no-cycle`, `typescript/no-explicit-any`, no `vi.mock`). It ships with the installed version, so a rule added later turns on without editing the app. To use it, replace `.oxlintrc.json` with `{ "extends": ["./node_modules/hono-kit/lint/recommended.json"], "rules": {} }` and keep only your own rules in `rules`. Apps that keep listing rules by hand still work
+
 ### Fixed
 
 - A JSON body that cannot be parsed (`{not json`) answered `400 { code: "INTERNAL" }`, a code no endpoint declares. It is now `400 VALIDATION_ERROR` like any other bad input, with Hono's message (`Malformed JSON in request body`). Nothing to change in apps

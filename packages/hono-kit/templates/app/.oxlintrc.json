@@ -1,34 +1,5 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["import", "typescript", "vitest"],
-  "jsPlugins": ["hono-kit/lint"],
-  "rules": {
-    "import/no-cycle": "error",
-    "typescript/no-explicit-any": "error",
-    "vitest/no-restricted-vi-methods": [
-      "error",
-      {
-        "mock": "Do not replace modules. Pass a stand-in through deps (buildApp(makeDeps), appAs(account)) or use the real local D1",
-        "doMock": "Do not replace modules. Pass a stand-in through deps (buildApp(makeDeps), appAs(account)) or use the real local D1"
-      }
-    ]
-  },
-  "overrides": [
-    {
-      "files": ["src/**/*.ts"],
-      "rules": {
-        "hnk/layer-imports": "error",
-        "hnk/no-foreign-table-reads": "error",
-        "hnk/no-clock-outside-app-entry": "error",
-        "hnk/route-exports-endpoints": "error",
-        "hnk/route-replies-through-reply": "error",
-        "hnk/route-responds-200": "error",
-        "hnk/route-writes-once": "error",
-        "hnk/route-no-domain-failures": "error",
-        "hnk/no-new-hono": "error",
-        "hnk/no-module-scope-state": "error",
-        "hnk/no-id-cast": "error"
-      }
-    }
-  ]
+  "extends": ["./node_modules/hono-kit/lint/recommended.json"],
+  "rules": {}
 }
