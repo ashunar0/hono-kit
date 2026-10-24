@@ -6,8 +6,8 @@ declare const id: string;
 export const POST = createEndpoint(
   { auth: allowSystem, responses: {} },
   async (_c, _reply, { payments, invoices }) => {
-    await payments.receive(id);
-    await invoices.markPaid(id);
+    await payments.write.receive(id);
+    await invoices.write.markPaid(id);
     throw new Error("fixture");
   },
 );

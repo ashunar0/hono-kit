@@ -10,11 +10,11 @@ import { SignatureInvalid } from "./_errors";
 export const POST = createEndpoint(
   { auth: requireAuth, responses: {} },
   async (_c, reply, { f1 }) => {
-    const profile = await f1.get();
+    const profile = await f1.read.get();
     if (profile === null) return reply.failure(ProfileRequired.code);
     if (profile === undefined) throw raise(ProfileRequired);
 
-    const result = await f1.create();
+    const result = await f1.write.create();
     if (!result.ok) return reply.failure(result.error);
     if (result.value === null) return reply.failure(NotFound.code);
 

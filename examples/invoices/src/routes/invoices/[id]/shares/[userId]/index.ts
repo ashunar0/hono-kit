@@ -26,7 +26,7 @@ export const DELETE = createEndpoint(
     const actor = c.get("actor");
     const { id, userId } = c.req.valid("param");
 
-    const result = await invoices.unshare(actor, id, userId);
+    const result = await invoices.write.unshare(actor, id, userId);
     if (!result.ok) return reply.failure(result.error);
 
     return reply(200, { ok: true });

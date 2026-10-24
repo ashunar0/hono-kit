@@ -13,14 +13,14 @@ async (c, reply, { customers, products, invoices, invoicesQueries }) => {
   const now = c.get("now");
 
   // Entry check: the customer in the URL exists (404 here, not in a service)
-  const customer = await customers.get(actor, customerId);
+  const customer = await customers.read.get(actor, customerId);
   if (!customer.ok) return reply.failure(customer.error);
 
   // Materials for the decision. Not filtered by organization: the writing service checks that
-  const items = await products.pick(input.productIds.map(productId));
+  const items = await products.read.pick(input.productIds.map(productId));
 
   // One write, through the one service that owns the rule
-  const result = await invoices.create(
+  const result = await invoices.write.create(
     actor,
     { customer: customer.value, items },
     input,
@@ -45,14 +45,14 @@ export type Billed = {
 
 ## Reading
 
-- A handler may take as many services from deps as it needs (`{ customers, products, invoices }`). It never imports a service or repo
+- A handler may take as many services from deps as it needs (`{ customers, products, invoices }`) and read through their `read` side as much as it likes. It never imports a service or repo
 - A GET reads through its resource's queries instead ([layout.md](layout.md#reads-and-writes))
 - A thing named in the URL that does not exist is a 404 returned in the handler, before calling the writing service. Write it out in each handler; do not hide it in middleware
 - If the other thing is not visible to the actor, treat it as absent: `NOT_FOUND`
 
 ## Writing from a user's request (HTTP)
 
-There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails. `hnk/route-writes-once` stops a second write call; it tells reads by name, so a service's reads start with `get` or `list` (`getCopiesTaken`, `listOverdue`).
+There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails. `hnk/route-writes-once` stops a second write call: it counts the calls through a service's `write` (`invoices.write.create(...)`); `.read.` and queries are not counted, whatever their names.
 
 - The handler passes what it read as values. The writing service **checks that they belong together** before deciding, because rules that must hold from every entry point live in the service:
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
@@ -62,8 +62,8 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 
   ```ts
   // src/routes/articles/index.ts
-  const profile = await profiles.get(actor); // a read: null when there is none
-  const result = await articles.create(actor, profile, input, now);
+  const profile = await profiles.read.get(actor); // a read: null when there is none
+  const result = await articles.write.create(actor, profile, input, now);
   if (!result.ok) return reply.failure(result.error);
 
   // src/domains/articles/service.ts (ProfileRequired is in domains/articles/model)
@@ -94,9 +94,9 @@ A failure midway is retried, so the entry point **may write to several domains o
 
 ```ts
 // routes/webhooks/stripe/index.ts (sketch): the payment is recorded, then the invoice is marked paid
-const recorded = await payments.record(actor, event, now); // unique by event id
+const recorded = await payments.write.record(actor, event, now); // unique by event id
 if (!recorded.ok) return reply.failure(recorded.error);
-await invoices.markPaid(actor, recorded.value.invoiceId, now); // only from "sent"; a retry finds it paid and does nothing
+await invoices.write.markPaid(actor, recorded.value.invoiceId, now); // only from "sent"; a retry finds it paid and does nothing
 ```
 
 ## IDs and values from other domains
@@ -168,7 +168,7 @@ Reach is what you can see, not what you may change. When some of what you see is
 ## Things that hang under a parent (comments, ...)
 
 - The resource nests under the parent's: `src/routes/issues/[issueId]/comments/index.ts` (`/issues/:issueId/comments`) and `…/comments/[id]/index.ts`. `request.param` lists the parent's param too (`{ issueId, id }`)
-- Whether the parent is visible: a GET asks the parent resource's queries (`issuesQueries.get(actor, issueId)`), a write asks the parent's service (`issues.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
+- Whether the parent is visible: a GET asks the parent resource's queries (`issuesQueries.get(actor, issueId)`), a write asks the parent's service (`issues.read.get(actor, issueId)`). If not, `NOT_FOUND`, returned in the handler
 - The child list is read by the child resource's queries, through the child's window, filtered by the parent ID (`commentsWithin(db)` with `where(eq(comments.issueId, issueId))`)
 - The child repo keeps only the writes and the reads a rule needs. It filters by **parent ID**, not by reach: `findOf(parentId, id)` instead of `find(reach, id)`
 - When the parent is deleted and its children go with it, give the child's foreign key `onDelete: "cascade"` (`references(() => issuesTable.id, { onDelete: "cascade" })`). The child domain declares it on its own table, so the parent's repo never writes the child's table. If a child must outlive its parent, pick another value and write why next to it

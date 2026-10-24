@@ -9,7 +9,7 @@ import { reportsQueries } from "#src/routes/reports/monthly/_queries";
 import { systemActor } from "hono-kit/testing";
 import { admin, admin2, alice, carol, db, insertInvoices, invoice, invoicesRepo } from "./fixtures";
 
-const service = () => invoicesService(invoicesRepo());
+const service = () => invoicesService({ repo: invoicesRepo() });
 
 const now = new Date("2026-01-15T00:00:00Z");
 
@@ -30,11 +30,11 @@ it("admin が触れるのは自分の組織の請求書だけ。他の組織の�
   expect(page.items.map((i) => i.id)).toEqual(["t1-a"]);
 
   expect(await queries.get(admin, invoiceId("t1-c"))).toBeNull();
-  expect(await invoices.send(admin, invoiceId("t1-c"), now)).toEqual({
+  expect(await invoices.write.send(admin, invoiceId("t1-c"), now)).toEqual({
     ok: false,
     error: "NOT_FOUND",
   });
-  expect(await invoices.remove(admin, invoiceId("t1-c"))).toEqual({
+  expect(await invoices.write.remove(admin, invoiceId("t1-c"))).toEqual({
     ok: false,
     error: "NOT_FOUND",
   });
@@ -50,7 +50,7 @@ it("システムは全ての組織の請求書に触れる", async () => {
 });
 
 it("作った請求書は作った人の組織のものになる", async () => {
-  const id = await service().create(
+  const id = await service().write.create(
     carol,
     {
       title: "t",
@@ -62,7 +62,7 @@ it("作った請求書は作った人の組織のものになる", async () => {
     now,
   );
 
-  const found = await invoicesRepo().find(reachOf(carol), id);
+  const found = await invoicesRepo().read.find(reachOf(carol), id);
   expect(found?.invoice.orgId).toBe("org2");
 });
 

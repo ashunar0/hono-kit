@@ -4,6 +4,7 @@
  */
 import { and, eq, getTableColumns, inArray, lt, or, sql, type SQL } from "drizzle-orm";
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { createRepository } from "hono-kit/service";
 import type { ReadDb, Scope } from "#src/db/index";
 import { orgId, accountId, type Actor } from "#src/domains/accounts/model";
 import {
@@ -118,13 +119,16 @@ export const invoicesWithin = (db: ReadDb, actor: Actor) =>
     .where(within(reachOf(actor)))
     .as("invoices_within");
 
-export function invoicesRepository(
-  scope: Scope<typeof invoicesTable>,
-  shares: Scope<typeof invoiceSharesTable>,
-): InvoicesRepository {
-  return {
+/** 書いてよい table。read の側は、読みだけの db しか受け取らない */
+type InvoicesScopes = {
+  scope: Scope<typeof invoicesTable>;
+  shares: Scope<typeof invoiceSharesTable>;
+};
+
+export const invoicesRepository = createRepository({
+  read: ({ scope }): InvoicesRepository["read"] => ({
     async listOverdue(reach, now) {
-      const rows = await scope.reads
+      const rows = await scope
         .select()
         .from(invoicesTable)
         .where(
@@ -139,7 +143,7 @@ export function invoicesRepository(
     },
 
     async find(reach, id) {
-      const [row] = await scope.reads
+      const [row] = await scope
         .select({ invoice: getTableColumns(invoicesTable), access: accessIn(reach) })
         .from(invoicesTable)
         .where(and(eq(invoicesTable.id, id), within(reach)))
@@ -147,7 +151,9 @@ export function invoicesRepository(
 
       return row ? { invoice: toInvoice(row.invoice), access: row.access } : null;
     },
+  }),
 
+  write: ({ scope, shares }: InvoicesScopes): InvoicesRepository["write"] => ({
     async insert(invoice) {
       const [row] = await scope.insert(invoice).returning();
       if (!row) throw new Error(`invoice ${invoice.id} was not returned after insert`);
@@ -194,5 +200,5 @@ export function invoicesRepository(
           and(eq(invoiceSharesTable.invoiceId, invoiceId), eq(invoiceSharesTable.userId, userId)),
         );
     },
-  };
-}
+  }),
+});

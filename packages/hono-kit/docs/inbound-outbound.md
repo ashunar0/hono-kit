@@ -18,7 +18,7 @@
 ## mailer / gateway
 
 - File name: `mailer.<tech>.ts` (`mailer.dummy.ts` before the provider is decided). It may import only `hono-kit/result`, model types and service types
-- service declares the shape it sends (`send(to, subject, body): Promise<Result<void, "MAIL_FAILED">>`), and `deps.ts` wires it. The failure is a `Failure` with `kind: "upstream"` (502)
+- service declares the shape it sends (`send(to, subject, body): Promise<Result<void, "MAIL_FAILED">>`) and takes it as a port (`{ repo, mailer }`), and `deps.ts` wires it. A mailer or a queue only writes, so it has no `read` side and is not passed to the service's `read`. A gateway that also reads (verifying a webhook signature, fetching a status) is split like a repository: `{ read: { verifyEvent }, write: { createCheckout } }` The failure is a `Failure` with `kind: "upstream"` (502)
 - A side effect outside goes "record first → call outside → settle with the result", so what happened can be traced afterwards. When the outside takes an idempotency key, pass one (the payment ID to Stripe, a key with the date for a reminder mail). Whether a failure midway may send twice or may miss one is a business decision: write it in a comment in service
 - When a dummy "collects what was sent", **it cannot keep an array at module scope** (`no-module-scope-state`). Take the outbox as an argument, like `dummy(outbox: Mail[])`
 

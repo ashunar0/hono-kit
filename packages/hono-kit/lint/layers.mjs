@@ -34,6 +34,8 @@ export const LAYERS = {
     "hono-kit/result": "value",
     "hono-kit/failures": "value",
     "hono-kit/page": "type",
+    // createService。読みと書きを、それぞれが触れるもので分ける
+    "hono-kit/service": "value",
     "hono-kit/system": "type",
     model: "value",
     "foreign:model": "type",
@@ -42,6 +44,8 @@ export const LAYERS = {
   repo: {
     "drizzle-orm": "value",
     "hono-kit/page": "value",
+    // createRepository。読みの側は読みだけの db しか受け取らない
+    "hono-kit/service": "value",
     db: "type",
     // 一意制約の違反がどの列かを見分ける（SQLite の文面を知る場所は hono-kit の 1 か所）
     "hono-kit/sqlite": "value",

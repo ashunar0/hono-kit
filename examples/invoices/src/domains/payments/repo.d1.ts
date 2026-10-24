@@ -3,6 +3,7 @@
  */
 import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { createRepository } from "hono-kit/service";
 import type { ReadDb, Scope } from "#src/db/index";
 import { invoicesTable, invoicesWithin } from "#src/domains/invoices/repo.d1";
 import type { Actor } from "#src/domains/accounts/model";
@@ -65,23 +66,28 @@ export const paymentsWithin = (db: ReadDb, actor: Actor) => {
     .as("payments_within");
 };
 
-export function paymentsRepository(scope: Scope<typeof paymentsTable>): PaymentsRepository {
-  return {
+/** 書いてよい table。read の側は、読みだけの db しか受け取らない */
+type PaymentsScopes = { scope: Scope<typeof paymentsTable> };
+
+export const paymentsRepository = createRepository({
+  read: ({ scope }): PaymentsRepository["read"] => ({
+    async findPending(invoiceId) {
+      const [row] = await scope
+        .select()
+        .from(paymentsTable)
+        .where(and(eq(paymentsTable.invoiceId, invoiceId), eq(paymentsTable.status, "pending")))
+        .limit(1);
+
+      return row ? toPayment(row) : null;
+    },
+  }),
+
+  write: ({ scope }: PaymentsScopes): PaymentsRepository["write"] => ({
     async insertPending(payment) {
       const [row] = await scope
         .insert({ ...payment, status: "pending" })
         .onConflictDoNothing()
         .returning();
-
-      return row ? toPayment(row) : null;
-    },
-
-    async findPending(invoiceId) {
-      const [row] = await scope.reads
-        .select()
-        .from(paymentsTable)
-        .where(and(eq(paymentsTable.invoiceId, invoiceId), eq(paymentsTable.status, "pending")))
-        .limit(1);
 
       return row ? toPayment(row) : null;
     },
@@ -104,5 +110,5 @@ export function paymentsRepository(scope: Scope<typeof paymentsTable>): Payments
 
       return row ? toPayment(row) : null;
     },
-  };
-}
+  }),
+});

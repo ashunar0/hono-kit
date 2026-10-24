@@ -28,6 +28,7 @@
     "./openapi": "./src/openapi.ts",
     "./page": "./src/page.ts",
     "./sqlite": "./src/sqlite.ts",
+    "./service": "./src/service.ts",
     "./system": "./src/system.ts",
     "./testing": "./src/testing.ts",
     "./worker": "./src/worker.ts",
@@ -59,6 +60,10 @@
       "./sqlite": {
         "types": "./dist/sqlite.d.ts",
         "default": "./dist/sqlite.js"
+      },
+      "./service": {
+        "types": "./dist/service.d.ts",
+        "default": "./dist/service.js"
       },
       "./system": {
         "types": "./dist/system.d.ts",

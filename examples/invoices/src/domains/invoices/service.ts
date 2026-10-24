@@ -2,6 +2,7 @@
  * 請求書の手順（How）。domain のモノを使って、何をどの順でやるか
  */
 import { err, ok, type Result } from "hono-kit/result";
+import { createService } from "hono-kit/service";
 import { Forbidden, NotFound } from "hono-kit/failures";
 import type { System } from "hono-kit/system";
 import type { Actor, Account } from "#src/domains/accounts/model";
@@ -27,41 +28,49 @@ import {
 
 /**
  * 手順が必要とする保存の形。使う側のここで宣言し、repo.d1.ts がそれを満たす。
- * service は保存の実装を知らないので、テストでは同じ形の偽物を渡せる
+ * service は保存の実装を知らないので、テストでは同じ形の偽物を渡せる。
+ * read は読むだけ、write は書く。service の read は、この read の側しか受け取らない
  */
 export type InvoicesRepository = {
-  /** 範囲の中の、送付済みで期限を過ぎたもの */
-  listOverdue(reach: InvoiceReach, now: Date): Promise<Invoice[]>;
-  /** 範囲の中に無ければ null。あれば、操作する人がどの関係で触れているか（access）と一緒に返す */
-  find(
-    reach: InvoiceReach,
-    id: InvoiceId,
-  ): Promise<{ invoice: Invoice; access: InvoiceAccess } | null>;
-  insert(invoice: Invoice): Promise<Invoice>;
-  /**
-   * 範囲の中のものだけを書き換える。無ければ null。
-   * from を渡すと、その状態のときだけ書き換える（確認と書き込みの間に状態が変わっても壊れない）
-   */
-  update(
-    reach: InvoiceReach,
-    id: InvoiceId,
-    changes: InvoiceChanges,
-    from?: InvoiceStatus,
-  ): Promise<Invoice | null>;
-  /** 範囲の中のものだけを消す。消せたら true */
-  delete(reach: InvoiceReach, id: InvoiceId): Promise<boolean>;
-  /** 共有する。同じ相手にもう共有していれば、権限を置き換える */
-  upsertShare(share: { invoiceId: InvoiceId; userId: string; level: ShareLevel }): Promise<void>;
-  /** 共有をやめる。無ければ何もしない */
-  deleteShare(invoiceId: InvoiceId, userId: string): Promise<void>;
+  read: {
+    /** 範囲の中の、送付済みで期限を過ぎたもの */
+    listOverdue(reach: InvoiceReach, now: Date): Promise<Invoice[]>;
+    /** 範囲の中に無ければ null。あれば、操作する人がどの関係で触れているか（access）と一緒に返す */
+    find(
+      reach: InvoiceReach,
+      id: InvoiceId,
+    ): Promise<{ invoice: Invoice; access: InvoiceAccess } | null>;
+  };
+  write: {
+    insert(invoice: Invoice): Promise<Invoice>;
+    /**
+     * 範囲の中のものだけを書き換える。無ければ null。
+     * from を渡すと、その状態のときだけ書き換える（確認と書き込みの間に状態が変わっても壊れない）
+     */
+    update(
+      reach: InvoiceReach,
+      id: InvoiceId,
+      changes: InvoiceChanges,
+      from?: InvoiceStatus,
+    ): Promise<Invoice | null>;
+    /** 範囲の中のものだけを消す。消せたら true */
+    delete(reach: InvoiceReach, id: InvoiceId): Promise<boolean>;
+    /** 共有する。同じ相手にもう共有していれば、権限を置き換える */
+    upsertShare(share: { invoiceId: InvoiceId; userId: string; level: ShareLevel }): Promise<void>;
+    /** 共有をやめる。無ければ何もしない */
+    deleteShare(invoiceId: InvoiceId, userId: string): Promise<void>;
+  };
 };
+
+/** 手順が使うもの。deps.ts が渡す。read はこのうち read の側だけを受け取る */
+export type InvoicesPorts = { repo: InvoicesRepository };
 
 /**
  * 引数の順番は、誰として（actor）→ 何を → どうする → いつ（now）。
  * 時計は読まない。時刻が要る手順は、入口が決めた now を受け取る
  */
-export function invoicesService(repo: InvoicesRepository) {
-  return {
+export const invoicesService = createService({
+  read: ({ repo }) => ({
     /** 期限切れのもの。範囲の中だけ */
     async listOverdue(actor: Actor, now: Date): Promise<Invoice[]> {
       return repo.listOverdue(reachOf(actor), now);
@@ -80,9 +89,23 @@ export function invoicesService(repo: InvoicesRepository) {
       return ok(found.invoice);
     },
 
+    /** 支払いに進める請求書。範囲の中で、送付済みのものだけ */
+    async getPayable(
+      actor: Actor,
+      id: InvoiceId,
+    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_PAYABLE">> {
+      const found = await repo.find(reachOf(actor), id);
+      if (found === null) return err(NotFound.code);
+      if (!isPayable(found.invoice)) return err("NOT_PAYABLE");
+
+      return ok(found.invoice);
+    },
+  }),
+
+  write: ({ repo }: InvoicesPorts) => ({
     /** 作成。作った人が所有者になる */
     async create(actor: Account, input: InvoiceInput, now: Date): Promise<InvoiceId> {
-      const created = await repo.insert({
+      const created = await repo.write.insert({
         id: newInvoiceId(),
         orgId: actor.orgId,
         ownerId: actor.id,
@@ -112,11 +135,11 @@ export function invoicesService(repo: InvoicesRepository) {
     ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
       const reach = reachOf(actor);
 
-      const found = await repo.find(reach, id);
+      const found = await repo.read.find(reach, id);
       if (found === null) return err(NotFound.code);
       if (!canEdit(found.access)) return err(Forbidden.code);
 
-      const updated = await repo.update(reach, id, {
+      const updated = await repo.write.update(reach, id, {
         title: input.title,
         body: input.body,
         amount: input.amount,
@@ -127,18 +150,6 @@ export function invoicesService(repo: InvoicesRepository) {
       if (updated === null) return err(NotFound.code);
 
       return ok(undefined);
-    },
-
-    /** 支払いに進める請求書。範囲の中で、送付済みのものだけ */
-    async getPayable(
-      actor: Actor,
-      id: InvoiceId,
-    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_PAYABLE">> {
-      const found = await repo.find(reachOf(actor), id);
-      if (found === null) return err(NotFound.code);
-      if (!isPayable(found.invoice)) return err("NOT_PAYABLE");
-
-      return ok(found.invoice);
     },
 
     /**
@@ -153,11 +164,11 @@ export function invoicesService(repo: InvoicesRepository) {
     ): Promise<Result<void, typeof NotFound.code | "NOT_PAYABLE">> {
       const all = reachOf(system);
 
-      const paid = await repo.update(all, id, { status: "paid", updatedAt: now }, "sent");
+      const paid = await repo.write.update(all, id, { status: "paid", updatedAt: now }, "sent");
       if (paid !== null) return ok(undefined);
 
       // 書き換わらなかった。無いのか、もう支払い済みなのか、送付前なのか
-      const found = await repo.find(all, id);
+      const found = await repo.read.find(all, id);
       if (found === null) return err(NotFound.code);
       if (found.invoice.status === "paid") return ok(undefined);
 
@@ -172,12 +183,12 @@ export function invoicesService(repo: InvoicesRepository) {
     ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code | typeof NotDraft.code>> {
       const reach = reachOf(actor);
 
-      const found = await repo.find(reach, id);
+      const found = await repo.read.find(reach, id);
       if (found === null) return err(NotFound.code);
       if (!canSend(actor)) return err(Forbidden.code);
       if (!isSendable(found.invoice)) return err(NotDraft.code);
 
-      const sent = await repo.update(reach, id, { status: "sent", updatedAt: now }, "draft");
+      const sent = await repo.write.update(reach, id, { status: "sent", updatedAt: now }, "draft");
       // 読んだ後に、別の誰かが先に状態を変えた
       if (sent === null) return err(NotDraft.code);
 
@@ -191,11 +202,11 @@ export function invoicesService(repo: InvoicesRepository) {
     ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
       const reach = reachOf(actor);
 
-      const found = await repo.find(reach, id);
+      const found = await repo.read.find(reach, id);
       if (found === null) return err(NotFound.code);
       if (!canManage(found.access)) return err(Forbidden.code);
 
-      const deleted = await repo.delete(reach, id);
+      const deleted = await repo.write.delete(reach, id);
       if (!deleted) return err(NotFound.code);
 
       return ok(undefined);
@@ -212,11 +223,11 @@ export function invoicesService(repo: InvoicesRepository) {
       userId: string,
       level: ShareLevel,
     ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
-      const found = await repo.find(reachOf(actor), id);
+      const found = await repo.read.find(reachOf(actor), id);
       if (found === null) return err(NotFound.code);
       if (!canManage(found.access)) return err(Forbidden.code);
 
-      await repo.upsertShare({ invoiceId: id, userId, level });
+      await repo.write.upsertShare({ invoiceId: id, userId, level });
 
       return ok(undefined);
     },
@@ -227,15 +238,15 @@ export function invoicesService(repo: InvoicesRepository) {
       id: InvoiceId,
       userId: string,
     ): Promise<Result<void, typeof NotFound.code | typeof Forbidden.code>> {
-      const found = await repo.find(reachOf(actor), id);
+      const found = await repo.read.find(reachOf(actor), id);
       if (found === null) return err(NotFound.code);
       if (!canManage(found.access)) return err(Forbidden.code);
 
-      await repo.deleteShare(id, userId);
+      await repo.write.deleteShare(id, userId);
 
       return ok(undefined);
     },
-  };
-}
+  }),
+});
 
 export type InvoicesService = ReturnType<typeof invoicesService>;

@@ -63,18 +63,24 @@ it("webhook は allowSystem で、署名を確かめた後、支払いと請求�
     () =>
       ({
         payments: {
-          async verifyEvent() {
-            return { ok: true, value: { providerRef: "cs_x", kind: "succeeded" } };
+          read: {
+            async verifyEvent() {
+              return { ok: true, value: { providerRef: "cs_x", kind: "succeeded" } };
+            },
           },
-          async receive(system: unknown) {
-            received.push(["payments", system]);
-            return { ok: true, value: { invoiceId: "inv_x", status: "succeeded" } };
+          write: {
+            async receive(system: unknown) {
+              received.push(["payments", system]);
+              return { ok: true, value: { invoiceId: "inv_x", status: "succeeded" } };
+            },
           },
         },
         invoices: {
-          async markPaid(system: unknown) {
-            received.push(["invoices", system]);
-            return { ok: true, value: undefined };
+          write: {
+            async markPaid(system: unknown) {
+              received.push(["invoices", system]);
+              return { ok: true, value: undefined };
+            },
           },
         },
       }) as never,

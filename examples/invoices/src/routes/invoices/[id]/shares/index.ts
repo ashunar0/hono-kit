@@ -33,7 +33,7 @@ export const PUT = createEndpoint(
     const { id } = c.req.valid("param");
     const { userId, level } = c.req.valid("json");
 
-    const result = await invoices.share(actor, id, userId, level);
+    const result = await invoices.write.share(actor, id, userId, level);
     if (!result.ok) return reply.failure(result.error);
 
     return reply(200, { ok: true });

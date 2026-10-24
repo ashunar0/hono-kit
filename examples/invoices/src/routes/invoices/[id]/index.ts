@@ -54,7 +54,7 @@ export const PUT = createEndpoint(
     const input = c.req.valid("json");
     const now = c.get("now");
 
-    const result = await invoices.update(actor, id, input, now);
+    const result = await invoices.write.update(actor, id, input, now);
     if (!result.ok) return reply.failure(result.error);
 
     const invoice = await invoicesQueries.get(actor, id);
@@ -78,7 +78,7 @@ export const DELETE = createEndpoint(
     const actor = c.get("actor");
     const { id } = c.req.valid("param");
 
-    const result = await invoices.remove(actor, id);
+    const result = await invoices.write.remove(actor, id);
     if (!result.ok) return reply.failure(result.error);
 
     return reply(200, { ok: true });

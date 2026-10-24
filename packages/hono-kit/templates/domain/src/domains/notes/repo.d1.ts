@@ -4,6 +4,7 @@
  */
 import { eq, sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { createRepository } from "hono-kit/service";
 import type { ReadDb, Scope } from "#src/db/index";
 import { noteId, type Note } from "./model";
 import type { NotesRepository } from "./service";
@@ -33,23 +34,24 @@ const toNote = (row: NoteRow): Note => ({
  */
 export const notesWithin = (db: ReadDb) => db.select().from(notesTable).as("__snake___within");
 
-export function notesRepository(scope: Scope<typeof notesTable>): NotesRepository {
-  return {
+/** The tables it may write. The read side receives only the read-only db */
+type NotesScopes = { scope: Scope<typeof notesTable> };
+
+export const notesRepository = createRepository({
+  read: ({ scope }): NotesRepository["read"] => ({
     async find(id) {
-      const [row] = await scope.reads
-        .select()
-        .from(notesTable)
-        .where(eq(notesTable.id, id))
-        .limit(1);
+      const [row] = await scope.select().from(notesTable).where(eq(notesTable.id, id)).limit(1);
 
       return row ? toNote(row) : null;
     },
+  }),
 
+  write: ({ scope }: NotesScopes): NotesRepository["write"] => ({
     async insert(note) {
       const [row] = await scope.insert(note).returning();
       if (!row) throw new Error(`note ${note.id} was not returned after insert`);
 
       return toNote(row);
     },
-  };
-}
+  }),
+});

@@ -2,6 +2,7 @@
  * 督促の手順（How）。期限切れを探して積む手順と、1 件ずつ送る手順の 2 つ
  */
 import { err, ok, type Result } from "hono-kit/result";
+import { createService } from "hono-kit/service";
 import {
   dayOf,
   reminderKey,
@@ -13,12 +14,16 @@ import {
 
 /** 手順が必要とする保存の形。repo.d1.ts が満たす */
 export type RemindersRepository = {
-  /** 送る前に押さえる。もう押さえてあれば何もしない。今の状態を返す */
-  claim(reminder: Reminder): Promise<ReminderStatus>;
-  /** 送れたことを確定する */
-  markSent(reminder: Reminder): Promise<void>;
-  /** 送るべきでなかった（積んだ後に支払われた、消された）ことを残す */
-  markSkipped(reminder: Reminder): Promise<void>;
+  /** ルールのために読むものは無い */
+  read: Record<string, never>;
+  write: {
+    /** 送る前に押さえる。もう押さえてあれば何もしない。今の状態を返す */
+    claim(reminder: Reminder): Promise<ReminderStatus>;
+    /** 送れたことを確定する */
+    markSent(reminder: Reminder): Promise<void>;
+    /** 送るべきでなかった（積んだ後に支払われた、消された）ことを残す */
+    markSkipped(reminder: Reminder): Promise<void>;
+  };
 };
 
 /** 手順が必要とするメールの形。mailer.resend.ts が満たす */
@@ -48,9 +53,17 @@ export type RemindableInvoice = {
   dueAt: Date;
 };
 
+/**
+ * 手順が使うもの。deps.ts が渡す。read はこのうち read の側だけを受け取る
+ * （mailer と jobs は書くだけなので、read には渡らない）
+ */
+export type RemindersPorts = { repo: RemindersRepository; mailer: Mailer; jobs: ReminderJobs };
+
 /** 引数の順番は、誰として（actor）→ 何を → いつ（now）。時計は読まない */
-export function remindersService(repo: RemindersRepository, mailer: Mailer, jobs: ReminderJobs) {
-  return {
+export const remindersService = createService({
+  read: () => ({}),
+
+  write: ({ repo, mailer, jobs }: RemindersPorts) => ({
     /** 期限切れの請求書（入口が invoices から読んだもの）の督促を、1 件ずつキューに積む */
     async enqueueOverdue(overdue: { id: string }[]): Promise<number> {
       await jobs.enqueue(overdue.map((invoice) => ({ invoiceId: invoice.id })));
@@ -75,11 +88,11 @@ export function remindersService(repo: RemindersRepository, mailer: Mailer, jobs
       now: Date,
     ): Promise<Result<"SENT" | "SKIPPED", "MAIL_FAILED">> {
       const reminder = { invoiceId: job.invoiceId, sentOn: dayOf(now) };
-      if ((await repo.claim(reminder)) !== "claimed") return ok("SKIPPED");
+      if ((await repo.write.claim(reminder)) !== "claimed") return ok("SKIPPED");
 
       // 積んだ後に支払われたり消されたりしたものは送らない
       if (invoice === null) {
-        await repo.markSkipped(reminder);
+        await repo.write.markSkipped(reminder);
         return ok("SKIPPED");
       }
 
@@ -90,11 +103,11 @@ export function remindersService(repo: RemindersRepository, mailer: Mailer, jobs
       });
       if (!sent.ok) return err(sent.error);
 
-      await repo.markSent(reminder);
+      await repo.write.markSent(reminder);
 
       return ok("SENT");
     },
-  };
-}
+  }),
+});
 
 export type RemindersService = ReturnType<typeof remindersService>;

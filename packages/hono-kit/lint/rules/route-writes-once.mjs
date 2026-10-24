@@ -7,15 +7,6 @@ import {
 } from "../ast.mjs";
 import { fileOf } from "../project.mjs";
 
-/**
- * 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす。
- * get・list で始まっても、Or か And でつないだもの（getOrCreate・getAndUpdate）は「なければ作る」などの書き込み。
- * Or・And の次が大文字のときだけ（getOrderById・getAndroidApps は読みのまま）
- */
-const READ_NAME = /^(get|list)(?![A-Za-z]*(Or|And)[A-Z])([A-Z]|$)/;
-/** queries は ReadDb しか持たないので、名前に関係なく読み */
-const QUERIES_NAME = /Queries$/;
-
 const propertyOf = (config, name) =>
   config.properties.find(
     (p) =>
@@ -46,14 +37,17 @@ const depsOf = (handler) => {
   return null;
 };
 
-/** `books.update(...)` / `deps.books.update(...)` なら service の名前と method を返す */
-const serviceCallOf = (node, deps) => {
-  const callee = node.callee;
-  if (callee?.type !== "MemberExpression" || callee.computed) return null;
-  const method = callee.property?.name;
-  const target = callee.object;
+/** `books.write` / `deps.books.write` なら service の名前を返す */
+const writeSideOf = (node, deps) => {
+  if (
+    node?.type !== "MemberExpression" ||
+    node.computed ||
+    node.property?.name !== "write"
+  )
+    return null;
+  const target = node.object;
   if (target?.type === "Identifier" && deps.names.has(target.name))
-    return { service: target.name, method };
+    return target.name;
   if (
     deps.object &&
     target?.type === "MemberExpression" &&
@@ -61,9 +55,31 @@ const serviceCallOf = (node, deps) => {
     target.object?.type === "Identifier" &&
     target.object.name === deps.object
   )
-    return { service: target.property?.name, method };
+    return target.property?.name ?? null;
   return null;
 };
+
+/** `books.write.update(...)` / `deps.books.write.update(...)` なら、書き込みの名前と、write の側の node を返す */
+const writeCallOf = (node, deps) => {
+  const callee = node.callee;
+  if (callee?.type !== "MemberExpression" || callee.computed) return null;
+  const service = writeSideOf(callee.object, deps);
+  if (service === null) return null;
+  return {
+    side: callee.object,
+    name: `${service}.write.${callee.property?.name}`,
+  };
+};
+
+/** 分解の型の中に write を取り出すものがあるか。`{ write }` / `{ books: { write } }` */
+const takesWriteOut = (pattern) =>
+  pattern?.type === "ObjectPattern" &&
+  pattern.properties.some(
+    (p) =>
+      p.type === "Property" &&
+      ((p.key?.type === "Identifier" && p.key.name === "write") ||
+        takesWriteOut(p.value)),
+  );
 
 /** 何回も走る子のキー。ループの本体や条件、要素ごとの callback（ids.map(...) の引数）。for の init や of の右側は 1 回 */
 const REPEATED = {
@@ -140,9 +156,10 @@ const addDestructured = (body, deps) => {
  * 利用者の HTTP の書き込みは、1 つの service の 1 回の呼び出しだけ。
  * 再送が無いので、2 回書くと 2 回目で落ちたときに 1 回目だけ残る。
  *
- * 型は見られないので、名前で読みと書きを分ける：get・list で始まるものと queries は読み、
- * それ以外の service の呼び出しは書き込み。再送のある入口（allowSystem の webhook）は
- * 何回走っても同じ結果になる書き込みなら順に書いてよいので、見ない
+ * 読みと書きは、名前ではなく置き場所で分かれている：service は createService で read と write に分かれ、
+ * read は書く手段を受け取らない（型で止まる）。なので数えるのは `<service>.write.<method>(...)` の呼び出しだけ。
+ * queries も read も数えない。write をその場で呼ばずに取り出す（`const { write } = books`）と数えられないので、それも止める。
+ * 再送のある入口（allowSystem の webhook）は、何回走っても同じ結果になる書き込みなら順に書いてよいので、見ない
  */
 export default {
   create(context) {
@@ -163,17 +180,37 @@ export default {
         addDestructured(handler.body, deps);
 
         const writes = [];
+        const sides = [];
         walk(handler.body, (n, inLoop) => {
+          const side = writeSideOf(n, deps);
+          if (side !== null) sides.push(n);
+          if (n.type === "VariableDeclarator" && takesWriteOut(n.id)) {
+            const init = unwrap(n.init);
+            if (
+              init?.type === "Identifier" &&
+              (deps.names.has(init.name) || init.name === deps.object)
+            )
+              sides.push(n);
+          }
           if (n.type !== "CallExpression") return;
-          const call = serviceCallOf(n, deps);
-          if (!call || QUERIES_NAME.test(call.service)) return;
-          if (READ_NAME.test(call.method)) return;
-          writes.push({
-            node: n,
-            name: `${call.service}.${call.method}`,
-            inLoop,
-          });
+          const call = writeCallOf(n, deps);
+          if (!call) return;
+          writes.push({ node: n, side: call.side, name: call.name, inLoop });
         });
+
+        // write をその場で呼ばずに取り出したもの。取り出した先の呼び出しは数えられない
+        const called = new Set(writes.map((w) => w.side));
+        const param = handler.params?.[2];
+        const escaped = [
+          ...sides.filter((n) => !called.has(n)),
+          ...(takesWriteOut(param) ? [param] : []),
+        ];
+        for (const node of escaped) {
+          report({
+            node,
+            message: `Call a write where it is used, as \`invoices.write.send(...)\`. Taken out (\`const { write } = invoices\`, passed as a value), it cannot be counted, and an HTTP handler writes through one call to one service`,
+          });
+        }
 
         for (const write of writes.filter((w) => w.inLoop)) {
           report({
@@ -185,7 +222,7 @@ export default {
         for (const second of rest.filter((w) => !w.inLoop)) {
           report({
             node: second.node,
-            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads are named get… or list…, and a name that joins with Or / And (getOrCreate) is a write`,
+            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads (\`.read.\` and queries) are not counted`,
           });
         }
       },

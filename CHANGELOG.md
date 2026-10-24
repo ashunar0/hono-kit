@@ -2,6 +2,18 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Breaking
+
+- A service is split into what reads and what writes, by what each part can touch, not by its name. `createService({ read, write })` from the new `hono-kit/service`: `read` receives only the read side of each port, so it cannot write; `write` receives every port. Callers pick a side: `invoices.read.getPayable(...)`, `invoices.write.send(...)`. Rewrite each domain:
+  - `service.ts`: declare the repository as `{ read: { find, ... }; write: { insert, ... } }` and the ports as `type …Ports = { repo: …Repository; mailer: Mailer }`. `export function invoicesService(repo) { return { ... } }` becomes `export const invoicesService = createService({ read: ({ repo }) => ({ ...reads }), write: ({ repo }: InvoicesPorts) => ({ ...writes }) })`; inside `write`, call `repo.read.find(...)` / `repo.write.update(...)`. A mailer or queue only writes, so it is not passed to `read`. A gateway that also reads is split the same way (`{ read: { verifyEvent }, write: { createCheckout } }`)
+  - `repo.d1.ts`: `export const invoicesRepository = createRepository({ read: ({ scope }): InvoicesRepository["read"] => ({ ... }), write: ({ scope }: InvoicesScopes): InvoicesRepository["write"] => ({ ... }) })`. In `read`, `scope` is the read-only db (`scope.select()`); in `write`, read with `scope.read.select()`
+  - `src/db/index.ts`: `scopeTo` returns `read` instead of `reads` (`read: db as ReadDb`)
+  - `deps.ts`: `invoicesService({ repo: invoicesRepository({ scope: scopeTo(db, invoicesTable) }), mailer })`
+  - Call sites (routes, jobs, tests): `invoices.send(...)` → `invoices.write.send(...)`, `invoices.getPayable(...)` → `invoices.read.getPayable(...)`. The type tells you which is which
+- `hnk/route-writes-once` no longer tells reads by name (`get…` / `list…`): it counts calls through `.write.`. A write taken out of its service (`const { write } = invoices`, `const w = invoices.write`, `ids.map(invoices.write.send)`) is now reported, because it cannot be counted
+
 ## 0.8.0
 
 ### Breaking

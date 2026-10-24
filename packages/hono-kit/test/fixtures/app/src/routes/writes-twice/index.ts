@@ -1,5 +1,5 @@
-// expect: hnk(route-writes-once) | but loans.fillFreed writes after books.update
-// expect: hnk(route-writes-once) | but loans.cancel writes after books.remove
+// expect: hnk(route-writes-once) | but loans.write.fillFreed writes after books.write.update
+// expect: hnk(route-writes-once) | but loans.write.cancel writes after books.write.remove
 import { createEndpoint } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
 
@@ -9,9 +9,9 @@ declare const id: string;
 export const PATCH = createEndpoint(
   { auth: requireAuth, responses: {} },
   async (_c, _reply, { books, loans }) => {
-    await books.getStock(id);
-    await books.update(id);
-    await loans.fillFreed(id);
+    await books.read.stock(id);
+    await books.write.update(id);
+    await loans.write.fillFreed(id);
     throw new Error("fixture");
   },
 );
@@ -19,8 +19,8 @@ export const PATCH = createEndpoint(
 export const DELETE = createEndpoint(
   { auth: requireAuth, responses: {} },
   async (_c, _reply, deps) => {
-    await deps.books.remove(id);
-    await deps.loans.cancel(id);
+    await deps.books.write.remove(id);
+    await deps.loans.write.cancel(id);
     throw new Error("fixture");
   },
 );

@@ -30,17 +30,17 @@ export const POST = createEndpoint(
     const signature = c.req.header("Stripe-Signature") ?? "";
     const now = c.get("now");
 
-    const event = await payments.verifyEvent(payload, signature);
+    const event = await payments.read.verifyEvent(payload, signature);
     if (!event.ok) return reply.failure(event.error);
     // 支払いに関係ない通知は、受け取ったことだけ返す
     if (event.value === null) return reply(200, { received: true });
 
     // 利用者のいない入口なので、システムとして渡す（署名を確かめた後に）
-    const payment = await payments.receive(actor, event.value, now);
+    const payment = await payments.write.receive(actor, event.value, now);
     if (!payment.ok) return reply.failure(payment.error);
     if (payment.value.status !== "succeeded") return reply(200, { received: true });
 
-    const paid = await invoices.markPaid(actor, invoiceId(payment.value.invoiceId), now);
+    const paid = await invoices.write.markPaid(actor, invoiceId(payment.value.invoiceId), now);
     if (!paid.ok) return reply.failure(paid.error);
 
     return reply(200, { received: true });

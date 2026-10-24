@@ -37,7 +37,7 @@ const maxBoundValues = 100;
  * The repository never gets db, so writing to another domain's table cannot be written
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({
-  reads: db as ReadDb,
+  read: db as ReadDb,
   insert: (values: InferInsertModel<T>) => db.insert(table).values(values),
   /**
    * Inserts many rows, as as many statements as D1 needs (it allows 100 bound values in a statement).
