@@ -3,6 +3,7 @@ import { systemActor } from "hono-kit/testing";
 import { expect, it } from "vitest";
 import { makeDeps } from "#src/deps";
 import { buildApp } from "#src/index";
+import { alice, appAs } from "./fixtures";
 
 const app = buildApp(makeDeps);
 
@@ -87,4 +88,17 @@ it("webhook は allowSystem で、署名を確かめた後、支払いと請求�
     ["payments", systemActor],
     ["invoices", systemActor],
   ]);
+});
+
+it("JSON として読めない本文は、ほかの入力の誤りと同じ 400 VALIDATION_ERROR（INTERNAL ではない）", async () => {
+  const res = await appAs(alice).request(
+    "/invoices",
+    { method: "POST", body: "{not json", headers: { "content-type": "application/json" } },
+    env,
+  );
+
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({
+    error: { code: "VALIDATION_ERROR", message: "Malformed JSON in request body" },
+  });
 });

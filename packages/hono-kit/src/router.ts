@@ -1,5 +1,6 @@
 import { Hono, type MiddlewareHandler, type ToSchema } from "hono";
 import { validator } from "hono/validator";
+import { HTTPException } from "hono/http-exception";
 import type { H, ParamKeys } from "hono/types";
 import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
@@ -41,6 +42,28 @@ const requireJsonBody: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
+/**
+ * A body that is not JSON at all (`{not json`) makes Hono's validator throw its own HTTPException(400),
+ * which onError would answer as INTERNAL. That is input the client got wrong, so it is a ValidationError,
+ * the 400 every endpoint with input already declares. Only what is thrown before next() is converted:
+ * a failure of the handler after it passes through as is
+ */
+const asValidationError =
+  (middleware: MiddlewareHandler): MiddlewareHandler =>
+  async (c, next) => {
+    let passed = false;
+    try {
+      return await middleware(c, async () => {
+        passed = true;
+        await next();
+      });
+    } catch (error) {
+      if (!passed && error instanceof HTTPException && error.status === 400)
+        throw fail(ValidationError, error.message);
+      throw error;
+    }
+  };
+
 const validatorsOf = (route: RouteConfig) => {
   const { param, query, header, cookie, json } = route.request ?? {};
 
@@ -50,7 +73,7 @@ const validatorsOf = (route: RouteConfig) => {
     header && check("header", header),
     cookie && check("cookie", cookie),
     json && requireJsonBody,
-    json && check("json", json),
+    json && asValidationError(check("json", json)),
   ].filter((v): v is NonNullable<typeof v> => !!v);
 };
 
