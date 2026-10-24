@@ -35,15 +35,17 @@ const remindable: RemindableInvoice = {
 it("同じ日に 2 回届いても、送るのは 1 回。2 回目は確定済みなので送らない", async () => {
   await insertInvoices([invoice({ id: "r1" })]);
   const { mailer, sent } = fakeMailer();
-  const reminders = remindersService(remindersRepository(scopeTo(db(), remindersTable)), mailer, {
-    async enqueue() {},
+  const reminders = remindersService({
+    repo: remindersRepository({ scope: scopeTo(db(), remindersTable) }),
+    mailer,
+    jobs: { async enqueue() {} },
   });
 
-  expect(await reminders.send({ invoiceId: "r1" }, remindable, now)).toEqual({
+  expect(await reminders.write.send({ invoiceId: "r1" }, remindable, now)).toEqual({
     ok: true,
     value: "SENT",
   });
-  expect(await reminders.send({ invoiceId: "r1" }, remindable, now)).toEqual({
+  expect(await reminders.write.send({ invoiceId: "r1" }, remindable, now)).toEqual({
     ok: true,
     value: "SKIPPED",
   });
@@ -53,16 +55,18 @@ it("同じ日に 2 回届いても、送るのは 1 回。2 回目は確定済�
 it("メールに失敗したら押さえたまま残り、再送で同じ冪等キーで送り直す", async () => {
   await insertInvoices([invoice({ id: "r2" })]);
   const { mailer, sent, failOnce } = fakeMailer();
-  const reminders = remindersService(remindersRepository(scopeTo(db(), remindersTable)), mailer, {
-    async enqueue() {},
+  const reminders = remindersService({
+    repo: remindersRepository({ scope: scopeTo(db(), remindersTable) }),
+    mailer,
+    jobs: { async enqueue() {} },
   });
 
   failOnce();
-  expect(await reminders.send({ invoiceId: "r2" }, remindable, now)).toEqual({
+  expect(await reminders.write.send({ invoiceId: "r2" }, remindable, now)).toEqual({
     ok: false,
     error: "MAIL_FAILED",
   });
-  expect(await reminders.send({ invoiceId: "r2" }, remindable, now)).toEqual({
+  expect(await reminders.write.send({ invoiceId: "r2" }, remindable, now)).toEqual({
     ok: true,
     value: "SENT",
   });
@@ -72,13 +76,13 @@ it("メールに失敗したら押さえたまま残り、再送で同じ冪等�
 it("送るべきでなくなっていたら、見送りとして残し、その日はもう送らない", async () => {
   await insertInvoices([invoice({ id: "r3" })]);
   const { mailer, sent } = fakeMailer();
-  const repo = remindersRepository(scopeTo(db(), remindersTable));
-  const reminders = remindersService(repo, mailer, { async enqueue() {} });
+  const repo = remindersRepository({ scope: scopeTo(db(), remindersTable) });
+  const reminders = remindersService({ repo, mailer, jobs: { async enqueue() {} } });
 
-  expect(await reminders.send({ invoiceId: "r3" }, null, now)).toEqual({
+  expect(await reminders.write.send({ invoiceId: "r3" }, null, now)).toEqual({
     ok: true,
     value: "SKIPPED",
   });
-  expect(await repo.claim({ invoiceId: "r3", sentOn: "2026-06-10" })).toBe("skipped");
+  expect(await repo.write.claim({ invoiceId: "r3", sentOn: "2026-06-10" })).toBe("skipped");
   expect(sent).toEqual([]);
 });

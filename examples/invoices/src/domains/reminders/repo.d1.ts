@@ -3,6 +3,7 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { createRepository } from "hono-kit/service";
 import type { Scope } from "#src/db/index";
 import { invoicesTable } from "#src/domains/invoices/repo.d1";
 import { reminderStatuses } from "./model";
@@ -25,12 +26,17 @@ export const remindersTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.invoiceId, table.sentOn] })],
 );
 
-export function remindersRepository(scope: Scope<typeof remindersTable>): RemindersRepository {
-  return {
+/** 書いてよい table */
+type RemindersScopes = { scope: Scope<typeof remindersTable> };
+
+export const remindersRepository = createRepository({
+  read: (): RemindersRepository["read"] => ({}),
+
+  write: ({ scope }: RemindersScopes): RemindersRepository["write"] => ({
     async claim(reminder) {
       await scope.insert({ ...reminder, status: "claimed" }).onConflictDoNothing();
 
-      const [row] = await scope.reads
+      const [row] = await scope.read
         .select({ status: remindersTable.status })
         .from(remindersTable)
         .where(
@@ -57,5 +63,5 @@ export function remindersRepository(scope: Scope<typeof remindersTable>): Remind
         .update({ status: "skipped" })
         .where(and(eq(remindersTable.invoiceId, invoiceId), eq(remindersTable.sentOn, sentOn)));
     },
-  };
-}
+  }),
+});

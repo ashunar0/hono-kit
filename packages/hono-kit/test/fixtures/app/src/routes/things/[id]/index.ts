@@ -12,5 +12,5 @@ export const GET = createEndpoint(
     request: { param: params },
     responses: {},
   },
-  async (_c, reply, { a }) => reply(200, thingResponse(await a.get(thing))),
+  async (_c, reply, { a }) => reply(200, thingResponse(await a.read.get(thing))),
 );

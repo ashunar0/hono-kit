@@ -12,13 +12,17 @@ const now = new Date("2026-01-15T00:00:00Z");
 const payable = (id: string): PayableInvoice => ({ id, title: "t", amount: 1200 });
 
 const gateway = (works: boolean): PaymentGateway => ({
-  async createCheckout({ paymentId }) {
-    return works
-      ? ok({ checkoutUrl: `https://checkout.test/${paymentId}`, providerRef: `cs_${paymentId}` })
-      : err("GATEWAY_FAILED");
+  read: {
+    async verifyEvent() {
+      return ok(null);
+    },
   },
-  async verifyEvent() {
-    return ok(null);
+  write: {
+    async createCheckout({ paymentId }) {
+      return works
+        ? ok({ checkoutUrl: `https://checkout.test/${paymentId}`, providerRef: `cs_${paymentId}` })
+        : err("GATEWAY_FAILED");
+    },
   },
 });
 
@@ -27,9 +31,12 @@ const paymentsOf = (invoiceId: string) =>
 
 it("先に pending を記録し、決済画面を作れたら識別子を結びつける", async () => {
   await insertInvoices([invoice({ id: "pay1", status: "sent" })]);
-  const payments = paymentsService(paymentsRepository(scopeTo(db(), paymentsTable)), gateway(true));
+  const payments = paymentsService({
+    repo: paymentsRepository({ scope: scopeTo(db(), paymentsTable) }),
+    gateway: gateway(true),
+  });
 
-  const result = await payments.start(payable("pay1"), now);
+  const result = await payments.write.start(payable("pay1"), now);
 
   expect(result.ok).toBe(true);
   const [row] = await paymentsOf("pay1");
@@ -38,12 +45,12 @@ it("先に pending を記録し、決済画面を作れたら識別子を結び�
 
 it("決済画面を作れなかったら、記録した支払いを失敗で閉じる", async () => {
   await insertInvoices([invoice({ id: "pay2", status: "sent" })]);
-  const payments = paymentsService(
-    paymentsRepository(scopeTo(db(), paymentsTable)),
-    gateway(false),
-  );
+  const payments = paymentsService({
+    repo: paymentsRepository({ scope: scopeTo(db(), paymentsTable) }),
+    gateway: gateway(false),
+  });
 
-  expect(await payments.start(payable("pay2"), now)).toEqual({
+  expect(await payments.write.start(payable("pay2"), now)).toEqual({
     ok: false,
     error: "GATEWAY_FAILED",
   });
@@ -53,10 +60,13 @@ it("決済画面を作れなかったら、記録した支払いを失敗で閉�
 
 it("同じ請求書で 2 回始めても、進行中の支払いは 1 つで、同じ決済画面を返す", async () => {
   await insertInvoices([invoice({ id: "pay3", status: "sent" })]);
-  const payments = paymentsService(paymentsRepository(scopeTo(db(), paymentsTable)), gateway(true));
+  const payments = paymentsService({
+    repo: paymentsRepository({ scope: scopeTo(db(), paymentsTable) }),
+    gateway: gateway(true),
+  });
 
-  const first = await payments.start(payable("pay3"), now);
-  const second = await payments.start(payable("pay3"), now);
+  const first = await payments.write.start(payable("pay3"), now);
+  const second = await payments.write.start(payable("pay3"), now);
 
   expect(first.ok && second.ok).toBe(true);
   if (first.ok && second.ok) expect(second.value.checkoutUrl).toBe(first.value.checkoutUrl);

@@ -14,7 +14,10 @@ export const db = () => wireDb(env.DB);
 
 /** 本物の D1 に繋いだ invoices の repo */
 export const invoicesRepo = () =>
-  invoicesRepository(scopeTo(db(), invoicesTable), scopeTo(db(), invoiceSharesTable));
+  invoicesRepository({
+    scope: scopeTo(db(), invoicesTable),
+    shares: scopeTo(db(), invoiceSharesTable),
+  });
 
 export const alice = authenticatedAccount(accountId("alice"), orgId("org1"), "member");
 export const bob = authenticatedAccount(accountId("bob"), orgId("org1"), "member");

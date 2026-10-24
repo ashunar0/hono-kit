@@ -1,5 +1,5 @@
-// expect: hnk(route-writes-once) | but loans.borrow writes after books.update
-// expect: hnk(route-writes-once) | but members.touch writes after books.update
+// expect: hnk(route-writes-once) | but loans.write.borrow writes after books.write.update
+// expect: hnk(route-writes-once) | but members.write.touch writes after books.write.update
 import { createEndpoint } from "hono-kit";
 import { requireAuth } from "../../middleware/auth";
 
@@ -11,9 +11,9 @@ export const POST = createEndpoint(
   async (_c, _reply, deps) => {
     const { books, loans } = deps;
     const members = deps.members;
-    await books.update(id);
-    await loans.borrow(id);
-    await members.touch(id);
+    await books.write.update(id);
+    await loans.write.borrow(id);
+    await members.write.touch(id);
     throw new Error("fixture");
   },
 );

@@ -29,25 +29,28 @@ import { makeQueries } from "./routes.gen";
 export const makeDeps = (env: AppEnv["Bindings"]) => {
   const db = wireDb(env.DB);
 
-  const invoices = invoicesService(
-    invoicesRepository(scopeTo(db, invoicesTable), scopeTo(db, invoiceSharesTable)),
-  );
+  const invoices = invoicesService({
+    repo: invoicesRepository({
+      scope: scopeTo(db, invoicesTable),
+      shares: scopeTo(db, invoiceSharesTable),
+    }),
+  });
 
-  const payments = paymentsService(
-    paymentsRepository(scopeTo(db, paymentsTable)),
-    stripeGateway({
+  const payments = paymentsService({
+    repo: paymentsRepository({ scope: scopeTo(db, paymentsTable) }),
+    gateway: stripeGateway({
       secretKey: env.STRIPE_SECRET_KEY,
       webhookSecret: env.STRIPE_WEBHOOK_SECRET,
       successUrl: `${env.APP_URL}/payments/done`,
       cancelUrl: `${env.APP_URL}/payments/canceled`,
     }),
-  );
+  });
 
-  const reminders = remindersService(
-    remindersRepository(scopeTo(db, remindersTable)),
-    resendMailer({ apiKey: env.RESEND_API_KEY, from: env.MAIL_FROM }),
-    queuesReminderJobs(env.REMINDER_QUEUE),
-  );
+  const reminders = remindersService({
+    repo: remindersRepository({ scope: scopeTo(db, remindersTable) }),
+    mailer: resendMailer({ apiKey: env.RESEND_API_KEY, from: env.MAIL_FROM }),
+    jobs: queuesReminderJobs(env.REMINDER_QUEUE),
+  });
 
   // GET の読み（src/routes の _queries.ts を全部。pnpm hnk gen がつなぐ）。
   // db を ReadDb（SELECT だけ）として受け取るので、書き込みは書けない

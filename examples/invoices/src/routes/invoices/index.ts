@@ -48,7 +48,7 @@ export const POST = createEndpoint(
     const input = c.req.valid("json");
     const now = c.get("now");
 
-    const id = await invoices.create(actor, input, now);
+    const id = await invoices.write.create(actor, input, now);
 
     // 書いた後は、GET と同じ道で読み直して返す。書けた直後に無いのは想定外
     const invoice = await invoicesQueries.get(actor, id);

@@ -9,7 +9,7 @@ import { noteResponse, noteResponseSchema } from "./_response";
 export const POST = createEndpoint(
   { auth: requireAuth, responses: { 200: noteResponseSchema } },
   async (c, reply, { notes, notesQueries }) => {
-    const id = await notes.create(c.get("now"));
+    const id = await notes.write.create(c.get("now"));
 
     const note = await notesQueries.get(id);
     if (note === null) throw new Error(`note ${id} is gone right after the write`);

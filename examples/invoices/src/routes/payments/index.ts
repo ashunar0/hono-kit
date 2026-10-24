@@ -36,10 +36,10 @@ export const POST = createEndpoint(
     const now = c.get("now");
 
     // 支払えるのは、範囲の中で送付済みの請求書だけ（invoices のルール）
-    const invoice = await invoices.getPayable(actor, invoiceId);
+    const invoice = await invoices.read.getPayable(actor, invoiceId);
     if (!invoice.ok) return reply.failure(invoice.error);
 
-    const result = await payments.start(invoice.value, now);
+    const result = await payments.write.start(invoice.value, now);
     if (!result.ok) return reply.failure(result.error);
 
     return reply(200, {

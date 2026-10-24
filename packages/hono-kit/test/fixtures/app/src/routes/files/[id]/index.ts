@@ -1,4 +1,4 @@
-// expect: hnk(route-writes-once) | writes after files.create
+// expect: hnk(route-writes-once) | writes after files.write.create
 import { createEndpoint } from "hono-kit";
 import { requireAuth } from "../../../middleware/auth";
 
@@ -13,8 +13,8 @@ export const GET = createEndpoint(
 export const POST = createEndpoint(
   { auth: requireAuth, responses: {} },
   async (c, reply, { files, logs }) => {
-    await files.create();
-    await logs.add();
+    await files.write.create();
+    await logs.write.add();
     throw new Error("fixture");
   },
 );

@@ -17,7 +17,7 @@ export type ReadDb = Pick<Db, "select">;
  * repository に db を渡さないので、他 domain の table への書き込みは書きようがない
  */
 export const scopeTo = <T extends SQLiteTable>(db: Db, table: T) => ({
-  reads: db as ReadDb,
+  read: db as ReadDb,
   insert: (values: InferInsertModel<T>) => db.insert(table).values(values),
   update: (values: Partial<InferInsertModel<T>>) => db.update(table).set(values),
   delete: () => db.delete(table),

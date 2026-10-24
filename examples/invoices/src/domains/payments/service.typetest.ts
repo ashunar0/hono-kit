@@ -10,7 +10,7 @@ export async function usersCannotReceive(
   event: PaymentEvent,
 ) {
   // @ts-expect-error receive が受け取るのは System だけ
-  await payments.receive(user, event, new Date());
+  await payments.write.receive(user, event, new Date());
 
-  await payments.receive(systemActor, event, new Date());
+  await payments.write.receive(systemActor, event, new Date());
 }

@@ -6,8 +6,8 @@
 import type { CronContext } from "hono-kit";
 
 export async function enqueueOverdueReminders({ deps, actor, now }: CronContext) {
-  const overdue = await deps.invoices.listOverdue(actor, now);
-  const count = await deps.reminders.enqueueOverdue(overdue);
+  const overdue = await deps.invoices.read.listOverdue(actor, now);
+  const count = await deps.reminders.write.enqueueOverdue(overdue);
 
   console.log(`reminders: ${count} 件を積んだ`);
 }

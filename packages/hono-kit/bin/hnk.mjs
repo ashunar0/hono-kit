@@ -132,7 +132,7 @@ const generateDomain = (plural, given) => {
         `import { ${plural}Service } from "./domains/${plural}/service";`,
       ],
     ],
-    ["deps", [`const ${plural} = ${plural}Service(${plural}Repository(scopeTo(db, ${plural}Table)));`]],
+    ["deps", [`const ${plural} = ${plural}Service({ repo: ${plural}Repository({ scope: scopeTo(db, ${plural}Table) }) });`]],
     ["returns", [`${plural},`]],
   ];
   // db の import に scopeTo が要る

@@ -26,7 +26,7 @@ export const POST = createEndpoint(
     const { id } = c.req.valid("param");
     const now = c.get("now");
 
-    const result = await invoices.send(actor, id, now);
+    const result = await invoices.write.send(actor, id, now);
     if (!result.ok) return reply.failure(result.error);
 
     const invoice = await invoicesQueries.get(actor, id);

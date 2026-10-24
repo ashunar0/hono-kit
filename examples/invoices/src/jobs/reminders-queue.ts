@@ -10,7 +10,7 @@ import { invoiceId } from "#src/domains/invoices/model";
 import type { ReminderJob } from "#src/domains/reminders/model";
 
 export async function sendReminder({ deps, actor, now, body }: QueueContext<ReminderJob>) {
-  const invoice = await deps.invoices.getRemindable(actor, invoiceId(body.invoiceId), now);
+  const invoice = await deps.invoices.read.getRemindable(actor, invoiceId(body.invoiceId), now);
 
-  return deps.reminders.send(body, invoice.ok ? invoice.value : null, now);
+  return deps.reminders.write.send(body, invoice.ok ? invoice.value : null, now);
 }
