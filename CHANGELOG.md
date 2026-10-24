@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Added
+
+- `hono-kit/lint/recommended.json`: the lint settings of hono-kit's rules (every `hnk/*` rule on `src/**/*.ts`, `import/no-cycle`, `typescript/no-explicit-any`, no `vi.mock`). It ships with the installed version, so a rule added later turns on without editing the app. To use it, replace `.oxlintrc.json` with `{ "extends": ["./node_modules/hono-kit/lint/recommended.json"], "rules": {} }` and keep only your own rules in `rules`. Apps that keep listing rules by hand still work
+
 ## 0.8.0
 
 ### Breaking
