@@ -2,7 +2,7 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>              アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk g domain <name>         domain の骨組み（model / service / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/domain）
+ *   hnk g domain <name>         domain の骨組み（model / service / reader / repo.d1 / service.test）を足し、deps.ts につなぐ（templates/domain）
  *                               単数形は推測する。単数と複数が同じ語や、単数に見える語では止まり、--singular <name> を求める
  *   hnk gen [--watch | --check | --if-missing] src/routes から src/routes.gen.ts（登録・queries のつなぎ・AppType）を書く（bin/gen.mjs）
  *                               --if-missing は無ければ作るだけ（postinstall 用）。--watch / --check とは一緒に使えない
@@ -129,11 +129,18 @@ const generateDomain = (plural, given) => {
       "imports",
       [
         `import { ${plural}Repository, ${plural}Table } from "./domains/${plural}/repo.d1";`,
+        `import { ${plural}Reader } from "./domains/${plural}/reader";`,
         `import { ${plural}Service } from "./domains/${plural}/service";`,
       ],
     ],
-    ["deps", [`const ${plural} = ${plural}Service(${plural}Repository(scopeTo(db, ${plural}Table)));`]],
-    ["returns", [`${plural},`]],
+    [
+      "deps",
+      [
+        `const ${plural}Repo = ${plural}Repository(scopeTo(db, ${plural}Table));`,
+        `const ${plural} = ${plural}Service(${plural}Repo);`,
+      ],
+    ],
+    ["returns", [`${plural},`, `${plural}Reader: ${plural}Reader(${plural}Repo),`]],
   ];
   // db の import に scopeTo が要る
   let wired = fs

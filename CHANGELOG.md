@@ -4,6 +4,12 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Breaking
+
+- A service only writes. A domain's reads move to a new `reader.ts` (`invoicesReader(repo)`), which takes only the reading part of the repository (`Pick<InvoicesRepository, "find" | "listOverdue">`), so it cannot write. Wire it into deps as `…Reader` (`invoicesReader: invoicesReader(invoicesRepo)`), and call it from entry points as `invoicesReader.getPayable(...)`
+- `hnk/route-writes-once` no longer reads method names. Every call to a service is a write; calls to `…Reader` and `…Queries` are reads. A `get…` / `list…` left on a service now counts as a write: move it to `reader.ts`
+- `hnk g domain` writes `reader.ts` too (the template's `get` moved there) and wires `…Reader` into deps.ts
+
 ### Added
 
 - `hono-kit/lint/recommended.json`: the lint settings of hono-kit's rules (every `hnk/*` rule on `src/**/*.ts`, `import/no-cycle`, `typescript/no-explicit-any`, no `vi.mock`). It ships with the installed version, so a rule added later turns on without editing the app. To use it, replace `.oxlintrc.json` with `{ "extends": ["./node_modules/hono-kit/lint/recommended.json"], "rules": {} }` and keep only your own rules in `rules`. Apps that keep listing rules by hand still work

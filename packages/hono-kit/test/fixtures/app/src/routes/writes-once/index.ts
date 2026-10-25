@@ -3,13 +3,13 @@ import { requireAuth } from "../../middleware/auth";
 
 declare const id: string;
 
-// Reads from as many services as needed (get…, list…, queries), then one write
+// Reads from as many readers and queries as needed, whatever the method is named, then one write
 export const POST = createEndpoint(
   { auth: requireAuth, responses: {} },
-  async (_c, _reply, { books, loans, bookQueries }) => {
-    await books.get(id);
-    await loans.listActive(id);
-    await loans.getCopiesTaken(id);
+  async (_c, _reply, { booksReader, loansReader, loans, bookQueries }) => {
+    await booksReader.get(id);
+    await loansReader.findActive(id);
+    await loansReader.countCopiesTaken(id);
     await loans.borrow(id);
     await bookQueries.shelf(id);
     throw new Error("fixture");

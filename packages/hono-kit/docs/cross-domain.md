@@ -6,18 +6,18 @@ A complete example (a customer's invoices, billed from products):
 
 ```ts
 // src/routes/customers/invoices/index.ts: read from as many domains as needed, write once
-async (c, reply, { customers, products, invoices, invoicesQueries }) => {
+async (c, reply, { customersReader, productsReader, invoices, invoicesQueries }) => {
   const actor = c.get("actor");
   const { customerId } = c.req.valid("param");
   const input = c.req.valid("json");
   const now = c.get("now");
 
   // Entry check: the customer in the URL exists (404 here, not in a service)
-  const customer = await customers.get(actor, customerId);
+  const customer = await customersReader.get(actor, customerId);
   if (!customer.ok) return reply.failure(customer.error);
 
   // Materials for the decision. Not filtered by organization: the writing service checks that
-  const items = await products.pick(input.productIds.map(productId));
+  const items = await productsReader.pick(input.productIds.map(productId));
 
   // One write, through the one service that owns the rule
   const result = await invoices.create(
@@ -52,7 +52,7 @@ export type Billed = {
 
 ## Writing from a user's request (HTTP)
 
-There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails. `hnk/route-writes-once` stops a second write call; it tells reads by name, so a service's reads start with `get` or `list` (`getCopiesTaken`, `listOverdue`).
+There are no retries, so **one call to one service**. Two writes in a row leave the first done when the second fails. `hnk/route-writes-once` stops a second write call. It tells reads by where they live, not by name: a service only writes, and a domain's reads are its reader (`…Reader`, [layout.md](layout.md#reads-and-writes)), so every call to a service counts as a write and no call to a reader or queries does.
 
 - The handler passes what it read as values. The writing service **checks that they belong together** before deciding, because rules that must hold from every entry point live in the service:
   - Values the client chose (product ids in the body) that do not match → a domain failure (`PRODUCT_NOT_FOUND`)
@@ -62,7 +62,7 @@ There are no retries, so **one call to one service**. Two writes in a row leave 
 
   ```ts
   // src/routes/articles/index.ts
-  const profile = await profiles.get(actor); // a read: null when there is none
+  const profile = await profilesReader.get(actor); // a read: null when there is none
   const result = await articles.create(actor, profile, input, now);
   if (!result.ok) return reply.failure(result.error);
 
@@ -119,7 +119,7 @@ export const invoicesWithin = (db: ReadDb, actor: Actor) =>
     .where(within(reachOf(actor)))
     .as("invoices_within");
 
-// routes/invoices/_queries.ts: the reader reads it like a table
+// routes/invoices/_queries.ts: queries read it like a table
 const invoices = invoicesWithin(db, actor);
 const rows = await db
   .select()
@@ -130,7 +130,7 @@ const rows = await db
 - **Most reads are queries.** queries live outside the domains, so reading any window makes no import cycle. A list or a single one is answered by that resource's queries, in one statement
 - **What a search word matches is the owner's to decide**: the window takes it and applies it inside (`booksWithin(db, { q })`)
 - **Only a domain reading for a rule reads the way the foreign key points**: the domain whose table references the other reads it (loans finds "their own" loans through `membersWithin`). The other way round makes the imports a cycle, and `import/no-cycle` stops it
-- A window takes the actor, never a reach: the reader does not know how reach is decided. When every row is visible to everyone, it takes no actor
+- A window takes the actor, never a reach: whoever reads does not know how reach is decided. When every row is visible to everyone, it takes no actor
 - When a reach is decided through another domain (a member's own loans are the loans of the member rows they see), the reach carries the actor (`{ kind: "own"; actor }`) and `within` passes it to that domain's window (`membersWithin(db, reach.actor)`)
 - Another domain's table itself (`invoicesTable`) is used only inside foreign-key `references()`, in queries and in domains alike (`hnk/no-foreign-table-reads`)
 

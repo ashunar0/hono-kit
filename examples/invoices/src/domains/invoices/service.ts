@@ -1,5 +1,6 @@
 /**
- * 請求書の手順（How）。domain のモノを使って、何をどの順でやるか
+ * 請求書の書き込みの手順（How）。domain のモノを使って、何をどの順でやるか。
+ * 読みは reader.ts に置く。service の呼び出しは、入口から見て全部書き込み
  */
 import { err, ok, type Result } from "hono-kit/result";
 import { Forbidden, NotFound } from "hono-kit/failures";
@@ -9,8 +10,6 @@ import {
   canEdit,
   canManage,
   canSend,
-  isPayable,
-  isRemindable,
   isSendable,
   newInvoiceId,
   reachOf,
@@ -62,24 +61,6 @@ export type InvoicesRepository = {
  */
 export function invoicesService(repo: InvoicesRepository) {
   return {
-    /** 期限切れのもの。範囲の中だけ */
-    async listOverdue(actor: Actor, now: Date): Promise<Invoice[]> {
-      return repo.listOverdue(reachOf(actor), now);
-    },
-
-    /** 督促してよい請求書。範囲の中で、期限切れのものだけ */
-    async getRemindable(
-      actor: Actor,
-      id: InvoiceId,
-      now: Date,
-    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_REMINDABLE">> {
-      const found = await repo.find(reachOf(actor), id);
-      if (found === null) return err(NotFound.code);
-      if (!isRemindable(found.invoice, now)) return err("NOT_REMINDABLE");
-
-      return ok(found.invoice);
-    },
-
     /** 作成。作った人が所有者になる */
     async create(actor: Account, input: InvoiceInput, now: Date): Promise<InvoiceId> {
       const created = await repo.insert({
@@ -127,18 +108,6 @@ export function invoicesService(repo: InvoicesRepository) {
       if (updated === null) return err(NotFound.code);
 
       return ok(undefined);
-    },
-
-    /** 支払いに進める請求書。範囲の中で、送付済みのものだけ */
-    async getPayable(
-      actor: Actor,
-      id: InvoiceId,
-    ): Promise<Result<Invoice, typeof NotFound.code | "NOT_PAYABLE">> {
-      const found = await repo.find(reachOf(actor), id);
-      if (found === null) return err(NotFound.code);
-      if (!isPayable(found.invoice)) return err("NOT_PAYABLE");
-
-      return ok(found.invoice);
     },
 
     /**

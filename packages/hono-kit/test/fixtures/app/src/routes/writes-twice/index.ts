@@ -8,8 +8,8 @@ declare const id: string;
 // Two writes from a user's request: the second can fail after the first is done
 export const PATCH = createEndpoint(
   { auth: requireAuth, responses: {} },
-  async (_c, _reply, { books, loans }) => {
-    await books.getStock(id);
+  async (_c, _reply, { books, booksReader, loans }) => {
+    await booksReader.getStock(id);
     await books.update(id);
     await loans.fillFreed(id);
     throw new Error("fixture");

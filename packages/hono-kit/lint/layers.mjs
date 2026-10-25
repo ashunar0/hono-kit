@@ -8,14 +8,15 @@ export const ADAPTER_ROLES = ["repo", "gateway", "mailer", "queue"];
  * domain の中に置ける役割。
  * ここに無い名前のファイルは domain の中に置けない（layer-imports が止める）
  */
-export const DOMAIN_ROLES = ["model", "service", ...ADAPTER_ROLES];
+export const DOMAIN_ROLES = ["model", "service", "reader", ...ADAPTER_ROLES];
 
 /**
  * 役割ごとに、import してよい相手。ここに無いものは全部だめ。
  * "type" は `import type` だけ許す。実行時には依存せず、形だけを借りる。
  *
  * 矢印は全部 model と service に向かう。model は外を何も知らない。
- * service は手順で、アダプターの形を宣言する。アダプターはその形を型だけ借りて満たす。
+ * service は書き込みの手順で、アダプターの形を宣言する。アダプターはその形を型だけ借りて満たす。
+ * reader は読みの手順で、service が宣言した保存の形のうち、読みの部分だけを受け取る。
  * 入口（リソース、job）は誰として呼ぶかを決め、deps から service を受け取って呼ぶ。
  *
  * 相手の書き方:
@@ -36,6 +37,16 @@ export const LAYERS = {
     "hono-kit/page": "type",
     "hono-kit/system": "type",
     model: "value",
+    "foreign:model": "type",
+  },
+  // domain の読み。ルール（model）を通して domain のモノを返す。書く道具は受け取らない
+  reader: {
+    "hono-kit/result": "value",
+    "hono-kit/failures": "value",
+    "hono-kit/page": "type",
+    "hono-kit/system": "type",
+    model: "value",
+    service: "type",
     "foreign:model": "type",
   },
 
@@ -121,7 +132,7 @@ export const HINTS = {
   "resource→foreign:service":
     "A resource does not import services. The handler receives them from deps as its third argument ({ customers, invoices })",
   "resource→foreign:repo":
-    "A resource does not read tables. Read in _queries.ts next to it, or through the owner's service, received from deps",
+    "A resource does not read tables. Read in _queries.ts next to it, or through the owner's reader (…Reader), received from deps",
   "job→foreign:service":
     "A job does not import services. It receives them from deps ({ deps, actor, now })",
   "response→resource":
@@ -137,7 +148,7 @@ export const ERRORS_HINT =
   "A domain has no errors.ts. Failures of the thing go in model.ts as a Failure; failures only an entry point has (webhook signatures, ...) go next to it in src/routes/<noun>/_errors.ts";
 
 /** model と service は、自分の domain のアダプターを知らない。形は service が宣言する */
-for (const from of ["model", "service"]) {
+for (const from of ["model", "service", "reader"]) {
   for (const to of ADAPTER_ROLES) {
     HINTS[`${from}→${to}`] ??=
       `${from} does not know ${to}. Declare the shape you need as a type in service; ${to} fulfills it`;
@@ -160,4 +171,6 @@ export const NOTES = {
     "`src/routes/<noun>/_queries.ts`: the reads of the GET endpoints, wired into deps by `hnk gen`. Tables only through …Within (no-foreign-table-reads); from another domain's model, rules to borrow (todayOf, ...)",
   job: "`src/jobs/<name>.ts`, outside domains: runs on a schedule (cron) or a queue message. createWorker passes deps, actor and now. It may join several domains' services from deps",
   queue: "Puts jobs on a queue. What takes them off is a job in src/jobs/",
+  reader:
+    "`src/domains/<name>/reader.ts`: the domain's reads, through its rules (`getPayable`: null → NOT_FOUND, not sent → NOT_PAYABLE). It takes only the reading part of the repository service declares (`Pick<…Repository, \"find\">`), so it cannot write. Wired into deps as `…Reader`",
 };
