@@ -1,8 +1,7 @@
 /**
- * The steps for notes (How). What to do with the domain thing, in what order
+ * The writing steps for notes (How). What to do with the domain thing, in what order.
+ * Reads go in reader.ts: every call to a service is a write, as the entry point sees it
  */
-import { err, ok, type Result } from "hono-kit/result";
-import { NotFound } from "hono-kit/failures";
 import { newNoteId, type Note, type NoteId } from "./model";
 
 /**
@@ -21,13 +20,6 @@ export type NotesRepository = {
  */
 export function notesService(repo: NotesRepository) {
   return {
-    async get(id: NoteId): Promise<Result<Note, typeof NotFound.code>> {
-      const found = await repo.find(id);
-      if (found === null) return err(NotFound.code);
-
-      return ok(found);
-    },
-
     async create(now: Date): Promise<NoteId> {
       const created = await repo.insert({ id: newNoteId(), createdAt: now, updatedAt: now });
 

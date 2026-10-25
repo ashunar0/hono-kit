@@ -8,13 +8,10 @@ import {
 import { fileOf } from "../project.mjs";
 
 /**
- * 読みの名前。service の読みは get か list で始める。それ以外の呼び出しは書き込みとみなす。
- * get・list で始まっても、Or か And でつないだもの（getOrCreate・getAndUpdate）は「なければ作る」などの書き込み。
- * Or・And の次が大文字のときだけ（getOrderById・getAndroidApps は読みのまま）
+ * 読みだけを持つもの。domain の読み（…Reader）と、GET の読み（…Queries）。
+ * どちらも書く道具を受け取らないので、何を呼んでも読み。それ以外の service の呼び出しは全部書き込み
  */
-const READ_NAME = /^(get|list)(?![A-Za-z]*(Or|And)[A-Z])([A-Z]|$)/;
-/** queries は ReadDb しか持たないので、名前に関係なく読み */
-const QUERIES_NAME = /Queries$/;
+const READS = /(Reader|Queries)$/;
 
 const propertyOf = (config, name) =>
   config.properties.find(
@@ -140,8 +137,8 @@ const addDestructured = (body, deps) => {
  * 利用者の HTTP の書き込みは、1 つの service の 1 回の呼び出しだけ。
  * 再送が無いので、2 回書くと 2 回目で落ちたときに 1 回目だけ残る。
  *
- * 型は見られないので、名前で読みと書きを分ける：get・list で始まるものと queries は読み、
- * それ以外の service の呼び出しは書き込み。再送のある入口（allowSystem の webhook）は
+ * service は書き込みだけを持ち、読みは …Reader と …Queries に分かれている。だから service の呼び出しを数えるだけでよく、
+ * method の名前は見ない。再送のある入口（allowSystem の webhook）は
  * 何回走っても同じ結果になる書き込みなら順に書いてよいので、見ない
  */
 export default {
@@ -166,8 +163,7 @@ export default {
         walk(handler.body, (n, inLoop) => {
           if (n.type !== "CallExpression") return;
           const call = serviceCallOf(n, deps);
-          if (!call || QUERIES_NAME.test(call.service)) return;
-          if (READ_NAME.test(call.method)) return;
+          if (!call || READS.test(call.service)) return;
           writes.push({
             node: n,
             name: `${call.service}.${call.method}`,
@@ -185,7 +181,7 @@ export default {
         for (const second of rest.filter((w) => !w.inLoop)) {
           report({
             node: second.node,
-            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. Reads are named get… or list…, and a name that joins with Or / And (getOrCreate) is a write`,
+            message: `An HTTP handler writes through one call to one service, but ${second.name} writes after ${first.name}: if it fails, the first stays done. Writes that belong together go in one domain and one call; what may catch up later goes through an outbox. A service only writes: read through the domain's reader (…Reader) or the resource's queries (…Queries)`,
           });
         }
       },

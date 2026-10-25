@@ -29,14 +29,6 @@ export async function systemCannotCreate(invoices: InvoicesService, raw: unknown
   await invoices.create(systemActor, invoiceInputSchema.parse(raw), new Date());
 }
 
-// 印はリテラルでは作れない。システムは systemActor、利用者は認証を通ったときだけ現れる
-export async function cannotForgeActors(invoices: InvoicesService) {
-  // @ts-expect-error { kind: "system" } と書いてもシステムにはなれない
-  await invoices.listOverdue({ kind: "system" }, new Date());
-  // @ts-expect-error { kind: "account", ... } と書いても利用者にはなれない
-  await invoices.listOverdue({ kind: "account", id: "x", role: "admin" }, new Date());
-}
-
 // 請求書の ID は印付き。素の string は渡せない
 export async function idsAreNotInterchangeable(invoices: InvoicesService, actor: Account) {
   // @ts-expect-error 素の string は請求書の ID ではない

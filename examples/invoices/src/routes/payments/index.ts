@@ -1,6 +1,6 @@
 /**
  * /payments。支払いのリソース。
- * 支払えるかは invoices に問い、読んだ請求書を値で payments に渡す（書くのは payments の 1 回だけ）
+ * 支払えるかは invoices の reader に問い、読んだ請求書を値で payments に渡す（書くのは payments の 1 回だけ）
  */
 import { createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
@@ -30,13 +30,13 @@ export const POST = createEndpoint(
       ...errorResponses(NotFound, NotPayable, PaymentStarting, GatewayFailed),
     },
   },
-  async (c, reply, { invoices, payments }) => {
+  async (c, reply, { invoicesReader, payments }) => {
     const actor = c.get("actor");
     const { invoiceId } = c.req.valid("json");
     const now = c.get("now");
 
     // 支払えるのは、範囲の中で送付済みの請求書だけ（invoices のルール）
-    const invoice = await invoices.getPayable(actor, invoiceId);
+    const invoice = await invoicesReader.getPayable(actor, invoiceId);
     if (!invoice.ok) return reply.failure(invoice.error);
 
     const result = await payments.start(invoice.value, now);

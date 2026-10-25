@@ -1,5 +1,5 @@
 /**
- * 配線のスモークテスト。全部を組み上げて、必要な service が揃っていることだけを確かめる。
+ * 配線のスモークテスト。全部を組み上げて、必要な service と reader が揃っていることだけを確かめる。
  * domain の依存の輪は、makeDeps が const を上から順に並べているので、tsc が止める
  * （宣言の前に使うとコンパイルが通らない）。ここでは実行時の確認だけをする
  */
@@ -13,6 +13,7 @@ it("deps の全部が組み上がる", () => {
   expect(Object.keys(deps).sort()).toEqual([
     "invoices",
     "invoicesQueries",
+    "invoicesReader",
     "payments",
     "reminders",
     "reportsQueries",

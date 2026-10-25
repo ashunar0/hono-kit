@@ -1,5 +1,6 @@
 import { scopeTo, wireDb } from "./db";
 import type { AppEnv } from "./env";
+import { invoicesReader } from "./domains/invoices/reader";
 import { invoicesService } from "./domains/invoices/service";
 import { invoicesRepository, invoiceSharesTable, invoicesTable } from "./domains/invoices/repo.d1";
 import { stripeGateway } from "./domains/payments/gateway.stripe";
@@ -29,9 +30,11 @@ import { makeQueries } from "./routes.gen";
 export const makeDeps = (env: AppEnv["Bindings"]) => {
   const db = wireDb(env.DB);
 
-  const invoices = invoicesService(
-    invoicesRepository(scopeTo(db, invoicesTable), scopeTo(db, invoiceSharesTable)),
+  const invoicesRepo = invoicesRepository(
+    scopeTo(db, invoicesTable),
+    scopeTo(db, invoiceSharesTable),
   );
+  const invoices = invoicesService(invoicesRepo);
 
   const payments = paymentsService(
     paymentsRepository(scopeTo(db, paymentsTable)),
@@ -51,7 +54,14 @@ export const makeDeps = (env: AppEnv["Bindings"]) => {
 
   // GET の読み（src/routes の _queries.ts を全部。pnpm hnk gen がつなぐ）。
   // db を ReadDb（SELECT だけ）として受け取るので、書き込みは書けない
-  return { invoices, payments, reminders, ...makeQueries(db) };
+  // domain の読み（…Reader）。書く method を受け取らないので、何を呼んでも読み
+  return {
+    invoices,
+    invoicesReader: invoicesReader(invoicesRepo),
+    payments,
+    reminders,
+    ...makeQueries(db),
+  };
 };
 
 export type Deps = ReturnType<typeof makeDeps>;
