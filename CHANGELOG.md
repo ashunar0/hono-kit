@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Fixed
+
+- A JSON body that cannot be parsed (`{not json`) answered `400 { code: "INTERNAL" }`, a code no endpoint declares. It is now `400 VALIDATION_ERROR` like any other bad input, with Hono's message (`Malformed JSON in request body`). Nothing to change in apps
+
 ## 0.8.0
 
 ### Breaking
