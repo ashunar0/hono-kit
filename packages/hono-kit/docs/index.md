@@ -4,7 +4,7 @@ The rules of an app built on hono-kit, for the installed version. hono-kit fixes
 
 Always read:
 
-- [layout.md](layout.md): where things go. Two axes (resources and domains), what each file may import, and two paths (reads and writes)
+- [layout.md](layout.md): where things go. The files hono-kit fixes, and how to import
 - [rules.md](rules.md): the rules every file keeps (actor, failures, check order, writes, reach, unique constraints, lists)
 
 Read before you…
