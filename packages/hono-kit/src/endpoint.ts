@@ -47,7 +47,8 @@ const DEPS_KEY = "hnk:deps";
  * If deps were built once at startup, Workers would reject I/O across requests
  * for a connection-holding DB. So it takes how to build, not what was built.
  * Nothing is built here. Deps are built once, when an endpoint handler first receives them, so
- * nothing is built for requests that just return 401, or for /openapi.json
+ * nothing is built for requests that just return 401, or for /openapi.json.
+ * It is optional: an app that imports what it uses needs no deps, and its handlers take only (c, reply)
  */
 export const provideDeps =
   (
@@ -59,6 +60,25 @@ export const provideDeps =
     c.set(DEPS_KEY as never, resolve as never);
     await next();
   };
+
+/**
+ * The deps of an app that builds none. A handler that does not take them runs as is;
+ * one that reads one is told what is missing, instead of getting undefined
+ */
+export const missingDeps = (installer: "provideDeps" | "makeDeps") =>
+  new Proxy(
+    {},
+    {
+      get(_, key) {
+        if (typeof key === "symbol") return undefined;
+        throw new Error(
+          installer === "provideDeps"
+            ? `deps.${key} is not there: provideDeps is not installed. Add app.use("*", provideDeps(makeDeps))`
+            : `deps.${key} is not there: createWorker has no makeDeps. Pass createWorker({ makeDeps, ... })`,
+        );
+      },
+    },
+  ) as RegisteredDeps;
 
 type MaybePromise<T> = T | Promise<T>;
 // ---- responses declarations ----
@@ -350,11 +370,7 @@ export const buildEndpoint = <const C extends RouteConfig>(
 
     const resolve = c.get(DEPS_KEY as never) as
       (() => RegisteredDeps) | undefined;
-    if (resolve === undefined)
-      throw new Error(
-        'provideDeps is not installed. Add app.use("*", provideDeps(makeDeps))',
-      );
-    const deps = resolve();
+    const deps = resolve === undefined ? missingDeps("provideDeps") : resolve();
 
     // R is not fixed here, so TS cannot match it up and we re-type it. Callers are guarded by the type of fn
     return fn(c as never, reply, deps) as never;

@@ -1,6 +1,7 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
 import { systemActor } from "./system-value.js";
+import { missingDeps } from "./endpoint.js";
 import { type CronContext, type QueueContext, runScheduled } from "./entry.js";
 
 type Bindings = RegisteredEnv["Bindings"];
@@ -8,7 +9,7 @@ type Bindings = RegisteredEnv["Bindings"];
 /**
  * The Workers entry point. HTTP goes to fetch, schedules to scheduled, queues to queue.
  *
- * - deps are built once per call with makeDeps (provideDeps does the same for HTTP)
+ * - deps are built once per call with makeDeps (provideDeps does the same for HTTP). Without makeDeps, jobs get no deps
  * - There is no user, so this passes the actor (the system) for calling services. Entry files never create it; they only receive it
  * - now comes from the event: the scheduled time for scheduled, the enqueue time for queue
  *   (so a retry that crosses midnight is still treated as the same date)
@@ -16,7 +17,7 @@ type Bindings = RegisteredEnv["Bindings"];
  *   retries only that message, and the rest of the batch continues
  */
 export const createWorker = <Body = never>(options: {
-  makeDeps: (env: Bindings) => RegisteredDeps;
+  makeDeps?: (env: Bindings) => RegisteredDeps;
   fetch: (
     request: Request,
     env: Bindings,
@@ -26,20 +27,21 @@ export const createWorker = <Body = never>(options: {
   queue?: (context: QueueContext<Body>) => Promise<Result<unknown, string>>;
 }): ExportedHandler<Bindings, Body> => {
   const { makeDeps, fetch, scheduled, queue } = options;
+  const depsOf = (env: Bindings) => makeDeps?.(env) ?? missingDeps("makeDeps");
 
   return {
     fetch,
     ...(scheduled && {
       async scheduled(controller, env) {
         await runScheduled(scheduled, {
-          deps: makeDeps(env),
+          deps: depsOf(env),
           now: new Date(controller.scheduledTime),
         });
       },
     }),
     ...(queue && {
       async queue(batch, env) {
-        const deps = makeDeps(env);
+        const deps = depsOf(env);
 
         for (const message of batch.messages) {
           try {
