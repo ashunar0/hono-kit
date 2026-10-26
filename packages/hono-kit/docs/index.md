@@ -10,6 +10,4 @@ Always read:
 Read before you…
 
 - **add a resource or an endpoint** under `src/routes/`: [resources.md](resources.md)
-- **make a thing whose state moves** (draft → sent), or an enum: [state.md](state.md)
-- **use another domain** (read or write across domains, read another domain's table in SQL, count rows, outbox, entry points that retry, things under a parent): [cross-domain.md](cross-domain.md)
 - **add cron, queue, webhook, mailer or gateway, or replace them in tests**: [inbound-outbound.md](inbound-outbound.md)

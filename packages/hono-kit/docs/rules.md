@@ -9,6 +9,7 @@ The rules every file keeps. Lint stops most of them; the rest are here.
 - **Failures**: expected ones (not found, no permission, an external service not answering) are returned as `Result` (`err(NotFound.code)`). Unexpected ones (the DB is down) are thrown
   - 401, 403, 404 are hono-kit standards (`Unauthorized` / `Forbidden` / `NotFound`). Make the others as `{ code, kind, message } as const`, and hono-kit decides the status from `kind`
   - `conflict` (409): it clashes with the thing's current state (taken, already sent, out of stock, a newer version). `unprocessable` (422): the request itself breaks a rule, whatever the state (past the deadline, outside opening hours). A rule of the clock is 422 even when waiting would let it pass: reading again does not change the answer
+  - Name a code `<THING>_` + what happened (`INVOICE_NOT_SENDABLE`). A name the docs give is the API's contract: use it as is
   - Clients branch on the `code`, not on 403 / 409 / 422. When a business failure could be more than one kind, make it `conflict` and move on
   - What you cannot see is `NOT_FOUND` (its existence is not revealed); what you can see but may not touch is `FORBIDDEN`
 - **Check order**: the guard (401 signed out → 403 a role that may not) → input validation 400 (schema) → NOT_FOUND → FORBIDDEN (a permission that needs the row) → unprocessable → conflict. The guard's 403 does not depend on the ID, so it reveals nothing
