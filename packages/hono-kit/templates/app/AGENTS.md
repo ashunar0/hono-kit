@@ -6,10 +6,9 @@ The rules ship with the installed hono-kit. **Before writing any file, read `nod
 ## Commands
 
 ```sh
-pnpm hnk g domain <plural camelCase>   # add a domain, e.g. invoices, signupRequests
-pnpm db:generate                       # after changing a table; writes migrations/ (tests read them)
-pnpm exec prettier --write .           # once after editing, before check
-pnpm check                             # typecheck, lint, format check, tests
+pnpm db:generate             # after changing a table; writes migrations/ (tests read them)
+pnpm exec prettier --write . # once after editing, before check
+pnpm check                   # typecheck, lint, format check, tests
 ```
 
 **Do not stop until `pnpm check` prints `All checks passed`.** Every lint message says how to fix it. Do not silence lint.
