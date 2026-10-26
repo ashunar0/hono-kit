@@ -2,33 +2,29 @@
 
 ## cron
 
-- Location: `src/jobs/<name>.ts`, outside domains. It may import only **types** from hono-kit and any domain's model (values too, to brand IDs). It receives `{ deps, actor, now }` and takes services from `deps`
+- A job is a function that receives `{ deps, now }`. Put it where you like, for example `src/jobs/<name>.ts`
 - `src/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
-- Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due. It hands the job the system actor, as `createWorker` does
+- Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
-- Tests: call the job in `src/jobs/` directly instead of going through `scheduled`. Act as `systemActor` from `hono-kit/testing`
-- A batch over every user may not fit the `Page` cursor (`at: Date`, `id`); a `GROUP BY` aggregate has no `at`. In that case, put a dedicated read in the repo (`unreadSummaries(after, limit)`) and loop yourself. Never make it an unbounded read
-- Add "already sent" markers to suppress resends when they are needed, not up front
+- Tests: call the job directly with `{ deps, now }` instead of going through `scheduled`
 
 ## queue
 
-- Taking messages off: a job in `src/jobs/<name>.ts`, passed as `createWorker({ queue })`. It receives `{ deps, actor, now, body }`; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
-- Putting messages on: the domain's `queue.<tech>.ts` (`queue.cloudflare.ts`) fulfills the shape service declares (`enqueue(jobs)`). `deps.ts` wires it
+- Taking messages off: a job passed as `createWorker({ queue })`. It receives `{ deps, now, body }`; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
+- Return err only for a failure that may go away when tried again. A failure that will not go away ends with ok, and leaves a record that the message was given up
 
 ## mailer / gateway
 
-- File name: `mailer.<tech>.ts` (`mailer.dummy.ts` before the provider is decided). It may import only `hono-kit/result`, model types and service types
-- service declares the shape it sends (`send(to, subject, body): Promise<Result<void, "MAIL_FAILED">>`), and `deps.ts` wires it. The failure is a `Failure` with `kind: "upstream"` (502)
-- A side effect outside goes "record first → call outside → settle with the result", so what happened can be traced afterwards. When the outside takes an idempotency key, pass one (the payment ID to Stripe, a key with the date for a reminder mail). Whether a failure midway may send twice or may miss one is a business decision: write it in a comment in service
+- A failure of an outside service is a `Failure` with `kind: "upstream"` (502)
 - When a dummy "collects what was sent", **it cannot keep an array at module scope** (`no-module-scope-state`). Take the outbox as an argument, like `dummy(outbox: Mail[])`
 
 ## Failures only an entry point has
 
-A failure that belongs to the entry point, not to a thing (a webhook signature that does not match), goes next to that entry point in `src/routes/<noun>/_errors.ts` as `httpError(code, status, message)`. A domain has no `errors.ts`.
+A failure that belongs to the entry point, not to a thing (a webhook signature that does not match), is made with `httpError(code, status, message)`.
 
 ## Replacing external services in tests
 
-`buildApp` takes `makeDeps` as an argument. For domains you want to replace, make it `makeDeps(env, overrides?)`: production passes nothing (a dummy or the real thing), tests pass a stand-in. Do not use `vi.mock` (lint stops it).
+`buildApp` takes `makeDeps` as an argument. For parts you want to replace, make it `makeDeps(env, overrides?)`: production passes nothing (a dummy or the real thing), tests pass a stand-in.
 
 ```ts
 export const makeDeps = (
