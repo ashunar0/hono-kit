@@ -1,11 +1,11 @@
 # hono-kit docs
 
-The rules of an app built on hono-kit, for the installed version. hono-kit fixes where things go and what they look like. **The generator produces the shape of a domain; do not invent layers.** When unsure, read an existing domain and an existing resource under `src/routes/` to the end and write the same way.
+The rules of an app built on hono-kit, for the installed version. hono-kit fixes only the HTTP entry (`src/routes/`) and how to write it; how the rest of `src/` is split is up to the app. When unsure, read an existing resource under `src/routes/` to the end and write the same way.
 
 Always read:
 
-- [layout.md](layout.md): where things go. The files hono-kit fixes, and how to import
-- [rules.md](rules.md): the rules every file keeps (actor, failures, check order, writes, reach, unique constraints, lists)
+- [layout.md](layout.md): the files hono-kit fixes, and how to import
+- [rules.md](rules.md): the rules every file keeps (time, actor, failures, check order, IDs, unique constraints, replies, lists, module scope, tests)
 
 Read before you…
 
