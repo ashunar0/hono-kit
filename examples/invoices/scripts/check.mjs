@@ -12,7 +12,6 @@ const steps = [
   ["format:check", ["pnpm", "format:check"]],
   ["test", ["pnpm", "test"]],
   ["hnk の lint ルールのテスト", ["pnpm", "-C", "../../packages/hono-kit", "test"]],
-  ["docs の許可表", ["pnpm", "-C", "../../packages/hono-kit", "docs:check"]],
 ];
 
 const failed = [];

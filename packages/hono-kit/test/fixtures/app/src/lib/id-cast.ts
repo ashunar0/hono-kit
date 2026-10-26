@@ -1,5 +1,5 @@
 // expect: hnk(no-id-cast) | InvoiceId is applied with as
-type InvoiceId = string & { readonly brand: true };
+import type { InvoiceId } from "#src/ids/invoice";
 
 export const forged = "x" as InvoiceId;
 export const widened = "x" as string;
