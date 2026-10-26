@@ -1,5 +1,0 @@
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "extends": ["./node_modules/hono-kit/lint/recommended.json"],
-  "rules": {}
-}

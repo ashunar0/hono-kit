@@ -18,8 +18,8 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The example app: gen --check (CI is set), types, lint, format, tests, the lint rule tests, the import table in docs
-      - run: pnpm -C examples/invoices check
-      # The template: init → g domain → install → check, linked and packed
+      # hono-kit itself: the lint rule tests, hnk gen, the source checks
+      - run: pnpm -C packages/hono-kit test
+      # The template: init → g domain → install → check (with the type tests in scripts/e2e-typetests), linked and packed
       - run: pnpm -C packages/hono-kit e2e
       - run: pnpm -C packages/hono-kit e2e:packed

@@ -63,6 +63,8 @@ run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
 // リソースは生成しないので、e2e-routes/ の route を手で書いた体で写す
 for (const name of new Set(["notes", ...domains])) run("node", [cli, "g", "domain", name], app);
 fs.cpSync(path.join(root, "scripts/e2e-routes"), path.join(app, "src/routes"), { recursive: true });
+// 型のテスト（宣言と handler・client の型が合っているか）。tsc が src の中を全部見るので、置くだけで確かめられる
+fs.cpSync(path.join(root, "scripts/e2e-typetests"), path.join(app, "src"), { recursive: true });
 run("pnpm", ["install"], app);
 // postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
 run("pnpm", ["typecheck"], app);
