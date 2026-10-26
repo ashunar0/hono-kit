@@ -4,9 +4,32 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+hono-kit keeps only the HTTP entry and how to write it; the architecture (domains, services, queries, System) is gone. 0.8.0 is the last version with it.
+
+### Breaking
+
+- Four lint rules are gone: `layer-imports`, `no-foreign-table-reads`, `route-writes-once`, `route-no-domain-failures`. Remove them from `.oxlintrc.json`, or oxlint stops on the unknown rule
+- `no-id-cast` now allows `as …Id` only in the file that declares that `…Id` (before: only in a model). An app that declares its ID types in its models passes as is
+- `hono-kit/system`, `hono-kit/testing`, `allowSystem` and the `System` type are gone. A webhook checked by its signature uses `auth: allowAnonymous` and checks in the handler
+- cron and queue get no actor: `CronContext` is `{ deps, now }`, `QueueContext` is `{ deps, now, body }`
+- `hnk gen` no longer writes `makeQueries`. Remove `...makeQueries(db)` from `src/deps.ts`
+- `hnk g domain` is gone
+
 ### Added
 
-- `hono-kit/lint/recommended.json`: the lint settings of hono-kit's rules (every `hnk/*` rule on `src/**/*.ts`, `import/no-cycle`, `typescript/no-explicit-any`, no `vi.mock`). It ships with the installed version, so a rule added later turns on without editing the app. To use it, replace `.oxlintrc.json` with `{ "extends": ["./node_modules/hono-kit/lint/recommended.json"], "rules": {} }` and keep only your own rules in `rules`. Apps that keep listing rules by hand still work
+- `hono-kit/lint/recommended.json`: the lint settings of hono-kit's rules (every `hnk/*` rule on `src/**/*.ts`, `import/no-cycle`, `typescript/no-explicit-any`). It ships with the installed version, so a rule added later turns on without editing the app. To use it, replace `.oxlintrc.json` with `{ "extends": ["./node_modules/hono-kit/lint/recommended.json"], "rules": {} }` and keep only your own rules in `rules`. Apps that keep listing rules by hand still work
+
+### Changed
+
+- deps are optional: `provideDeps` and `createWorker`'s `makeDeps` can be left out. Reading deps without them throws an error that says which is missing
+
+### Changed (template)
+
+- A new app has no `src/domains/`. `Account` is in `src/middleware/auth.ts`, tables are in `src/db/schema.ts`, deps return `{ db }`, and `src/db/index.ts` has only `wireDb`. The `vi.mock` ban is gone. Existing apps keep their own files
+
+### Removed
+
+- `examples/invoices` (kept in the 0.8.0 tag)
 
 ### Fixed
 
