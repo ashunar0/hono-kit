@@ -159,7 +159,7 @@ type EnvOf<M> = M extends MiddlewareHandler<infer E, any, any, any> ? E : never;
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 /**
- * auth decides who is acting, so its middleware must set actor (Account, System, null for anyone, ...).
+ * auth decides who is acting, so its middleware must set actor (the signed-in account, null for anyone, ...).
  * withAccount only loads the session and sets account, so it cannot stand in for a guard.
  * An untyped middleware (Env `any`) is refused too: it would seem to set actor, and leave every c.get(...) in the handler `any`.
  * When it does not hold, auth is underlined with this message

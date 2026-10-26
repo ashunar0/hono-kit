@@ -1,6 +1,5 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
-import { systemActor } from "./system-value.js";
 import { missingDeps } from "./endpoint.js";
 import { type CronContext, type QueueContext, runScheduled } from "./entry.js";
 
@@ -10,7 +9,6 @@ type Bindings = RegisteredEnv["Bindings"];
  * The Workers entry point. HTTP goes to fetch, schedules to scheduled, queues to queue.
  *
  * - deps are built once per call with makeDeps (provideDeps does the same for HTTP). Without makeDeps, jobs get no deps
- * - There is no user, so this passes the actor (the system) for calling services. Entry files never create it; they only receive it
  * - now comes from the event: the scheduled time for scheduled, the enqueue time for queue
  *   (so a retry that crosses midnight is still treated as the same date)
  * - A queue handler returns a Result: ok acks, err retries. An unexpected throw
@@ -47,7 +45,6 @@ export const createWorker = <Body = never>(options: {
           try {
             const result = await queue({
               deps,
-              actor: systemActor,
               now: message.timestamp,
               body: message.body,
             });

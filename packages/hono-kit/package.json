@@ -28,8 +28,6 @@
     "./openapi": "./src/openapi.ts",
     "./page": "./src/page.ts",
     "./sqlite": "./src/sqlite.ts",
-    "./system": "./src/system.ts",
-    "./testing": "./src/testing.ts",
     "./worker": "./src/worker.ts",
     "./lint": "./lint/index.mjs",
     "./package.json": "./package.json"
@@ -59,14 +57,6 @@
       "./sqlite": {
         "types": "./dist/sqlite.d.ts",
         "default": "./dist/sqlite.js"
-      },
-      "./system": {
-        "types": "./dist/system.d.ts",
-        "default": "./dist/system.js"
-      },
-      "./testing": {
-        "types": "./dist/testing.d.ts",
-        "default": "./dist/testing.js"
       },
       "./worker": {
         "types": "./dist/worker.d.ts",

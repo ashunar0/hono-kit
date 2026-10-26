@@ -30,8 +30,6 @@ import {
   type InferOutput,
 } from "./standard-schema.js";
 
-import type { System } from "./system.js";
-
 /**
  * Where and how many `as never` / `as unknown as` are allowed is fixed and checked by test/source.test.mjs
  */

@@ -4,10 +4,8 @@
  * It is not the user record of the auth provider (email, name, ...). A business person (a member, a staff, a patient)
  * is a row of its own domain that holds the account's ID, and "only their own" reaches go through it.
  * Never put a business row's ID here: a session, once issued, would keep an old ID after the row is deleted.
- * Other domains borrow only types from here.
- * The system (a caller with no account) belongs to hono-kit. cron, queues and webhooks receive it
+ * Other domains borrow only types from here
  */
-import type { System } from "hono-kit/system";
 
 /**
  * The brand for account IDs. Mixing one up with a plain string is a type error.
@@ -35,10 +33,3 @@ export type Account = {
 
 /** Creates an authenticated account. Called only by the auth middleware (and tests) */
 export const authenticatedAccount = (id: AccountId) => ({ kind: "account", id }) as Account;
-
-/**
- * Who is acting right now: an account or the system.
- * Over HTTP the guard in the endpoint's auth (requireAuth, allowSystem) puts it in c.get("actor"); for cron and queues, createWorker passes it.
- * A service always takes "acting as whom" as its first argument
- */
-export type Actor = Account | System;
