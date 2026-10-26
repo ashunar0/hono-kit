@@ -17,7 +17,7 @@ hono-kit を作る側のメモ。決めたことの理由と、まだ決めて�
 
 - **仕組みはパッケージ、決めごとはアプリ**。失敗の一覧・env・組み立て・middleware はアプリに置く。結びつけのためだけのファイルは作らない（`new Hono()` と同じく、使う場所で 1 行）
 - **ルーティングは Void の形を借りる**。違えているのは 3 つ: 成功は 200 だけ、依存は handler の 3 つ目の引数、1 つの URL に `index.ts` は 1 つ
-- **endpoint はディレクトリで切る**。書き味と、AI が置き場所を間違えにくいから（型が軽くなるのは大きいアプリでだけ効くので、理由にしない）。`c.json` だとずれたときの赤線が handler の頭に付くので、`reply` で返す
+- **endpoint はディレクトリで切る**。Hono の普通の書き方（リソースごとのファイルで `app.get(...)` をチェーンし、`app.route(...)` でつなぐ）と比べて、手に入るものが 3 つある。①置き場所を選ぶ場面がない（`/customers/:id/invoices` を `customers.ts` と `invoices.ts` のどちらに書くかで揺れない）②親のパスの param まで型で見られる（`app.route` でつないだ先の handler は、親の `:id` を型の上で知らない）③チェーンを守らなくても RPC の型が壊れない（AppType は生成器が endpoint を 1 本ずつ `&` で並べる）。handler に名前が要らないこと、型が軽くなること（大きいアプリでだけ効く）は理由にしない。`c.json` だとずれたときの赤線が handler の頭に付くので、`reply` で返す
 - **誰が呼べるかは必須の `auth` 欄**。書き忘れと「わざと公開」を見分けるため（公開は `allowAnonymous` と書く）。前は `middleware` の中の名前（`require` / `allow` で始まる）を lint で見ていたが、名前の約束では中身を確かめられないので、型で止める形にした（tRPC の `publicProcedure` / `protectedProcedure` に近い）。型が見るのは「`actor` を入れるか」で、`withAccount` のように `account` を積むだけの middleware は `auth` に書けない。公開の `allowAnonymous` も `actor: null` を入れる。専用の関数（`defineAuth` のような印）は足さなかった。印は「auth として使う」と宣言するだけで、ここで決めている「`actor` を入れる」を確かめないから。どちらの形でも、本当に人を弾くかまでは型で分からない。guard の中身（セッションの読み方、`Account` の形、どの guard があるか）は認証のスタックで変わるので、hono-kit は決めずアプリに置く。hono-kit が決めるのは「`auth` に 1 つ書く」と「それが `actor` を入れる」だけ
 - **状態の遷移は動詞のディレクトリ**（Google の AIP-136 や Stripe と同じ）。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから
 - **import の外向きは `#src/`**。Node の標準の仕組み（package.json の `imports`）。tsconfig の paths だと vitest がそのままでは読めず、設定を 2 か所に書くか依存を足すことになる
