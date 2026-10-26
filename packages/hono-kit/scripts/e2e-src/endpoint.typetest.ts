@@ -2,7 +2,7 @@ import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
 import { allowAnonymous, requireAuth, withAccount } from "./middleware/auth";
-import type { Account } from "./domains/accounts/model";
+import type { Account } from "./middleware/auth";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();

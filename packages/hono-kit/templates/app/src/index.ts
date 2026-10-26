@@ -4,7 +4,7 @@ import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
-import { withAccount } from "./middleware/auth";
+import { withAccount, type AuthVariables } from "./middleware/auth";
 import { registerRoutes } from "./routes.gen";
 
 /**
@@ -15,7 +15,7 @@ import { registerRoutes } from "./routes.gen";
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
-  authenticate: MiddlewareHandler<AppEnv> = withAccount,
+  authenticate: MiddlewareHandler<{ Variables: AuthVariables }> = withAccount,
   clock: () => Date = () => new Date(),
 ) => {
   const app = createApp()
@@ -45,7 +45,7 @@ const app = buildApp(makeDeps);
 
 /**
  * The Workers entry point. HTTP goes to app.
- * To add cron or a queue, write the job in src/jobs/ and pass scheduled / queue here. Building deps, the actor (the system), now,
+ * To add cron or a queue, write the job and pass scheduled / queue here. Building deps, now,
  * ack and retry are handled by createWorker
  */
 export default createWorker({ makeDeps, fetch: app.fetch });

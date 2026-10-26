@@ -232,7 +232,7 @@ type WithAutoErrors<R extends RouteConfig> = Omit<R, "responses"> & {
 /**
  * A route declaration with the automatic failure declarations added.
  * Failures a guard may return (Unauthorized for requireAuth) and ValidationError when there is input
- * need not be written in responses. Write only domain failures
+ * need not be written in responses. Write only the failures the handler returns
  */
 const createRoute = <const R extends RouteConfig>(config: R) => {
   const middleware = [config.auth, config.middleware ?? []].flat() as {
@@ -283,7 +283,7 @@ type DeclaredFailure<R extends RouteConfig> = R extends {
  * With `never` here, the reason for the red squiggle would be unreadable
  */
 type NoFailureDeclared =
-  "This route declares no domain failures. Add ...errorResponses(NotFound, ...) to responses";
+  "This route declares no failures. Add ...errorResponses(NotFound, ...) to responses";
 
 /** Returns the declared status for each failure code, keeping "NOT_FOUND means 404" in the type */
 type FailureResponse<R extends RouteConfig, K> = {

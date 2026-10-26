@@ -1,21 +1,26 @@
 /**
  * /notes/:id
  */
+import { eq } from "drizzle-orm";
 import { createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
+import { notesTable } from "#src/db/schema";
 import { requireAuth } from "#src/middleware/auth";
-import { noteIdSchema } from "#src/domains/notes/model";
 import { noteResponse, noteResponseSchema } from "../_response";
 
 export const GET = createEndpoint(
   {
     auth: requireAuth,
-    request: { param: z.object({ id: noteIdSchema }) },
+    request: { param: z.object({ id: z.string() }) },
     responses: { 200: noteResponseSchema, ...errorResponses(NotFound) },
   },
-  async (c, reply, { notesQueries }) => {
-    const note = await notesQueries.get(c.req.valid("param").id);
-    if (note === null) return reply.failure(NotFound.code);
+  async (c, reply, { db }) => {
+    const [note] = await db
+      .select()
+      .from(notesTable)
+      .where(eq(notesTable.id, c.req.valid("param").id))
+      .limit(1);
+    if (note === undefined) return reply.failure(NotFound.code);
 
     return reply(200, noteResponse(note));
   },

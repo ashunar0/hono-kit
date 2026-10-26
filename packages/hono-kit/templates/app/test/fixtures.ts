@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { wireDb } from "#src/db/index";
 import { buildApp } from "#src/index";
 import { makeDeps } from "#src/deps";
-import { authenticatedAccount, accountId, type Account } from "#src/domains/accounts/model";
+import { authenticatedAccount, accountId, type Account } from "#src/middleware/auth";
 
 export const db = () => wireDb(env.DB);
 

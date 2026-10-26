@@ -1,30 +1,26 @@
 import { reportWithDocs } from "../docs.mjs";
-import path from "node:path";
-import { fileOf, placeOf, projectOf } from "../project.mjs";
+import { fileOf, isTest, projectOf, relativeOf } from "../project.mjs";
 
 /**
  * 時計を読むのは、アプリを組み立てる所（src/index.ts、src/server.ts、src/middleware/）とテストだけ。
  * HTTP は 1 リクエストに 1 回だけ読んで c.get("now") に積み、handler はそれを使う。job は渡された now を使う。
- * service より下は now を引数で受け取る。
+ * そこから呼ぶ関数は now を引数で受け取る。
  *
  * handler や job が new Date() を呼ぶと、テストで時刻を固定できない（日付をまたぐ瞬間に落ちるテストになる）。
  * 同じ手順が入口によって違う時計で動くこともある。
  * 引数の付いた new Date(value) は時計ではなく変換なので止めない
  */
-// src/index.ts is seen as "src" (placeOf drops /index)
-const ALLOWED = new Set(["test", "middleware", "src", "src/server"]);
+const isAppEntry = (rel) =>
+  rel === "src/index.ts" || rel === "src/server.ts" || rel.startsWith("src/middleware/");
 
 export default {
   create(context) {
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
-    const rel = path.relative(project.root, file).replace(/\\/g, "/");
+    const rel = relativeOf(file, project);
     // Only app code in src/. Tests anywhere may read the clock
-    if (!rel.startsWith("src/") || /\.(test|typetest|spec)\.tsx?$/.test(rel))
-      return {};
-    const self = placeOf(file, project.root);
-    if (ALLOWED.has(self.role)) return {};
+    if (!rel.startsWith("src/") || isTest(rel) || isAppEntry(rel)) return {};
 
     const report = (node, what) =>
       reportWithDocs(
@@ -32,7 +28,7 @@ export default {
         "rules.md",
       )({
         node,
-        message: `${self.role} reads the clock (${what}). The app reads it once, so tests can fix it: in a handler use c.get("now"), in a job the now it is passed, in service and below take now as an argument`,
+        message: `${rel} reads the clock (${what}). The app reads it once, so tests can fix it: in a handler use c.get("now"), in a job the now it is passed, and the functions they call take now as an argument`,
       });
 
     return {

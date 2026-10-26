@@ -1,5 +1,5 @@
 import { reportWithDocs } from "../docs.mjs";
-import { fileOf, placeOf, projectOf } from "../project.mjs";
+import { fileOf, isTest, projectOf, relativeOf } from "../project.mjs";
 
 /**
  * ID の印（InvoiceId など）を `as` で付けない。印を付けてよいのは、その ID の型を宣言しているファイル
@@ -23,7 +23,7 @@ export default {
     const file = fileOf(context);
     const project = projectOf(file);
     if (!project) return {};
-    if (placeOf(file, project.root).role === "test") return {};
+    if (isTest(relativeOf(file, project))) return {};
 
     let declared = new Set();
 

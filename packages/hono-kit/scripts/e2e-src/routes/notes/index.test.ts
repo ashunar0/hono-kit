@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { alice, request } from "../../../test/fixtures";
 
-it("reads a created note back through queries", async () => {
+it("reads a created note back", async () => {
   const created = await request(alice, "POST", "/notes");
   expect(created.status).toBe(200);
   const { id } = (await created.json()) as { id: string };

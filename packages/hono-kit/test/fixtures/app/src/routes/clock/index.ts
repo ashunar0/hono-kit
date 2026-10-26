@@ -1,4 +1,4 @@
-// expect: hnk(no-clock-outside-app-entry) | resource reads the clock (new Date()). The app reads it once
+// expect: hnk(no-clock-outside-app-entry) | src/routes/clock/index.ts reads the clock (new Date()). The app reads it once
 import { allowAnonymous } from "../../middleware/auth";
 import { createEndpoint } from "hono-kit";
 

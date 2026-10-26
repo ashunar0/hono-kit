@@ -1,9 +1,9 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → g domain → e2e-routes/ を写す → pnpm install（postinstall で hnk gen --if-missing）→ typecheck → db:generate → pnpm check を通す。
+ * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk gen --if-missing）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
  * 続けて、commit 済みの古い routes.gen.ts を postinstall が書き直して CI の --check を誤魔化さないかも確かめる
  * （src/routes.gen.ts を古くする → CI=1 pnpm install → 触られていないこと → CI=1 pnpm check が routes.gen.ts で落ちること）。
- * 使い方: node scripts/e2e-template.mjs [--packed] [domain 名...]（既定は invoices と signupRequests。複数形と camelCase の置き換えを確かめる）
+ * 使い方: node scripts/e2e-template.mjs [--packed]
  *   既定は手元の hono-kit を link: でつなぐ。--packed は pnpm pack した tgz を展開し、その中の CLI と dist で通す（npm に出す物そのもの）
  */
 import { spawnSync } from "node:child_process";
@@ -15,8 +15,6 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const packed = args.includes("--packed");
-const names = args.filter((a) => a !== "--packed");
-const domains = names.length > 0 ? names : ["invoices", "signupRequests"];
 
 // シンボリックリンクを解いておく（/var → /private/var のような所で、pnpm の解決がずれないように）
 const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "hnk-e2e-")));
@@ -59,12 +57,9 @@ if (packed) {
 }
 
 run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
-// notes は読みの道（_queries.ts → notesWithin → endpoint → routes.gen.ts → AppType）を雛形の上で通すため、いつも作る。
-// リソースは生成しないので、e2e-routes/ の route を手で書いた体で写す
-for (const name of new Set(["notes", ...domains])) run("node", [cli, "g", "domain", name], app);
-fs.cpSync(path.join(root, "scripts/e2e-routes"), path.join(app, "src/routes"), { recursive: true });
-// 型のテスト（宣言と handler・client の型が合っているか）。tsc が src の中を全部見るので、置くだけで確かめられる
-fs.cpSync(path.join(root, "scripts/e2e-typetests"), path.join(app, "src"), { recursive: true });
+// アプリを書いた体で、テーブル（db/schema.ts）・route・型のテスト（*.typetest.ts。宣言と handler・client の型が
+// 合っているか）を写す。tsc が src の中を全部見るので、置くだけで確かめられる
+fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true });
 run("pnpm", ["install"], app);
 // postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
 run("pnpm", ["typecheck"], app);
