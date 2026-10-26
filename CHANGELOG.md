@@ -2,7 +2,7 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
-## Unreleased
+## 0.9.0
 
 hono-kit keeps only the HTTP entry and how to write it; the architecture (domains, services, queries, System) is gone. 0.8.0 is the last version with it.
 
