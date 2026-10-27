@@ -4,6 +4,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
 import { type ContentMap, isContentMap, negotiate } from "./content.js";
+import { errorPageFor } from "./error-page.js";
 import {
   errorBody,
   fail,
@@ -469,9 +470,10 @@ export const buildEndpoint = <const C extends RouteConfig>(
           303,
         );
       },
-      failure: (code: string) => {
+      failure: async (code: string) => {
         const declared = findDeclaredFailure(route, code, c);
-        return c.json(errorBody(code, declared.message), declared.status);
+        const page = await errorPageFor(c, { code, ...declared });
+        return page ?? c.json(errorBody(code, declared.message), declared.status);
       },
     } as unknown as Reply<Built<C>>;
 

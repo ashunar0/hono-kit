@@ -6,6 +6,7 @@
  * - worker.ts: the Cloudflare Workers entry point (createWorker). Imported from "hono-kit/worker", not from here,
  *   so the rest of hono-kit knows nothing of Workers
  * - content.ts: one response in several formats (JSON, HTML, ...), chosen by Accept
+ * - error-page.ts: the app's one error page (errorPage), for HTML requests to pages
  * - file.ts: file responses (file), sent as they are
  * - redirect.ts: redirect responses (redirect) and which locations they may go to
  * - page-schema.ts: HTTP input/output shapes for list pagination
@@ -41,6 +42,11 @@ export {
 } from "./failure.js";
 export { type CronContext, type QueueContext, runScheduled } from "./entry.js";
 export { type ContentMap, type Rendered, type Renderer } from "./content.js";
+export {
+  errorPage,
+  type ErrorPageResult,
+  type ShownFailure,
+} from "./error-page.js";
 export { file, type FileBody, type FileResponse } from "./file.js";
 export { redirect, type RedirectResponse } from "./redirect.js";
 export {

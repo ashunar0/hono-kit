@@ -37,6 +37,8 @@ To send the same data as HTML (or Markdown) to whoever asks for it, list the for
 },
 ```
 
+A page that fails shows JSON (`{ error }`) unless the app has an error page. Register one in `src/index.ts`, before `authenticate`: `app.use("*", errorPage((failure) => failure.status === 401 ? { redirect: "/login" } : ErrorPage(failure)))`. `failure` is `{ code, status, message }`. It is used only when the client asked for HTML and the endpoint returns HTML, for declared failures, the ones thrown before the handler (401, 400, 406) and unexpected errors (500); the handler does not change.
+
 An update is `PUT` with the whole input, the same schema as the create (`invoiceInputSchema`); use `PATCH` only when a client must change some fields and leave the rest. A change of state is not an update: it is a verb directory under the thing with only `POST` (`src/routes/invoices/[id]/send/index.ts` for `POST /invoices/:id/send`), not a `PATCH` of the status and not a noun (`/sending`). An undo is another verb (`publish` / `unpublish`).
 
 `index.ts` exports only endpoints built with createEndpoint (`GET` / `POST` / `PUT` / `PATCH` / `DELETE`); anything else there — a helper, a re-export, a default export — is stopped by lint `route-exports-endpoints`.

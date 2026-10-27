@@ -3,6 +3,7 @@ import { validator } from "hono/validator";
 import { HTTPException } from "hono/http-exception";
 import type { H, ParamKeys } from "hono/types";
 import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
+import { rememberFormat } from "./error-page.js";
 import { fail, ValidationError } from "./failure.js";
 import type { RedirectResponse } from "./redirect.js";
 import type { RegisteredEnv } from "./register.js";
@@ -124,7 +125,9 @@ export const createEndpoint = <const D extends EndpointDeclaration>(
   const middleware = [route.auth, route.middleware ?? []].flat();
 
   // DECLARATION is a brand with no runtime value: nothing to assign, only to assert
+  // rememberFormat goes first so that a failure thrown by auth or validation still knows it is for a page
   return [
+    rememberFormat(route),
     ...middleware,
     ...validatorsOf(route),
     Object.assign(handler, { [ROUTE]: route }),

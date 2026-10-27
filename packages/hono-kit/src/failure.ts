@@ -1,6 +1,7 @@
 import type { ErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { errorPageFor } from "./error-page.js";
 import type { Failure, FailureKind } from "./failures.js";
 
 /** One failure returned over HTTP. Has a code, a status and a default message */
@@ -92,19 +93,22 @@ export const errorBody = (code: string, message: string) => ({
 });
 
 /** The single exit for every failure. `app.onError(onError)` */
-export const onError: ErrorHandler = (error, c) => {
-  if (error instanceof HnkError) {
-    return c.json(
-      errorBody(error.code, error.message),
-      error.status as ContentfulStatusCode,
-    );
-  }
-  if (error instanceof HTTPException) {
-    return c.json(
-      errorBody("INTERNAL", error.message),
-      error.status as ContentfulStatusCode,
-    );
-  }
-  console.error("[unhandled]", error);
-  return c.json(errorBody("INTERNAL", "Internal Server Error"), 500);
+export const onError: ErrorHandler = async (error, c) => {
+  const shown =
+    error instanceof HnkError
+      ? { code: error.code, status: error.status, message: error.message }
+      : error instanceof HTTPException
+        ? { code: "INTERNAL", status: error.status, message: error.message }
+        : { code: "INTERNAL", status: 500, message: "Internal Server Error" };
+  if (!(error instanceof HTTPException)) console.error("[unhandled]", error);
+
+  // An HTML request to a page gets the app's error page, if it has one
+  const page = await errorPageFor(c, shown);
+  return (
+    page ??
+    c.json(
+      errorBody(shown.code, shown.message),
+      shown.status as ContentfulStatusCode,
+    )
+  );
 };
