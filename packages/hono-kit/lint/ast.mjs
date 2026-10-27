@@ -1,6 +1,6 @@
 /** HTTP の入口か（src/routes/ のリソース。webhook もここ）。endpoint を書く場所 */
 export const isHttpEntry = (file) =>
-  /[/\\]src[/\\]routes[/\\](?:.+[/\\])?index\.ts$/.test(file);
+  /[/\\]src[/\\]routes[/\\](?:.+[/\\])?index\.tsx?$/.test(file);
 
 /** `as const` や `satisfies` を剥がす */
 export const unwrap = (node) => {

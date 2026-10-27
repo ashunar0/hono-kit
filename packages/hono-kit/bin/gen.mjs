@@ -1,7 +1,7 @@
 /**
  * src/routes から src/routes.gen.ts を書く（`hnk gen`、見張るなら `--watch`、書かずに比べるなら `--check`、
  * 無ければ作るだけなら `--if-missing`。postinstall 用（CI の --check を書き直して誤魔化さないように）。--watch / --check とは一緒に使えない）。
- * - src/routes/**\/index.ts: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
+ * - src/routes/**\/index.ts（JSX を書くなら index.tsx）: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
  *   ディレクトリがパス、[id] は :id、[...path] は残り全部（:path{.+}）、(名前) は URL に出ない（route group）。
  *   _ で始まるファイルとディレクトリは読まない
  * - AppType: 全 endpoint の入力と応答。hc に渡す。チェーンせず、1 本ずつ & で並べる
@@ -77,15 +77,25 @@ const routePathOf = (dir, file, problems) => {
   return `/${segments.join("/")}`;
 };
 
+/** endpoint のファイルの名前。JSX を書くなら .tsx */
+const ENTRY_NAMES = ["index.ts", "index.tsx"];
+
 /** 生成するコード、または止める理由 */
 export const generate = (src) => {
   const routesDir = path.join(src, "routes");
   const problems = [];
   const files = filesIn(routesDir).sort();
-  const importPath = (file) => `./${path.relative(src, file).replace(/\.ts$/, "")}`;
+  const importPath = (file) => `./${path.relative(src, file).replace(/\.tsx?$/, "")}`;
 
   // endpoint
-  const routeFiles = files.filter((f) => path.basename(f) === "index.ts");
+  const routeFiles = files.filter((f) => ENTRY_NAMES.includes(path.basename(f)));
+  // index.ts と index.tsx が同じディレクトリにあると、どちらが endpoint か決まらない
+  const dirs = new Set();
+  for (const file of routeFiles) {
+    const dir = path.dirname(file);
+    if (dirs.has(dir)) problems.push(`${dir}: both index.ts and index.tsx. Keep one`);
+    dirs.add(dir);
+  }
   const endpoints = routeFiles.flatMap((file, i) => {
     const dir = path.relative(routesDir, path.dirname(file)).split(path.sep).join("/");
     const routePath = routePathOf(dir, file, problems);
@@ -108,9 +118,10 @@ export const generate = (src) => {
     const shape = shapeOf(e.path);
     const owner = owners.get(shape);
     if (!owner) owners.set(shape, { file: e.file, path: e.path });
-    else if (owner.file !== e.file) {
+    // 同じディレクトリの index.ts と index.tsx は上で止めている
+    else if (owner.file !== e.file && path.dirname(owner.file) !== path.dirname(e.file)) {
       const also = owner.path === e.path ? owner.file : `${owner.path} in ${owner.file}`;
-      clashes.add(`${e.file}: ${e.path} is also ${also}. One URL, one index.ts`);
+      clashes.add(`${e.file}: ${e.path} is also ${also}. One URL, one index file`);
     }
   }
   problems.push(...clashes);

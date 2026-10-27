@@ -7,7 +7,7 @@
   },
   "overrides": [
     {
-      "files": ["src/**/*.ts"],
+      "files": ["src/**/*.{ts,tsx}"],
       "rules": {
         "hnk/no-clock-outside-app-entry": "error",
         "hnk/route-exports-endpoints": "error",

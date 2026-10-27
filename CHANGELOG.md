@@ -4,6 +4,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Added
+
+- An endpoint can be `index.tsx`, for JSX. `hnk gen` reads it, lint checks it, and the template's `tsconfig.json` sets `"jsx": "react-jsx"` and `"jsxImportSource": "hono/jsx"`. An existing app adds those two lines and, if it lists files itself, `.tsx` in `.oxlintrc.json`. A directory with both `index.ts` and `index.tsx` stops `hnk gen`
+
 ### Breaking
 
 - `reply(200, body)` is `reply.success(body)`. Success is always 200, so it takes no status, like `reply.failure(code)`. Rewrite with `perl -pi -e 's/reply\(200, /reply.success(/g' $(git ls-files 'src/**/*.ts')`

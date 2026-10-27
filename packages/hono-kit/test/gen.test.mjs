@@ -42,7 +42,7 @@ test("(名前) は URL に出ない", () => {
 test("group を外して同じ URL になったら止まる", () => {
   const { problems } = generate(appWith({ "(a)/users/index.ts": ENDPOINT, "(b)/users/index.ts": ENDPOINT }));
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /\(b\)\/users\/index\.ts: \/users is also .*\(a\)\/users\/index\.ts\. One URL, one index\.ts/);
+  assert.match(problems[0], /\(b\)\/users\/index\.ts: \/users is also .*\(a\)\/users\/index\.ts\. One URL, one index file/);
 });
 
 test("param 名だけ違う同じ URL も止まる", () => {
@@ -50,7 +50,7 @@ test("param 名だけ違う同じ URL も止まる", () => {
   assert.equal(problems.length, 1);
   assert.match(
     problems[0],
-    /items\/\[itemId\]\/index\.ts: \/items\/:itemId is also \/items\/:id in .*items\/\[id\]\/index\.ts\. One URL, one index\.ts/,
+    /items\/\[itemId\]\/index\.ts: \/items\/:itemId is also \/items\/:id in .*items\/\[id\]\/index\.ts\. One URL, one index file/,
   );
 });
 
@@ -135,4 +135,16 @@ test("--if-missing は --watch / --check と一緒に使えない", () => {
 
   assert.equal(gen("--if-missing", "--watch").status, 1);
   assert.equal(gen("--if-missing", "--check").status, 1);
+});
+
+test("index.tsx も endpoint。import に拡張子は付けない", () => {
+  const { code } = generate(appWith({ "pages/[id]/index.tsx": ENDPOINT }));
+  assert.deepEqual(registered(code), ["GET /pages/:id"]);
+  assert.match(code, /import \* as route0 from "\.\/routes\/pages\/\[id\]\/index";/);
+});
+
+test("同じディレクトリに index.ts と index.tsx があったら止まる", () => {
+  const { problems } = generate(appWith({ "pages/index.ts": ENDPOINT, "pages/index.tsx": ENDPOINT }));
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /both index\.ts and index\.tsx/);
 });
