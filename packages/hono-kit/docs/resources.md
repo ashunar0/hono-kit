@@ -27,11 +27,21 @@ export const GET = createEndpoint(
 );
 ```
 
+To send the same data as HTML (or Markdown) to whoever asks for it, list the formats under 200 instead of one schema, in `index.tsx`. Put `application/json` first: it is sent when the client accepts anything (`hc`, `fetch`, `curl`). The handler does not change; which one is sent is chosen from `Accept`, a client that accepts none gets 406 before the handler runs, and the response carries `Vary: Accept`. Annotate each renderer's parameter; it must take what the JSON schema returns:
+
+```tsx
+200: {
+  "application/json": invoiceResponseSchema,
+  "text/html": (invoice: InvoiceResponse) => <InvoicePage invoice={invoice} />,
+  "text/markdown": (invoice: InvoiceResponse) => `# Invoice ${invoice.id}`,
+},
+```
+
 An update is `PUT` with the whole input, the same schema as the create (`invoiceInputSchema`); use `PATCH` only when a client must change some fields and leave the rest. A change of state is not an update: it is a verb directory under the thing with only `POST` (`src/routes/invoices/[id]/send/index.ts` for `POST /invoices/:id/send`), not a `PATCH` of the status and not a noun (`/sending`). An undo is another verb (`publish` / `unpublish`).
 
 `index.ts` exports only endpoints built with createEndpoint (`GET` / `POST` / `PUT` / `PATCH` / `DELETE`); anything else there — a helper, a re-export, a default export — is stopped by lint `route-exports-endpoints`.
 
-What sits next to it is up to you. Starting a file that is not an endpoint with `_` makes it easy to tell apart (`_response.ts`, as in Void). `hnk gen` reads only `index.ts`, and skips directories that start with `_`.
+What sits next to it is up to you. Starting a file that is not an endpoint with `_` makes it easy to tell apart (`_response.ts`, as in Void). `hnk gen` reads only `index.ts` (or `index.tsx`), and skips directories that start with `_`.
 
 - **Tests** go over HTTP next to the resource (`src/routes/<noun>/index.test.ts`): create, read, list, 400 on bad input, 404 for someone else's, 403 for a role that may not, 401 when signed out
 - **OpenAPI**: `openapiDocument(app, info)` from `hono-kit/openapi` builds the document from the registered endpoints. Serve it from `src/index.ts` when you need one (`app.get("/openapi.json", …)`)

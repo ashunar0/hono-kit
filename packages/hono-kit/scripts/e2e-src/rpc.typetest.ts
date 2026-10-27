@@ -75,3 +75,14 @@ export async function redirects() {
   // @ts-expect-error 200 は宣言していないので比べられない
   if (res.status === 200) return;
 }
+
+// 形式を並べた endpoint も、hc からは JSON に見える。どれも合わなければ 406
+export async function greetings() {
+  const res = await client.greetings.$get();
+
+  res.status satisfies 200 | 406;
+  if (res.status === 200) {
+    const body = await res.json();
+    body.name satisfies string;
+  }
+}

@@ -53,8 +53,9 @@ test("依存は hono だけ（ほかは src の中の相対 import）", () => {
 const CASTS = {
   // provideDeps の c.set と、handler の c.get: 内部のキー（DEPS_KEY）は、アプリの Env の変数に載せない。
   // errorResponses の戻り値: 実行時に組み立てた object に、番号ごとの失敗の型を付ける。
-  // handler の中の reply と fn(c, ...): route の型が決まらないここでは、Hono のジェネリクスを照らし合わせきれない
-  "endpoint.ts": 8,
+  // handler の中の reply と fn(c, ...): route の型が決まらないここでは、Hono のジェネリクスを照らし合わせきれない。
+  // 形式を選んで JSON で返す sendFormat も同じで、本文の型は reply.success が宣言から決めている
+  "endpoint.ts": 9,
   // 登録された handler に貼った宣言（ROUTE）を読む。Hono の handler の型は、hnk の印を知らない
   "openapi.ts": 1,
   // createEndpoint が返す配列に DECLARATION を型だけで載せる。実行時に持たせる値は無い印なので

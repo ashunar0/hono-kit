@@ -14,6 +14,7 @@ import type { H } from "hono/types";
 import type { StatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
+import type { ContentMap } from "./content.js";
 import type { FileResponse } from "./file.js";
 import type { RedirectResponse } from "./redirect.js";
 import type {
@@ -29,13 +30,15 @@ export type AnySchema = StandardSchema<any, any>;
 /**
  * One response declaration. Apps write the schema as is.
  * `{ schema, description }` is a failure response made by errorResponses; its description (the failure message) appears in the OpenAPI document.
- * Schemas have Standard Schema's `~standard`, so the two can be told apart. `redirect()` declares a redirect (303 only), `file()` a file sent as it is
+ * Schemas have Standard Schema's `~standard`, so the two can be told apart. `redirect()` declares a redirect (303 only), `file()` a file sent as it is,
+ * and a map of media types (`{ "application/json": schema, "text/html": (data) => <Page /> }`) the formats chosen by Accept
  */
 export type ResponseEntry =
   | AnySchema
   | { schema: AnySchema; description: string }
   | RedirectResponse
-  | FileResponse;
+  | FileResponse
+  | ContentMap;
 
 /**
  * A route declaration. The keys of request match the names read in the handler with `c.req.valid("…")`
@@ -59,12 +62,14 @@ export type RouteConfig = {
   responses: { [status: number]: ResponseEntry };
 };
 
-/** Takes the schema out of a response declaration */
+/** Takes the schema out of a response declaration. For a map of formats, the JSON one's */
 export type SchemaOfResponse<T> = T extends AnySchema
   ? T
   : T extends { schema: infer S extends AnySchema }
     ? S
-    : never;
+    : T extends { "application/json": infer S extends AnySchema }
+      ? S
+      : never;
 
 // ---- Input ----
 
@@ -107,7 +112,10 @@ export type RouteConfigToTypedResponse<R extends RouteConfig> = {
     ? TypedResponse<undefined, Status, "redirect">
     : R["responses"][Status] extends FileResponse
       ? TypedResponse<unknown, Status, "body">
-      : TypedResponse<
+      : // hc reads JSON; a map with no JSON format reaches it as text
+        [SchemaOfResponse<R["responses"][Status]>] extends [never]
+        ? TypedResponse<string, Status, "text">
+        : TypedResponse<
         JSONParsed<InferOutput<SchemaOfResponse<R["responses"][Status]>>>,
         Status,
         "json"

@@ -6,7 +6,7 @@ import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
 import type { RedirectResponse } from "./redirect.js";
 import type { RegisteredEnv } from "./register.js";
-import type { InferInput } from "./standard-schema.js";
+import type { InferInput, InferOutput } from "./standard-schema.js";
 import type {
   AnySchema,
   ComputeInput,
@@ -116,7 +116,7 @@ export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
  * routes.gen.ts registers it with registerEndpoint
  */
 export const createEndpoint = <const D extends EndpointDeclaration>(
-  checked: D & AuthSetsActor<D> & RedirectAt303<D>,
+  checked: D & AuthSetsActor<D> & RedirectAt303<D> & RenderersTakeJson<D>,
   fn: EndpointFn<AsRoute<D>>,
 ): Endpoint<D> => {
   const config: D = checked;
@@ -165,6 +165,34 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
  * An untyped middleware (Env `any`) is refused too: it would seem to set actor, and leave every c.get(...) in the handler `any`.
  * When it does not hold, auth is underlined with this message
  */
+/**
+ * When the success has a JSON schema and renderers, each renderer must take what the schema returns,
+ * since reply.success gets that data whichever format is sent. A renderer that does not is underlined
+ */
+type RenderersTakeJson<D> = D extends { responses: { 200: infer M } }
+  ? M extends { "application/json": infer S extends AnySchema }
+    ? {
+        [K in keyof M]: K extends "application/json"
+          ? never
+          : M[K] extends (data: infer P) => unknown
+            ? InferOutput<S> extends P
+              ? never
+              : K
+            : never;
+      }[keyof M] extends infer Wrong
+      ? [Wrong] extends [never]
+        ? unknown
+        : {
+            readonly responses: {
+              readonly 200: {
+                readonly [K in Wrong & PropertyKey]: "This renderer must take what the application/json schema returns";
+              };
+            };
+          }
+      : never
+    : unknown
+  : unknown;
+
 /** redirect() goes under 303 only. Elsewhere its key is underlined with the reason */
 type RedirectAt303<D> = D extends { responses: infer Rs }
   ? {

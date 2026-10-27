@@ -3,6 +3,7 @@
  * so this is an opt-in part. Conversion to JSON Schema belongs to the schema library itself (Standard JSON Schema)
  */
 import type { Hono } from "hono";
+import { type ContentMap, isContentMap } from "./content.js";
 import { type FileResponse, isFile } from "./file.js";
 import { isRedirect, type RedirectResponse } from "./redirect.js";
 import { ROUTE } from "./router.js";
@@ -51,9 +52,20 @@ const jsonContent = (schema: AnySchema, io: Io, options: OpenapiOptions) => ({
 
 /** Takes the schema and description from a response declaration (no description for a bare schema) */
 const responseOf = (
-  entry: Exclude<ResponseEntry, RedirectResponse | FileResponse>,
+  entry: Exclude<ResponseEntry, RedirectResponse | FileResponse | ContentMap>,
 ) =>
   "~standard" in entry ? { schema: entry, description: "" } : entry;
+
+/** Every declared format: JSON with its schema, the rendered ones as strings */
+const formatsOf = (formats: ContentMap, options: OpenapiOptions) =>
+  Object.fromEntries(
+    Object.entries(formats).map(([media, entry]) => [
+      media,
+      typeof entry === "function"
+        ? { schema: { type: "string" } }
+        : { schema: jsonSchemaOf(entry, "output", options) },
+    ]),
+  );
 
 /** A file's type is known only from the file, so it is any binary */
 const fileOf = (entry: FileResponse) => ({
@@ -89,6 +101,8 @@ const operationOf = (route: RouteConfig, options: OpenapiOptions) => {
       Object.entries(route.responses).map(([status, entry]) => {
         if (isRedirect(entry)) return [status, redirectOf(entry)];
         if (isFile(entry)) return [status, fileOf(entry)];
+        if (isContentMap(entry))
+          return [status, { description: "", content: formatsOf(entry, options) }];
         const { schema, description } = responseOf(entry);
 
         return [

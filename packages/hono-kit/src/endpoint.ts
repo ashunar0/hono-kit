@@ -3,9 +3,11 @@ import { routePath } from "hono/route";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
+import { type ContentMap, isContentMap, negotiate } from "./content.js";
 import {
   errorBody,
   fail,
+  NotAcceptable,
   toHttpError,
   ValidationError,
   type AnyFailure,
@@ -217,11 +219,30 @@ type HasInput<R> = R extends { request: infer Q }
     : true
   : false;
 
-/** Failures added automatically: those of the guards, and ValidationError when there is input */
+/** A map of formats (`{ "application/json": ..., "text/html": ... }`), as opposed to a schema, a failure, a file or a redirect */
+type IsContentMap<E> = [E] extends [never]
+  ? false // no 200 declared
+  : E extends AnySchema
+  ? false
+  : E extends { schema: unknown }
+    ? false
+    : E extends FileResponse | RedirectResponse
+      ? false
+      : E extends object
+        ? true
+        : false;
+
+type Success<R> = R extends { responses: { 200: infer E } } ? E : never;
+
+/**
+ * Failures added automatically: those of the guards, ValidationError when there is input,
+ * and NotAcceptable when the success has several formats to choose from
+ */
 type AutoErrors<R> =
   | GuardErrorsOf<R extends { auth: infer A } ? A : never>
   | GuardErrorsOf<R extends { middleware: infer M } ? M : never>
-  | (HasInput<R> extends true ? typeof ValidationError : never);
+  | (HasInput<R> extends true ? typeof ValidationError : never)
+  | (IsContentMap<Success<R>> extends true ? typeof NotAcceptable : never);
 
 /** Codes of the failures written by hand. The only ones reply.failure accepts */
 declare const DECLARED_BY_HAND: unique symbol;
@@ -247,6 +268,7 @@ const createRoute = <const R extends RouteConfig>(config: R) => {
   );
   if (INPUT_PARTS.some((part) => config.request?.[part] !== undefined))
     auto.push(ValidationError);
+  if (isContentMap(config.responses[200])) auto.push(NotAcceptable);
 
   return {
     ...config,
@@ -303,10 +325,16 @@ type Reply<R extends RouteConfig> = {
    * On a route that declares `200: file()`, the body is the file and its type: `{ body, contentType }`
    */
   success(
-    body: DeclaresFile<R> extends true ? FileBody : NoInfer<JsonBodyOf<R, 200>>,
+    body: DeclaresFile<R> extends true
+      ? FileBody
+      : IsContentMap<R["responses"][200]> extends true
+        ? NoInfer<DataOfFormats<R["responses"][200]>>
+        : NoInfer<JsonBodyOf<R, 200>>,
   ): DeclaresFile<R> extends true
     ? TypedResponse<unknown, 200, "body">
-    : TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
+    : [JsonSchemaOf<R, 200>] extends [never]
+      ? TypedResponse<string, 200, "text">
+      : TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
   /**
    * An expected failure. Passing an undeclared code underlines the argument with "these are the declared ones".
    * The return type is then never, so the same cause is not underlined again at the top of the handler
@@ -330,6 +358,13 @@ type Reply<R extends RouteConfig> = {
     : never;
 };
 
+/** The data a map of formats is made from: the JSON schema's output, or else what its renderers take */
+type DataOfFormats<M> = M extends {
+  "application/json": infer S extends AnySchema;
+}
+  ? InferOutput<S>
+  : { [K in keyof M]: M[K] extends (data: infer T) => unknown ? T : never }[keyof M];
+
 type DeclaresFile<R extends RouteConfig> = 200 extends keyof R["responses"]
   ? R["responses"][200] extends FileResponse
     ? true
@@ -345,6 +380,22 @@ type DeclaresRedirect<R extends RouteConfig> = 303 extends keyof R["responses"]
 /** The argument type of reply.redirect on a route that declares no redirect, so the red squiggle says why */
 type NoRedirectDeclared =
   "This route declares no redirect. Add 303: redirect() to responses";
+
+/** Sends the data in the chosen format: JSON as it is, the others through their renderer */
+const sendFormat = async (
+  c: Context,
+  formats: ContentMap,
+  format: string,
+  body: unknown,
+) => {
+  const entry = formats[format as keyof ContentMap];
+  if (typeof entry !== "function") return c.json(body as never, 200);
+  const rendered = await entry(body);
+  if (format === "text/html") return c.html(rendered, 200);
+  return c.body(String(rendered), 200, {
+    "Content-Type": `${format}; charset=UTF-8`,
+  });
+};
 
 /** Finds the failure for that code in the declaration, which knows its status and message */
 const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
@@ -389,9 +440,19 @@ export const buildEndpoint = <const C extends RouteConfig>(
     Built<C>,
     RouteConfigToEnv<Built<C>> & RegisteredEnv
   > = (c: Context) => {
+    // A map of formats is chosen from before the handler runs, so a POST does not write and then answer 406
+    const success = route.responses[200];
+    const formats = isContentMap(success) ? Object.keys(success) : [];
+    const format = negotiate(c.req.header("Accept"), formats);
+    if (formats.length > 0 && format === undefined) throw fail(NotAcceptable);
+    // Caches must keep one copy per Accept, or someone asking for HTML gets the JSON cached before
+    if (formats.length > 1) c.header("Vary", "Accept", { append: true });
+
     const reply = {
       success: (body: unknown) => {
-        if (!isFile(route.responses[200])) return c.json(body as never, 200);
+        if (isContentMap(success) && format !== undefined)
+          return sendFormat(c, success, format, body);
+        if (!isFile(success)) return c.json(body as never, 200);
         const sent = body as FileBody;
         return c.body(sent.body, 200, {
           "Content-Type": sent.contentType ?? "application/octet-stream",

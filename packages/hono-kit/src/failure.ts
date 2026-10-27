@@ -56,6 +56,13 @@ export const httpError = <
   message: string,
 ): HttpError<K, S> => ({ code, status, message });
 
+/** When the client accepts none of the formats a route declares. Added automatically to such routes */
+export const NotAcceptable = httpError(
+  "NOT_ACCEPTABLE",
+  406,
+  "None of the accepted formats can be returned",
+);
+
 /** When input validation fails. Used by createEndpoint */
 export const ValidationError = httpError(
   "VALIDATION_ERROR",
