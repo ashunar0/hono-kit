@@ -11,5 +11,5 @@ export const GET = createEndpoint(
     request: { param: z.object({ path: z.string() }) },
     responses: { 200: z.object({ path: z.string() }) },
   },
-  async (c, reply) => reply(200, { path: c.req.valid("param").path }),
+  async (c, reply) => reply.success({ path: c.req.valid("param").path }),
 );

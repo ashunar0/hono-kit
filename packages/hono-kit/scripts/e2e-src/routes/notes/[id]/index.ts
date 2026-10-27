@@ -22,6 +22,6 @@ export const GET = createEndpoint(
       .limit(1);
     if (note === undefined) return reply.failure(NotFound.code);
 
-    return reply(200, noteResponse(note));
+    return reply.success(noteResponse(note));
   },
 );

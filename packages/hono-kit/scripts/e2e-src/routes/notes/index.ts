@@ -17,6 +17,6 @@ export const POST = createEndpoint(
       .returning();
     if (note === undefined) throw new Error("the note was not written");
 
-    return reply(200, noteResponse(note));
+    return reply.success(noteResponse(note));
   },
 );

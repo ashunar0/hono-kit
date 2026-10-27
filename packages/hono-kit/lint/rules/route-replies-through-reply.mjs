@@ -23,7 +23,7 @@ export default {
         if (!RESPONSE_METHODS.has(method)) return;
         report({
           node,
-          message: `Return with reply instead of c.${method}(): reply(200, body) or reply.failure(error)`,
+          message: `Return with reply instead of c.${method}(): reply.success(body) or reply.failure(error)`,
         });
       },
     };

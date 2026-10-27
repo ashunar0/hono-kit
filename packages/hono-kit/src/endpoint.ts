@@ -1,9 +1,6 @@
 import type { Context, MiddlewareHandler, TypedResponse } from "hono";
 import { routePath } from "hono/route";
-import type {
-  ContentfulStatusCode,
-  SuccessStatusCode,
-} from "hono/utils/http-status";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
 import {
@@ -261,10 +258,6 @@ type JsonBodyOf<R extends RouteConfig, S> = InferOutput<JsonSchemaOf<R, S>>;
 type CodeOf<R extends RouteConfig, S> =
   JsonBodyOf<R, S> extends { error: { code: infer K } } ? K : never;
 
-/** The 2xx responses this route declares */
-type DeclaredSuccess<R extends RouteConfig> = keyof R["responses"] &
-  SuccessStatusCode;
-
 /** The type of a route built by createRoute */
 type Built<C extends RouteConfig> = ReturnType<typeof createRoute<C>>;
 
@@ -298,10 +291,10 @@ type FailureResponse<R extends RouteConfig, K> = {
  * the wrong value itself is underlined
  */
 type Reply<R extends RouteConfig> = {
-  <S extends DeclaredSuccess<R>>(
-    status: S,
-    body: NoInfer<JsonBodyOf<R, S>>,
-  ): TypedResponse<JSONParsed<JsonBodyOf<R, S>>, S, "json">;
+  /** Success. It is always 200 (lint route-responds-200), so only the body is passed */
+  success(
+    body: NoInfer<JsonBodyOf<R, 200>>,
+  ): TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
   /**
    * An expected failure. Passing an undeclared code underlines the argument with "these are the declared ones".
    * The return type is then never, so the same cause is not underlined again at the top of the handler
@@ -359,12 +352,13 @@ export const buildEndpoint = <const C extends RouteConfig>(
     Built<C>,
     RouteConfigToEnv<Built<C>> & RegisteredEnv
   > = (c: Context) => {
-    const reply = ((status: number, body: unknown) =>
-      c.json(body as never, status as never)) as unknown as Reply<Built<C>>;
-    reply.failure = ((code: string) => {
-      const declared = findDeclaredFailure(route, code, c);
-      return c.json(errorBody(code, declared.message), declared.status);
-    }) as unknown as Reply<Built<C>>["failure"];
+    const reply = {
+      success: (body: unknown) => c.json(body as never, 200),
+      failure: (code: string) => {
+        const declared = findDeclaredFailure(route, code, c);
+        return c.json(errorBody(code, declared.message), declared.status);
+      },
+    } as unknown as Reply<Built<C>>;
 
     const resolve = c.get(DEPS_KEY as never) as
       (() => RegisteredDeps) | undefined;

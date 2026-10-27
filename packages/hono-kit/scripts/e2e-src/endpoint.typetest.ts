@@ -17,7 +17,7 @@ export const matched = createEndpoint(
   async (c, reply) => {
     c.req.valid("param").id satisfies string;
 
-    return reply(200, { ok: true });
+    return reply.success({ ok: true });
   },
 );
 registerEndpoint(app, "GET", "/users/:id", matched);
@@ -33,7 +33,7 @@ export const nested = createEndpoint(
     request: { param: z.object({ storeId: z.string(), date: z.string() }) },
     responses: { 200: ok },
   },
-  async (_c, reply) => reply(200, { ok: true }),
+  async (_c, reply) => reply.success({ ok: true }),
 );
 registerEndpoint(app, "GET", "/stores/:storeId/closed-dates/:date", nested);
 
@@ -51,7 +51,7 @@ export const undeclared = createEndpoint(
     // @ts-expect-error json を宣言していない
     c.req.valid("json");
 
-    return reply(200, { ok: true });
+    return reply.success({ ok: true });
   },
 );
 
@@ -65,14 +65,14 @@ registerEndpoint(app, "GET", "/public", plain);
 export const noAuth = createEndpoint(
   // @ts-expect-error auth が無い
   { responses: { 200: ok } },
-  async (_c, reply) => reply(200, { ok: true }),
+  async (_c, reply) => reply.success({ ok: true }),
 );
 
 // auth は actor を入れるもの。withAccount は account を積むだけで誰も弾かないので、auth には書けない
 export const authWithoutActor = createEndpoint(
   // @ts-expect-error withAccount は actor を入れない
   { auth: withAccount, responses: { 200: ok } },
-  async (_c, reply) => reply(200, { ok: true }),
+  async (_c, reply) => reply.success({ ok: true }),
 );
 
 // 型引数の無い createMiddleware は Env が any。actor を入れるように見えてしまうので、auth には書けない
@@ -82,7 +82,7 @@ const untyped = createMiddleware(async (_c, next) => {
 export const authUntyped = createEndpoint(
   // @ts-expect-error Env が any
   { auth: untyped, responses: { 200: ok } },
-  async (_c, reply) => reply(200, { ok: true }),
+  async (_c, reply) => reply.success({ ok: true }),
 );
 
 // allowAnonymous の actor は null
@@ -91,7 +91,7 @@ export const anonymous = createEndpoint(
   async (c, reply) => {
     c.get("actor") satisfies null;
 
-    return reply(200, { ok: true });
+    return reply.success({ ok: true });
   },
 );
 
@@ -110,6 +110,6 @@ export const authAndMiddleware = createEndpoint(
     c.get("actor") satisfies Account;
     c.get("traceId") satisfies string;
 
-    return reply(200, { ok: true });
+    return reply.success({ ok: true });
   },
 );

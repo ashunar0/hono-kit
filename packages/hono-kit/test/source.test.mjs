@@ -54,7 +54,7 @@ const CASTS = {
   // provideDeps の c.set と、handler の c.get: 内部のキー（DEPS_KEY）は、アプリの Env の変数に載せない。
   // errorResponses の戻り値: 実行時に組み立てた object に、番号ごとの失敗の型を付ける。
   // handler の中の reply と fn(c, ...): route の型が決まらないここでは、Hono のジェネリクスを照らし合わせきれない
-  "endpoint.ts": 10,
+  "endpoint.ts": 8,
   // 登録された handler に貼った宣言（ROUTE）を読む。Hono の handler の型は、hnk の印を知らない
   "openapi.ts": 1,
   // createEndpoint が返す配列に DECLARATION を型だけで載せる。実行時に持たせる値は無い印なので

@@ -22,7 +22,7 @@ export const GET = createEndpoint(
       .limit(1);
     if (invoice === undefined) return reply.failure(NotFound.code);
 
-    return reply(200, invoiceResponse(invoice));
+    return reply.success(invoiceResponse(invoice));
   },
 );
 ```

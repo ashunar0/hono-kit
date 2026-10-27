@@ -29,3 +29,12 @@ export const some = createEndpoint(
   // @ts-expect-error FORBIDDEN は宣言していない
   async (_c, reply) => reply.failure("FORBIDDEN"),
 );
+
+// 成功の本文が 200 の形と合わないと、handler の頭ではなく、その引数に赤線が付く
+export const wrongBody = createEndpoint(
+  { auth: allowAnonymous, responses: { 200: ok } },
+  async (_c, reply) => {
+    // @ts-expect-error ok は true だけ
+    return reply.success({ ok: false });
+  },
+);

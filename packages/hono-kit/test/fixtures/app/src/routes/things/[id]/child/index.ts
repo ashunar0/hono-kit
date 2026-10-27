@@ -4,5 +4,5 @@ import { thingResponse } from "../../_response";
 
 export const POST = createEndpoint(
   { auth: requireAuth, responses: {} },
-  async (_c, reply) => reply(200, thingResponse({ id: "x" })),
+  async (_c, reply) => reply.success(thingResponse({ id: "x" })),
 );
