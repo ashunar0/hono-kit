@@ -7,6 +7,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Added
 
 - An endpoint can be `index.tsx`, for JSX. `hnk gen` reads it, lint checks it, and the template's `tsconfig.json` sets `"jsx": "react-jsx"` and `"jsxImportSource": "hono/jsx"`. An existing app adds those two lines and, if it lists files itself, `.tsx` in `.oxlintrc.json`. A directory with both `index.ts` and `index.tsx` stops `hnk gen`
+- Redirects: declare `303: redirect()` in `responses` and return `reply.redirect(location)`. Always 303 (`redirect()` under another status is a type error). The location must be a path of this app, or on an origin the declaration names (`redirect({ origins: ["https://accounts.google.com"] })`); anything else, `//evil.com` included, throws (500). `hc` sees 303 with no body, and the OpenAPI document a `Location` header
 
 ### Breaking
 

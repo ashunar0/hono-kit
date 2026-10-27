@@ -66,3 +66,12 @@ export async function catchAll() {
     body.path satisfies string;
   }
 }
+
+// リダイレクトは 303 で、本文が無い
+export async function redirects() {
+  const res = await client.redirects.$get({ query: { next: "/dashboard" } });
+
+  res.status satisfies 303 | 400;
+  // @ts-expect-error 200 は宣言していないので比べられない
+  if (res.status === 200) return;
+}

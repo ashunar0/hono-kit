@@ -60,6 +60,8 @@ run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
 // アプリを書いた体で、テーブル（db/schema.ts）・route・型のテスト（*.typetest.ts。宣言と handler・client の型が
 // 合っているか）を写す。tsc が src の中を全部見るので、置くだけで確かめられる
 fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true });
+// 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
+fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true });
 run("pnpm", ["install"], app);
 // postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
 run("pnpm", ["typecheck"], app);

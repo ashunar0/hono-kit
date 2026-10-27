@@ -12,6 +12,12 @@ import {
   type HttpError,
   type ToHttpError,
 } from "./failure.js";
+import {
+  allowedLocation,
+  isRedirect,
+  REDIRECT,
+  type RedirectResponse,
+} from "./redirect.js";
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import {
   type AnySchema,
@@ -307,7 +313,26 @@ type Reply<R extends RouteConfig> = {
         ? NoFailureDeclared
         : DeclaredFailure<R> & string,
   ): [K] extends [DeclaredFailure<R>] ? FailureResponse<R, K> : never;
+  /**
+   * Sends people elsewhere, always with 303. Only on a route that declares `303: redirect()`.
+   * The location must be a path of this app, or on an origin the declaration names; anything else throws (500)
+   */
+  redirect(
+    location: DeclaresRedirect<R> extends true ? string : NoRedirectDeclared,
+  ): DeclaresRedirect<R> extends true
+    ? TypedResponse<undefined, 303, "redirect">
+    : never;
 };
+
+type DeclaresRedirect<R extends RouteConfig> = 303 extends keyof R["responses"]
+  ? R["responses"][303] extends RedirectResponse
+    ? true
+    : false
+  : false;
+
+/** The argument type of reply.redirect on a route that declares no redirect, so the red squiggle says why */
+type NoRedirectDeclared =
+  "This route declares no redirect. Add 303: redirect() to responses";
 
 /** Finds the failure for that code in the declaration, which knows its status and message */
 const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
@@ -354,6 +379,17 @@ export const buildEndpoint = <const C extends RouteConfig>(
   > = (c: Context) => {
     const reply = {
       success: (body: unknown) => c.json(body as never, 200),
+      redirect: (location: string) => {
+        const declared = route.responses[303];
+        if (!isRedirect(declared))
+          throw new Error(
+            `${c.req.method} ${routePath(c)} declares no redirect. Add 303: redirect() to responses`,
+          );
+        return c.redirect(
+          allowedLocation(location, declared[REDIRECT].origins),
+          303,
+        );
+      },
       failure: (code: string) => {
         const declared = findDeclaredFailure(route, code, c);
         return c.json(errorBody(code, declared.message), declared.status);

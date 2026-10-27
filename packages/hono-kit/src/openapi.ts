@@ -3,6 +3,7 @@
  * so this is an opt-in part. Conversion to JSON Schema belongs to the schema library itself (Standard JSON Schema)
  */
 import type { Hono } from "hono";
+import { isRedirect, type RedirectResponse } from "./redirect.js";
 import { ROUTE } from "./router.js";
 import type { AnySchema, ResponseEntry, RouteConfig } from "./route-types.js";
 import { toJsonSchema } from "./standard-schema.js";
@@ -48,8 +49,14 @@ const jsonContent = (schema: AnySchema, io: Io, options: OpenapiOptions) => ({
 });
 
 /** Takes the schema and description from a response declaration (no description for a bare schema) */
-const responseOf = (entry: ResponseEntry) =>
+const responseOf = (entry: Exclude<ResponseEntry, RedirectResponse>) =>
   "~standard" in entry ? { schema: entry, description: "" } : entry;
+
+/** A redirect has no body, only the Location header */
+const redirectOf = (entry: RedirectResponse) => ({
+  description: entry.description,
+  headers: { Location: { schema: { type: "string" } } },
+});
 
 const operationOf = (route: RouteConfig, options: OpenapiOptions) => {
   const { param, query, header, cookie, json } = route.request ?? {};
@@ -69,6 +76,7 @@ const operationOf = (route: RouteConfig, options: OpenapiOptions) => {
     }),
     responses: Object.fromEntries(
       Object.entries(route.responses).map(([status, entry]) => {
+        if (isRedirect(entry)) return [status, redirectOf(entry)];
         const { schema, description } = responseOf(entry);
 
         return [

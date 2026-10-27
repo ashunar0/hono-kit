@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import type { H, ParamKeys } from "hono/types";
 import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
 import { fail, ValidationError } from "./failure.js";
+import type { RedirectResponse } from "./redirect.js";
 import type { RegisteredEnv } from "./register.js";
 import type { InferInput } from "./standard-schema.js";
 import type {
@@ -115,7 +116,7 @@ export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
  * routes.gen.ts registers it with registerEndpoint
  */
 export const createEndpoint = <const D extends EndpointDeclaration>(
-  checked: D & AuthSetsActor<D>,
+  checked: D & AuthSetsActor<D> & RedirectAt303<D>,
   fn: EndpointFn<AsRoute<D>>,
 ): Endpoint<D> => {
   const config: D = checked;
@@ -164,6 +165,25 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
  * An untyped middleware (Env `any`) is refused too: it would seem to set actor, and leave every c.get(...) in the handler `any`.
  * When it does not hold, auth is underlined with this message
  */
+/** redirect() goes under 303 only. Elsewhere its key is underlined with the reason */
+type RedirectAt303<D> = D extends { responses: infer Rs }
+  ? {
+      [S in keyof Rs]: S extends 303
+        ? never
+        : Rs[S] extends RedirectResponse
+          ? S
+          : never;
+    }[keyof Rs] extends infer Wrong
+    ? [Wrong] extends [never]
+      ? unknown
+      : {
+          readonly responses: {
+            readonly [S in Wrong & PropertyKey]: "A redirect is always 303. Declare redirect() under 303";
+          };
+        }
+    : never
+  : unknown;
+
 type AuthSetsActor<D> = D extends { auth: infer A }
   ? IsAny<EnvOf<A>> extends true
     ? {

@@ -14,6 +14,7 @@ import type { H } from "hono/types";
 import type { StatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
 
+import type { RedirectResponse } from "./redirect.js";
 import type {
   InferInput,
   InferOutput,
@@ -27,10 +28,12 @@ export type AnySchema = StandardSchema<any, any>;
 /**
  * One response declaration. Apps write the schema as is.
  * `{ schema, description }` is a failure response made by errorResponses; its description (the failure message) appears in the OpenAPI document.
- * Schemas have Standard Schema's `~standard`, so the two can be told apart
+ * Schemas have Standard Schema's `~standard`, so the two can be told apart. `redirect()` declares a redirect (303 only)
  */
 export type ResponseEntry =
-  AnySchema | { schema: AnySchema; description: string };
+  | AnySchema
+  | { schema: AnySchema; description: string }
+  | RedirectResponse;
 
 /**
  * A route declaration. The keys of request match the names read in the handler with `c.req.valid("…")`
@@ -98,11 +101,13 @@ type DefinedStatusCodes<R extends RouteConfig> = keyof R["responses"] &
 
 /** The union of declared responses. Becomes the hc response type */
 export type RouteConfigToTypedResponse<R extends RouteConfig> = {
-  [Status in DefinedStatusCodes<R>]: TypedResponse<
-    JSONParsed<InferOutput<SchemaOfResponse<R["responses"][Status]>>>,
-    Status,
-    "json"
-  >;
+  [Status in DefinedStatusCodes<R>]: R["responses"][Status] extends RedirectResponse
+    ? TypedResponse<undefined, Status, "redirect">
+    : TypedResponse<
+        JSONParsed<InferOutput<SchemaOfResponse<R["responses"][Status]>>>,
+        Status,
+        "json"
+      >;
 }[DefinedStatusCodes<R>];
 
 // ---- middleware Env ----
