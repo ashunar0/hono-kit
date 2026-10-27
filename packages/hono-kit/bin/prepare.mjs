@@ -151,8 +151,8 @@ export const generate = (src) => {
   return { code: lines.join("\n") };
 };
 
-/** 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように */
-const run = (src) => {
+/** 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように。hono-kit/vite も使う */
+export const writeRoutes = (src) => {
   const out = path.join(src, "routes.gen.ts");
   const result = generate(src);
   if ("problems" in result) {
@@ -173,14 +173,14 @@ export const prepare = ({ watch }) => {
     process.exit(1);
   }
   if (!watch) {
-    if (!run(src)) process.exit(1);
+    if (!writeRoutes(src)) process.exit(1);
     return;
   }
-  run(src);
+  writeRoutes(src);
   let timer;
   fs.watch(path.join(src, "routes"), { recursive: true }, () => {
     clearTimeout(timer);
-    timer = setTimeout(() => run(src), 50);
+    timer = setTimeout(() => writeRoutes(src), 50);
   });
   console.log(`watching ${path.join(src, "routes")}`);
 };

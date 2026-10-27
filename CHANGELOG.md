@@ -11,6 +11,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 - An error page for HTML: `app.use("*", errorPage((failure) => ...))` in `src/index.ts` shows the app's one page (or a redirect, `{ redirect: "/login" }`) when a client that asked for HTML gets a failure from an endpoint that returns HTML: `reply.failure`, 401 / 400 / 406 before the handler, and 500. Everyone else still gets the JSON failure. Apps without it do not change
 - Files: declare `200: file()` in `responses` and return `reply.success({ body, contentType })`. The file is sent as it is with that `Content-Type` (`application/octet-stream` when left out). `hc` gives the body no type, and the OpenAPI document lists it as binary
 - Redirects: declare `303: redirect()` in `responses` and return `reply.redirect(location)`. Always 303 (`redirect()` under another status is a type error). The location must be a path of this app, or on an origin the declaration names (`redirect({ origins: ["https://accounts.google.com"] })`); anything else, `//evil.com` included, throws (500). `hc` sees 303 with no body, and the OpenAPI document a `Location` header
+- `hono-kit/vite`: for an app started through Vite, `plugins: [honoKit()]` writes `src/routes.gen.ts` before `vite dev` and `vite build`, and again while dev runs when `src/routes` changes. A broken `src/routes` stops the build
 
 ### Breaking
 

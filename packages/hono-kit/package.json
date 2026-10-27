@@ -30,6 +30,10 @@
     "./sqlite": "./src/sqlite.ts",
     "./worker": "./src/worker.ts",
     "./lint": "./lint/index.mjs",
+    "./vite": {
+      "types": "./vite/index.d.mts",
+      "default": "./vite/index.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -63,6 +67,10 @@
         "default": "./dist/worker.js"
       },
       "./lint": "./lint/index.mjs",
+      "./vite": {
+        "types": "./vite/index.d.mts",
+        "default": "./vite/index.mjs"
+      },
       "./package.json": "./package.json"
     }
   },
@@ -70,6 +78,7 @@
     "dist",
     "bin",
     "lint",
+    "vite",
     "templates",
     "docs",
     "CHANGELOG.md"
