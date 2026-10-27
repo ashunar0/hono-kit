@@ -4,7 +4,7 @@ import { fileOf, projectOf } from "../project.mjs";
 
 /**
  * アプリの中で new Hono() を書かない。根は createApp() で作る。Env がアプリの Register になるので、
- * c.get("actor") や c.get("now") に型が付く。endpoint は createEndpoint で書き、hnk gen が登録する
+ * c.get("actor") や c.get("now") に型が付く。endpoint は createEndpoint で書き、hnk prepare が登録する
  */
 export default {
   create(context) {

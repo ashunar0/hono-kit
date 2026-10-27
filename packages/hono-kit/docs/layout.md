@@ -10,7 +10,7 @@ hono-kit fixes only the places below. How the rest of `src/` is split (domains, 
 | `src/middleware/auth.ts`              | `Account`, and the guards an endpoint names in `auth` (`requireAuth`, `allowAnonymous`)                  |
 | `src/db/index.ts`, `src/db/schema.ts` | The database driver, and the tables                                                                      |
 | `src/routes/`                         | The endpoints. The directory is the URL ([resources.md](resources.md))                                   |
-| `src/routes.gen.ts`                   | Written by `hnk gen`. Never edit it                                                                      |
+| `src/routes.gen.ts`                   | Written by `hnk prepare`. Never edit it                                                                      |
 
 ## Imports
 

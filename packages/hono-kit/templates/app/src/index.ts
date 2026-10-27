@@ -27,7 +27,7 @@ export const buildApp = (
     .use("*", authenticate)
     .onError(onError);
 
-  // Every endpoint under src/routes. routes.gen.ts is written by pnpm hnk gen (pnpm check runs it first)
+  // Every endpoint under src/routes. routes.gen.ts is written by pnpm hnk prepare (pnpm check runs it first)
   registerRoutes(app);
 
   // Built from the registered route declarations. Read on every request, so registration order does not matter

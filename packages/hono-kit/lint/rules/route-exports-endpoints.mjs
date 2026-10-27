@@ -26,7 +26,7 @@ const NO_DEFAULT =
  * それぞれ `export const X = createEndpoint(...)` の形で書く。
  *
  * registerEndpoint は型で createEndpoint の戻り値しか受け付けないが、それは tsc が見える場所の話。
- * 素の配列を export していても、hnk gen は endpoint として同じように拾ってしまう。
+ * 素の配列を export していても、hnk prepare は endpoint として同じように拾ってしまう。
  * export の形をここで決めておけば、認証も responses の契約も持たないものが index.ts に紛れ込めない
  */
 export default {

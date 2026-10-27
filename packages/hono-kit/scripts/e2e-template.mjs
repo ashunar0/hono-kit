@@ -1,5 +1,5 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk gen --if-missing）→ typecheck → db:generate → pnpm check を通す。
+ * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk prepare --if-missing）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
  * 続けて、commit 済みの古い routes.gen.ts を postinstall が書き直して CI の --check を誤魔化さないかも確かめる
  * （src/routes.gen.ts を古くする → CI=1 pnpm install → 触られていないこと → CI=1 pnpm check が routes.gen.ts で落ちること）。
@@ -63,7 +63,7 @@ fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive
 // 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
 fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true });
 run("pnpm", ["install"], app);
-// postinstall の hnk gen で routes.gen.ts ができ、gen を手で打たなくても型が通る
+// postinstall の hnk prepare で routes.gen.ts ができ、prepare を手で打たなくても型が通る
 run("pnpm", ["typecheck"], app);
 run("pnpm", ["db:generate"], app);
 run("pnpm", ["exec", "prettier", "--write", "."], app);
@@ -84,6 +84,6 @@ if (!/Failed:.*routes\.gen\.ts/.test(failure)) {
   console.error(`\n失敗: pnpm check は落ちたが、routes.gen.ts が理由と分からない`);
   process.exit(1);
 }
-run("pnpm", ["hnk", "gen"], app);
+run("pnpm", ["hnk", "prepare"], app);
 
 console.log(`\n通った（${app}）`);

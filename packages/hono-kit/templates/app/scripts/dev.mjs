@@ -1,12 +1,12 @@
 /**
- * pnpm dev. Runs wrangler dev and keeps routes.gen.ts in step with src/routes (hnk gen --watch).
- * Without the watcher, an endpoint you add is not registered until you run hnk gen by hand.
+ * pnpm dev. Runs wrangler dev and keeps routes.gen.ts in step with src/routes (hnk prepare --watch).
+ * Without the watcher, an endpoint you add is not registered until you run hnk prepare by hand.
  * Arguments go to wrangler dev (pnpm dev --port 8788). When one of the two stops, the other is stopped too
  */
 import { spawn } from "node:child_process";
 
 const children = [
-  spawn("pnpm", ["hnk", "gen", "--watch"], { stdio: "inherit" }),
+  spawn("pnpm", ["hnk", "prepare", "--watch"], { stdio: "inherit" }),
   spawn("pnpm", ["exec", "wrangler", "dev", ...process.argv.slice(2)], { stdio: "inherit" }),
 ];
 

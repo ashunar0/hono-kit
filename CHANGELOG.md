@@ -6,7 +6,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ### Added
 
-- An endpoint can be `index.tsx`, for JSX. `hnk gen` reads it, lint checks it, and the template's `tsconfig.json` sets `"jsx": "react-jsx"` and `"jsxImportSource": "hono/jsx"`. An existing app adds those two lines and, if it lists files itself, `.tsx` in `.oxlintrc.json`. A directory with both `index.ts` and `index.tsx` stops `hnk gen`
+- An endpoint can be `index.tsx`, for JSX. `hnk prepare` reads it, lint checks it, and the template's `tsconfig.json` sets `"jsx": "react-jsx"` and `"jsxImportSource": "hono/jsx"`. An existing app adds those two lines and, if it lists files itself, `.tsx` in `.oxlintrc.json`. A directory with both `index.ts` and `index.tsx` stops `hnk prepare`
 - Formats chosen by `Accept`: under 200, list media types instead of one schema (`{ "application/json": schema, "text/html": (data: T) => <Page />, "text/markdown": (data: T) => "..." }`). The handler still calls `reply.success(data)` once. With no `Accept` or `*/*` the first one is sent; a client that accepts none gets `406 NOT_ACCEPTABLE` before the handler runs (added to `responses` automatically, like `400`); the response carries `Vary: Accept`. A renderer that does not take what the JSON schema returns is a type error. `hc` sees the JSON one, or a string when there is none; the OpenAPI document lists them all
 - An error page for HTML: `app.use("*", errorPage((failure) => ...))` in `src/index.ts` shows the app's one page (or a redirect, `{ redirect: "/login" }`) when a client that asked for HTML gets a failure from an endpoint that returns HTML: `reply.failure`, 401 / 400 / 406 before the handler, and 500. Everyone else still gets the JSON failure. Apps without it do not change
 - Files: declare `200: file()` in `responses` and return `reply.success({ body, contentType })`. The file is sent as it is with that `Content-Type` (`application/octet-stream` when left out). `hc` gives the body no type, and the OpenAPI document lists it as binary
@@ -15,6 +15,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Breaking
 
 - `reply(200, body)` is `reply.success(body)`. Success is always 200, so it takes no status, like `reply.failure(code)`. Rewrite with `perl -pi -e 's/reply\(200, /reply.success(/g' $(git ls-files 'src/**/*.ts')`
+- `hnk gen` is `hnk prepare`, as in Void (where `gen` makes a file to start from). Rename it in `package.json` and `scripts/`
 
 ## 0.9.0
 

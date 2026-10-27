@@ -2,7 +2,7 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>              アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk gen [--watch | --check | --if-missing] src/routes から src/routes.gen.ts（登録・AppType）を書く（bin/gen.mjs）
+ *   hnk prepare [--watch | --check | --if-missing] src/routes から src/routes.gen.ts（登録・AppType）を書く（bin/prepare.mjs）
  *                               --if-missing は無ければ作るだけ（postinstall 用）。--watch / --check とは一緒に使えない
  *
  * リソース（src/routes/<名詞>/）や業務の置き場所は生成しない。どう分けるかはアプリが決める。
@@ -63,11 +63,11 @@ const init = (target) => {
 const [command, ...args] = process.argv.slice(2);
 
 if (command === "init") init(args[0]);
-// gen だけが oxc-parser を使う。init は依存を読み込まずに動く（依存を入れる前に打つ）
-else if (command === "gen")
-  (await import("./gen.mjs")).gen({
+// prepare だけが oxc-parser を使う。init は依存を読み込まずに動く（依存を入れる前に打つ）
+else if (command === "prepare")
+  (await import("./prepare.mjs")).prepare({
     watch: args.includes("--watch"),
     check: args.includes("--check"),
     ifMissing: args.includes("--if-missing"),
   });
-else die("Usage: hnk init <dir> / hnk gen [--watch | --check | --if-missing]");
+else die("Usage: hnk init <dir> / hnk prepare [--watch | --check | --if-missing]");

@@ -4,5 +4,5 @@ migrations/meta/
 # Generated. Do not format
 pnpm-lock.yaml
 
-# Written by hnk gen
+# Written by hnk prepare
 src/routes.gen.ts
