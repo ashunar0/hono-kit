@@ -12,6 +12,7 @@ import {
   type HttpError,
   type ToHttpError,
 } from "./failure.js";
+import { type FileBody, type FileResponse, isFile } from "./file.js";
 import {
   allowedLocation,
   isRedirect,
@@ -297,10 +298,15 @@ type FailureResponse<R extends RouteConfig, K> = {
  * the wrong value itself is underlined
  */
 type Reply<R extends RouteConfig> = {
-  /** Success. It is always 200 (lint route-responds-200), so only the body is passed */
+  /**
+   * Success. It is always 200 (lint route-responds-200), so only the body is passed.
+   * On a route that declares `200: file()`, the body is the file and its type: `{ body, contentType }`
+   */
   success(
-    body: NoInfer<JsonBodyOf<R, 200>>,
-  ): TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
+    body: DeclaresFile<R> extends true ? FileBody : NoInfer<JsonBodyOf<R, 200>>,
+  ): DeclaresFile<R> extends true
+    ? TypedResponse<unknown, 200, "body">
+    : TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
   /**
    * An expected failure. Passing an undeclared code underlines the argument with "these are the declared ones".
    * The return type is then never, so the same cause is not underlined again at the top of the handler
@@ -323,6 +329,12 @@ type Reply<R extends RouteConfig> = {
     ? TypedResponse<undefined, 303, "redirect">
     : never;
 };
+
+type DeclaresFile<R extends RouteConfig> = 200 extends keyof R["responses"]
+  ? R["responses"][200] extends FileResponse
+    ? true
+    : false
+  : false;
 
 type DeclaresRedirect<R extends RouteConfig> = 303 extends keyof R["responses"]
   ? R["responses"][303] extends RedirectResponse
@@ -378,7 +390,13 @@ export const buildEndpoint = <const C extends RouteConfig>(
     RouteConfigToEnv<Built<C>> & RegisteredEnv
   > = (c: Context) => {
     const reply = {
-      success: (body: unknown) => c.json(body as never, 200),
+      success: (body: unknown) => {
+        if (!isFile(route.responses[200])) return c.json(body as never, 200);
+        const sent = body as FileBody;
+        return c.body(sent.body, 200, {
+          "Content-Type": sent.contentType ?? "application/octet-stream",
+        });
+      },
       redirect: (location: string) => {
         const declared = route.responses[303];
         if (!isRedirect(declared))

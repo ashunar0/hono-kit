@@ -5,6 +5,7 @@
  * - entry.ts: what non-HTTP entry points receive (cron, queue), whatever runs them
  * - worker.ts: the Cloudflare Workers entry point (createWorker). Imported from "hono-kit/worker", not from here,
  *   so the rest of hono-kit knows nothing of Workers
+ * - file.ts: file responses (file), sent as they are
  * - redirect.ts: redirect responses (redirect) and which locations they may go to
  * - page-schema.ts: HTTP input/output shapes for list pagination
  */
@@ -37,6 +38,7 @@ export {
   type HttpError,
 } from "./failure.js";
 export { type CronContext, type QueueContext, runScheduled } from "./entry.js";
+export { file, type FileBody, type FileResponse } from "./file.js";
 export { redirect, type RedirectResponse } from "./redirect.js";
 export {
   pageQuerySchema,
