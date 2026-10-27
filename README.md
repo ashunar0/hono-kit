@@ -1,7 +1,7 @@
 # hono-kit
 
-Conventions for writing the HTTP entry of a backend with Hono — with a scaffolder and lint rules.
-The goal: whoever writes the code, including AI, it comes out in the same shape.
+It stops, as you write, what you had to watch for each time in plain Hono — where things go, what you return, who may call, the status of a failure, and the quirks of the runtime — with types, lint and a generator.
+When it stops you it shows how to fix it, so AI can fix it on its own, and without hono-kit the code still reads as plain Hono.
 
 > Unofficial. Not affiliated with the Hono team.
 
@@ -10,7 +10,7 @@ The goal: whoever writes the code, including AI, it comes out in the same shape.
 ## Why
 
 When AI writes a backend, the details drift every time: which file is which URL, how failures are returned, how access is checked.
-hono-kit fixes the shape up front and stops deviations with types and lint. Every lint message says how to fix it, so the AI can notice and correct itself.
+hono-kit fixes the shape up front and stops deviations.
 
 It is not a framework or a platform. It sits thinly on top of plain Hono, and what it puts into your app is `hono` only. The routing is borrowed from [Void](https://void.cloud/guide/server-routing) (directories under `src/routes/` are the URL). hono-kit stays at that height without the build, deploy and infrastructure, and instead makes each endpoint explicit with types and lint.
 
