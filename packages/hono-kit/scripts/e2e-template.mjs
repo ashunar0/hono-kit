@@ -1,8 +1,6 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk prepare --if-missing）→ typecheck → db:generate → pnpm check を通す。
+ * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk prepare）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
- * 続けて、commit 済みの古い routes.gen.ts を postinstall が書き直して CI の --check を誤魔化さないかも確かめる
- * （src/routes.gen.ts を古くする → CI=1 pnpm install → 触られていないこと → CI=1 pnpm check が routes.gen.ts で落ちること）。
  * 使い方: node scripts/e2e-template.mjs [--packed]
  *   既定は手元の hono-kit を link: でつなぐ。--packed は pnpm pack した tgz を展開し、その中の CLI と dist で通す（npm に出す物そのもの）
  */
@@ -29,23 +27,6 @@ const run = (command, args, cwd, env) => {
   }
 };
 
-/** 落ちるはずの手。落ちなければここで止める。stdout + stderr を返す（落ちた場所を確かめるため） */
-const runExpectFail = (command, args, cwd, env) => {
-  console.log(`\n$ ${[command, ...args].join(" ")}`);
-  const { status, stdout, stderr } = spawnSync(command, args, {
-    cwd,
-    encoding: "utf8",
-    env: { ...process.env, ...env },
-  });
-  process.stdout.write(stdout);
-  process.stderr.write(stderr);
-  if (status === 0) {
-    console.error(`\n失敗: ${command} ${args.join(" ")} は落ちるはずだった（${cwd}）`);
-    process.exit(1);
-  }
-  return `${stdout}\n${stderr}`;
-};
-
 let cli = path.join(root, "bin/hnk.mjs");
 let spec = `link:${fs.realpathSync(root)}`;
 if (packed) {
@@ -68,22 +49,5 @@ run("pnpm", ["typecheck"], app);
 run("pnpm", ["db:generate"], app);
 run("pnpm", ["exec", "prettier", "--write", "."], app);
 run("pnpm", ["check"], app);
-
-// postinstall は --if-missing: commit 済みの古い routes.gen.ts があっても書き直さず、CI の --check がそれを見つけられるか確かめる
-const genOut = path.join(app, "src/routes.gen.ts");
-const committed = fs.readFileSync(genOut, "utf8");
-const stale = `${committed}// stale\n`;
-fs.writeFileSync(genOut, stale);
-run("pnpm", ["install", "--offline"], app, { CI: "1" });
-if (fs.readFileSync(genOut, "utf8") !== stale) {
-  console.error(`\n失敗: postinstall が ${genOut} を書き直した（CI の --check を誤魔化す）`);
-  process.exit(1);
-}
-const failure = runExpectFail("pnpm", ["check"], app, { CI: "1" });
-if (!/Failed:.*routes\.gen\.ts/.test(failure)) {
-  console.error(`\n失敗: pnpm check は落ちたが、routes.gen.ts が理由と分からない`);
-  process.exit(1);
-}
-run("pnpm", ["hnk", "prepare"], app);
 
 console.log(`\n通った（${app}）`);

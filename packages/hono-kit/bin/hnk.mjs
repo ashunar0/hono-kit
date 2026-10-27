@@ -2,8 +2,7 @@
 /**
  * hnk の雛形を出す CLI。
  *   hnk init <dir>              アプリの土台を <dir> に出す（templates/app をコピーするだけ）
- *   hnk prepare [--watch | --check | --if-missing] src/routes から src/routes.gen.ts（登録・AppType）を書く（bin/prepare.mjs）
- *                               --if-missing は無ければ作るだけ（postinstall 用）。--watch / --check とは一緒に使えない
+ *   hnk prepare [--watch]       src/routes から src/routes.gen.ts（登録・AppType）を書く（bin/prepare.mjs）
  *
  * リソース（src/routes/<名詞>/）や業務の置き場所は生成しない。どう分けるかはアプリが決める。
  * テンプレートは型検査された実物（scripts/e2e-template.mjs が init → check を通す）
@@ -67,7 +66,5 @@ if (command === "init") init(args[0]);
 else if (command === "prepare")
   (await import("./prepare.mjs")).prepare({
     watch: args.includes("--watch"),
-    check: args.includes("--check"),
-    ifMissing: args.includes("--if-missing"),
   });
-else die("Usage: hnk init <dir> / hnk prepare [--watch | --check | --if-missing]");
+else die("Usage: hnk init <dir> / hnk prepare [--watch]");

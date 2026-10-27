@@ -7,7 +7,7 @@
     "#src/*": "./src/*.ts"
   },
   "scripts": {
-    "postinstall": "hnk prepare --if-missing",
+    "postinstall": "hnk prepare",
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",

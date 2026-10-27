@@ -1,6 +1,6 @@
 /**
- * src/routes から src/routes.gen.ts を書く（`hnk prepare`、見張るなら `--watch`、書かずに比べるなら `--check`、
- * 無ければ作るだけなら `--if-missing`。postinstall 用（CI の --check を書き直して誤魔化さないように）。--watch / --check とは一緒に使えない）。
+ * src/routes から src/routes.gen.ts を書く（`hnk prepare`、見張るなら `--watch`）。
+ * routes.gen.ts は git に入れない（Void の .void/ と同じ）。install・dev・check のたびに書くので、古いまま残らない。
  * - src/routes/**\/index.ts（JSX を書くなら index.tsx）: export された GET / POST / PUT / PATCH / DELETE が 1 本ずつ endpoint になる。
  *   ディレクトリがパス、[id] は :id、[...path] は残り全部（:path{.+}）、(名前) は URL に出ない（route group）。
  *   _ で始まるファイルとディレクトリは読まない
@@ -151,46 +151,29 @@ export const generate = (src) => {
   return { code: lines.join("\n") };
 };
 
-/**
- * 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように。
- * check では書かずに比べるだけ（CI で、古いまま commit された routes.gen.ts を見つける）
- */
-const run = (src, { check = false } = {}) => {
+/** 中身が変わったときだけ書く。保存のたびに routes.gen.ts を触らないように */
+const run = (src) => {
   const out = path.join(src, "routes.gen.ts");
   const result = generate(src);
   if ("problems" in result) {
     console.error(`✗ ${out} not written:\n${result.problems.map((p) => `  ${p}`).join("\n")}`);
     return false;
   }
-  const fresh = fs.existsSync(out) && fs.readFileSync(out, "utf8") === result.code;
-  if (check) {
-    if (!fresh) console.error(`✗ ${out} is out of date with src/routes. Run pnpm hnk prepare and commit it`);
-    return fresh;
-  }
-  if (!fresh) {
+  if (!fs.existsSync(out) || fs.readFileSync(out, "utf8") !== result.code) {
     fs.writeFileSync(out, result.code);
     console.log(`✓ ${out} written`);
   }
   return true;
 };
 
-export const prepare = ({ watch, check, ifMissing }) => {
+export const prepare = ({ watch }) => {
   const src = "src";
-  if (ifMissing && (watch || check)) {
-    console.error("✗ --if-missing cannot be combined with --watch or --check");
-    process.exit(1);
-  }
   if (!fs.existsSync(path.join(src, "routes"))) {
     console.error("✗ Run this at the app root (where src/routes is)");
     process.exit(1);
   }
-  // postinstall 用。既にあれば書かない（install のたびに routes.gen.ts を書き直して、CI の --check を誤魔化さないように）
-  if (ifMissing && fs.existsSync(path.join(src, "routes.gen.ts"))) {
-    console.log(`✓ ${path.join(src, "routes.gen.ts")} already exists, left as is`);
-    return;
-  }
   if (!watch) {
-    if (!run(src, { check })) process.exit(1);
+    if (!run(src)) process.exit(1);
     return;
   }
   run(src);

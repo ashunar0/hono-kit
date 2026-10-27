@@ -16,6 +16,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 - `reply(200, body)` is `reply.success(body)`. Success is always 200, so it takes no status, like `reply.failure(code)`. Rewrite with `perl -pi -e 's/reply\(200, /reply.success(/g' $(git ls-files 'src/**/*.ts')`
 - `hnk gen` is `hnk prepare`, as in Void (where `gen` makes a file to start from). Rename it in `package.json` and `scripts/`
+- `src/routes.gen.ts` is no longer committed, as Void's `.void/`; `--check` and `--if-missing` are gone. Add `src/routes.gen.ts` to `.gitignore` and run `git rm --cached src/routes.gen.ts`; make `postinstall` `hnk prepare`, and drop the `--check` from `scripts/check.mjs`
 
 ## 0.9.0
 

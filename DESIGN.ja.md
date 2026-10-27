@@ -21,7 +21,7 @@ hono-kit を作る側のメモ。決めたことの理由と、まだ決めて�
 - **誰が呼べるかは必須の `auth` 欄**。書き忘れと「わざと公開」を見分けるため（公開は `allowAnonymous` と書く）。前は `middleware` の中の名前（`require` / `allow` で始まる）を lint で見ていたが、名前の約束では中身を確かめられないので、型で止める形にした（tRPC の `publicProcedure` / `protectedProcedure` に近い）。型が見るのは「`actor` を入れるか」で、`withAccount` のように `account` を積むだけの middleware は `auth` に書けない。公開の `allowAnonymous` も `actor: null` を入れる。専用の関数（`defineAuth` のような印）は足さなかった。印は「auth として使う」と宣言するだけで、ここで決めている「`actor` を入れる」を確かめないから。どちらの形でも、本当に人を弾くかまでは型で分からない。guard の中身（セッションの読み方、`Account` の形、どの guard があるか）は認証のスタックで変わるので、hono-kit は決めずアプリに置く。hono-kit が決めるのは「`auth` に 1 つ書く」と「それが `actor` を入れる」だけ
 - **状態の遷移は動詞のディレクトリ**（Google の AIP-136 や Stripe と同じ）。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから
 - **import の外向きは `#src/`**。Node の標準の仕組み（package.json の `imports`）。tsconfig の paths だと vitest がそのままでは読めず、設定を 2 か所に書くか依存を足すことになる
-- **登録と AppType は生成器が書き、`routes.gen.ts` は git に入れる**。AppType はチェーンせず、endpoint を 1 本ずつ `&` で並べる。export は oxc-parser で読み、読めないファイルは黙って抜かさず、理由を出して止まる
+- **登録と AppType は生成器が書き、`routes.gen.ts` は git に入れない**（Void の `.void/` と同じ。install・dev・check のたびに書くので古いまま残らず、古いかを比べる仕組みが要らない）。AppType はチェーンせず、endpoint を 1 本ずつ `&` で並べる。export は oxc-parser で読み、読めないファイルは黙って抜かさず、理由を出して止まる
 - **依存は hono だけ**。スキーマは Standard Schema を満たすものなら何でもよく、hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書く。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。OpenAPI は別の部品で、JSON Schema への変換はスキーマのライブラリ自身に任せる（Standard JSON Schema）
 - **失敗は Result、どうしようもないものは throw**。どの失敗がありうるかが型に出るのは、Go の `error` より強い。番号を種類から決める表を hono-kit が 1 か所で持つのは、Go の errors.go や gRPC のステータスコードと同じ考え方
 - **依存は `buildApp(makeDeps)`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。deps は省けてもいい。要るのは実行環境とテスト（偽物を渡す）のためで、アーキテクチャのためではない

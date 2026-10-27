@@ -1,16 +1,12 @@
 /**
  * hnk prepare のテスト。一時ディレクトリに src/routes を書き、生成物か止める理由を見る
  */
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { generate } from "../bin/prepare.mjs";
-
-const hnk = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "bin", "hnk.mjs");
 
 const ENDPOINT = "export const GET = createEndpoint({}, async () => {});\n";
 
@@ -98,43 +94,6 @@ test("catch-all の下に段があったら止まる", () => {
 test("読めない括弧は文字どおり登録せず止める", () => {
   const { problems } = generate(appWith({ "posts/[id/index.ts": ENDPOINT }));
   assert.match(problems[0], /\[id is not a path segment/);
-});
-
-test("--check は書かずに比べ、古ければ落ちる", () => {
-  const src = appWith({ "invoices/index.ts": ENDPOINT });
-  const prepare = (...args) => spawnSync("node", [hnk, "prepare", ...args], { cwd: path.dirname(src), encoding: "utf8" });
-
-  assert.equal(prepare("--check").status, 1);
-  assert.equal(fs.existsSync(path.join(src, "routes.gen.ts")), false);
-  assert.equal(prepare().status, 0);
-  assert.equal(prepare("--check").status, 0);
-
-  fs.mkdirSync(path.join(src, "routes", "customers"));
-  fs.writeFileSync(path.join(src, "routes", "customers", "index.ts"), ENDPOINT);
-  const stale = prepare("--check");
-  assert.equal(stale.status, 1);
-  assert.match(stale.stderr, /is out of date with src\/routes\. Run pnpm hnk prepare and commit it/);
-});
-
-test("--if-missing は無ければ作り、あれば古くても触らない（postinstall が --check を誤魔化さないように）", () => {
-  const src = appWith({ "invoices/index.ts": ENDPOINT });
-  const prepare = (...args) => spawnSync("node", [hnk, "prepare", ...args], { cwd: path.dirname(src), encoding: "utf8" });
-  const out = path.join(src, "routes.gen.ts");
-
-  assert.equal(prepare("--if-missing").status, 0);
-  assert.equal(fs.existsSync(out), true);
-
-  fs.writeFileSync(out, "stale");
-  assert.equal(prepare("--if-missing").status, 0);
-  assert.equal(fs.readFileSync(out, "utf8"), "stale");
-});
-
-test("--if-missing は --watch / --check と一緒に使えない", () => {
-  const src = appWith({ "invoices/index.ts": ENDPOINT });
-  const prepare = (...args) => spawnSync("node", [hnk, "prepare", ...args], { cwd: path.dirname(src), encoding: "utf8" });
-
-  assert.equal(prepare("--if-missing", "--watch").status, 1);
-  assert.equal(prepare("--if-missing", "--check").status, 1);
 });
 
 test("index.tsx も endpoint。import に拡張子は付けない", () => {
