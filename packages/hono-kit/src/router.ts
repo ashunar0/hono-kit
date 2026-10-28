@@ -9,7 +9,7 @@ import {
   type EndpointFn,
 } from "./endpoint.js";
 import { rememberFormat } from "./error-page.js";
-import { fail, onError, ValidationError } from "./failure.js";
+import { HnkError, invalid, onError } from "./failure.js";
 import type { RedirectResponse } from "./redirect.js";
 import type {
   RegisteredBindings,
@@ -34,7 +34,7 @@ const check = (
 ) =>
   validator(target, async (value) => {
     const result = await schema["~standard"].validate(value);
-    if (result.issues) throw fail(ValidationError, result.issues[0]?.message);
+    if (result.issues) throw invalid(result.issues);
 
     return result.value;
   });
@@ -48,7 +48,7 @@ const JSON_CONTENT_TYPE = /^application\/([a-z0-9.-]+\+)?json(\s*;.*)?$/i;
  */
 const requireJsonBody: MiddlewareHandler = async (c, next) => {
   if (!JSON_CONTENT_TYPE.test(c.req.header("content-type") ?? "")) {
-    throw fail(ValidationError, "Content-Type must be application/json");
+    throw invalid([{ message: "Content-Type must be application/json" }]);
   }
   await next();
 };
@@ -69,8 +69,14 @@ const asValidationError =
         await next();
       });
     } catch (error) {
-      if (!passed && error instanceof HTTPException && error.status === 400)
-        throw fail(ValidationError, error.message);
+      // Our own ValidationError (with its fields) passes as it is; only Hono's own 400 is converted
+      if (
+        !passed &&
+        error instanceof HTTPException &&
+        !(error instanceof HnkError) &&
+        error.status === 400
+      )
+        throw invalid([{ message: error.message }]);
       throw error;
     }
   };

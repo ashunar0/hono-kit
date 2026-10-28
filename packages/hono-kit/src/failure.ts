@@ -3,7 +3,12 @@ import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorPageFor } from "./error-page.js";
 import type { Failure, FailureKind } from "./failures.js";
-import type { StandardSchema } from "./standard-schema.js";
+import {
+  hnkSchema,
+  issue,
+  type StandardIssue,
+  type StandardSchema,
+} from "./standard-schema.js";
 
 /** One failure returned over HTTP. Has a code, a status and a default message */
 export type HttpError<
@@ -76,29 +81,81 @@ export const NotAcceptable = httpError(
   "None of the accepted formats can be returned",
 );
 
-/** When input validation fails. Used by createEndpoint */
-export const ValidationError = httpError(
-  "VALIDATION_ERROR",
-  400,
-  "Invalid request",
+/** What was wrong with each field, by its name: `{ amount: ["Too small"], "items.0.name": ["Required"] }` (as in Laravel or Rails) */
+export type FieldErrors = Record<string, string[]>;
+
+const fieldErrorsSchema = hnkSchema<FieldErrors, FieldErrors>(
+  (value) =>
+    typeof value === "object" &&
+    value !== null &&
+    Object.values(value).every(
+      (messages) =>
+        Array.isArray(messages) &&
+        messages.every((m) => typeof m === "string"),
+    )
+      ? { value: value as FieldErrors }
+      : issue("details must map each field to its messages"),
+  () => ({
+    type: "object",
+    additionalProperties: { type: "array", items: { type: "string" } },
+  }),
 );
 
-class HnkError extends HTTPException {
+/**
+ * When input validation fails. Used by createEndpoint.
+ * details names each field that was wrong, with every reason; a problem with the input as a whole
+ * (not JSON, not an object) is the message, with no fields
+ */
+export const ValidationError: HttpError<"VALIDATION_ERROR", 400> & {
+  readonly details: typeof fieldErrorsSchema;
+} = {
+  ...httpError("VALIDATION_ERROR", 400, "Invalid request"),
+  details: fieldErrorsSchema,
+};
+
+/** The field a problem belongs to, its path joined with "." (`items.0.name`). "" for the input as a whole */
+const fieldOf = (path: StandardIssue["path"] = []) =>
+  path
+    .map((segment) =>
+      String(typeof segment === "object" ? segment.key : segment),
+    )
+    .join(".");
+
+/** A failure hono-kit raised itself (as opposed to one Hono or the app threw) */
+export class HnkError extends HTTPException {
   constructor(
     readonly code: string,
     status: ContentfulStatusCode,
     message: string,
+    readonly details?: unknown,
   ) {
     super(status, { message });
   }
 }
+
+/** The ValidationError for these problems: every field's reasons in details */
+export const invalid = (issues: readonly StandardIssue[]) => {
+  const fields: FieldErrors = {};
+  let whole: string | undefined;
+  for (const { message, path } of issues) {
+    const field = fieldOf(path);
+    if (field === "") whole ??= message;
+    else (fields[field] ??= []).push(message);
+  }
+  return new HnkError(
+    ValidationError.code,
+    ValidationError.status,
+    whole ?? ValidationError.message,
+    fields,
+  );
+};
 
 /**
  * Creates a failure raised at the HTTP entry point. Outside handlers, e.g. in middleware: `throw fail(Unauthorized)`.
  * A failure that declares details is returned with them through reply.failure, never thrown
  */
 export const fail = (
-  failure: HttpError | (Failure & { readonly details?: undefined }),
+  failure: (HttpError | Failure) & { readonly details?: undefined },
   message = failure.message,
 ) => {
   const error = toHttpError(failure);
@@ -114,7 +171,12 @@ export const errorBody = (code: string, message: string, details?: unknown) => (
 export const onError: ErrorHandler = async (error, c) => {
   const shown =
     error instanceof HnkError
-      ? { code: error.code, status: error.status, message: error.message }
+      ? {
+          code: error.code,
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        }
       : error instanceof HTTPException
         ? { code: "INTERNAL", status: error.status, message: error.message }
         : { code: "INTERNAL", status: 500, message: "Internal Server Error" };
@@ -125,7 +187,7 @@ export const onError: ErrorHandler = async (error, c) => {
   return (
     page ??
     c.json(
-      errorBody(shown.code, shown.message),
+      errorBody(shown.code, shown.message, "details" in shown ? shown.details : undefined),
       shown.status as ContentfulStatusCode,
     )
   );

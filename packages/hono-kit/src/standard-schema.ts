@@ -16,7 +16,13 @@ export interface StandardSchema<Input = unknown, Output = Input> {
 
 export type StandardResult<Output> =
   | { readonly value: Output; readonly issues?: undefined }
-  | { readonly issues: ReadonlyArray<{ readonly message: string }> };
+  | { readonly issues: ReadonlyArray<StandardIssue> };
+
+/** One problem a schema found. path is where in the value (`["items", 0, "name"]`), missing for the value itself */
+export type StandardIssue = {
+  readonly message: string;
+  readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>;
+};
 
 export type InferInput<S extends StandardSchema<any, any>> = NonNullable<
   S["~standard"]["types"]

@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Changed
+
+- A 400 (`VALIDATION_ERROR`) names every field that was wrong, with all its reasons, in `details`: `{ error: { code: "VALIDATION_ERROR", message: "Invalid request", details: { amount: ["Too small: ..."], "items.0.name": ["..."] } } }`. Before, `message` was the first reason alone and no field was named. `message` is now `Invalid request`, unless the input as a whole is wrong (not JSON, not an object), when it says why and `details` is `{}`. In the client's type, `details` is `Record<string, string[]>`
+
 ## 0.13.0
 
 ### Breaking

@@ -14,6 +14,8 @@ export async function get() {
   if (res.status === 400) {
     const body = await res.json();
     body.error.code satisfies "VALIDATION_ERROR";
+    // 項目ごとの理由。項目名で引ける
+    body.error.details satisfies Record<string, string[]>;
   }
   // auth が requireAuth なので 401 が宣言される
   if (res.status === 401) {
