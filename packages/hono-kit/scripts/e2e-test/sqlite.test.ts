@@ -8,7 +8,7 @@ it("updateWithVersion: updates while the version is the one read, and counts it 
   const id = crypto.randomUUID();
   await db().insert(draftsTable).values({ id, body: "a", version: 1 });
 
-  const row = await updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "b" });
+  const [row] = await updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "b" });
 
   expect(row).toEqual({ id, body: "b", version: 2 });
 });
@@ -19,11 +19,22 @@ it("updateWithVersion: a stale version changes nothing and returns undefined", a
   // Two clients read version 1; the first saves
   await updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "first" });
 
-  const second = await updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "second" });
+  const [second] = await updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "second" });
 
   expect(second).toBeUndefined();
   const [row] = await db().select().from(draftsTable).where(eq(draftsTable.id, id));
   expect(row).toMatchObject({ body: "first", version: 2 });
+});
+
+it("updateWithVersion: it is a query, so it can go in a batch", async () => {
+  const id = crypto.randomUUID();
+  await db().insert(draftsTable).values({ id, body: "a", version: 1 });
+
+  const [rows] = await db().batch([
+    updateWithVersion(db(), draftsTable, { id, version: 1 }, { body: "batched" }),
+  ]);
+
+  expect(rows).toEqual([{ id, body: "batched", version: 2 }]);
 });
 
 it("updateWithVersion: a table without a version column does not type-check", () => {

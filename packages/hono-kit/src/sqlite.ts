@@ -25,16 +25,6 @@ export const uniqueViolationOf = (error: unknown): string | null => {
   return null;
 };
 
-/**
- * What updateWithVersion takes, by shape only. drizzle's classes have private fields, so a db or table made by
- * another copy of drizzle (a linked hono-kit) would not match them as classes. D1, libSQL and better-sqlite3 all fit
- */
-type UpdatingDb = {
-  update(table: any): {
-    set(values: any): { where(condition: any): { returning(): PromiseLike<unknown> } };
-  };
-};
-
 /** A drizzle table with an `id` column and a whole-number `version` column, the one counted up */
 type VersionedTable = {
   id: unknown;
@@ -44,25 +34,32 @@ type VersionedTable = {
 };
 
 /**
- * Optimistic locking: updates the row only while its version is still the one read, and counts it up.
- * Returns the updated row, or undefined when no row matched: someone changed it in between, or there is no such row.
- * Tell those apart before calling it (read the row first and answer NOT_FOUND), so undefined here means a conflict.
- * The version is whatever the client read (a form keeps it, as Rails' lock_version), not one read again here
+ * Optimistic locking: an update that writes the row only while its version is still the one read, and counts it up.
+ * It returns the query, not run yet, as drizzle does: `const [row] = await updateWithVersion(...)`, or put it in
+ * `db.batch([...])`. No row back means no row matched: someone changed it in between, or there is no such row.
+ * Tell those apart before (read the row first and answer NOT_FOUND), so no row means a conflict.
+ * The version is whatever the client read (a form keeps it, as Rails' lock_version), not one read again here.
+ *
+ * db and table are taken by shape: drizzle's classes have private fields, so ones made by another copy of drizzle
+ * (a linked hono-kit) would not match them as classes. The query's type comes from the app's own drizzle
  */
-export const updateWithVersion = async <T extends VersionedTable>(
-  db: UpdatingDb,
+export const updateWithVersion = <T extends VersionedTable, Query>(
+  db: {
+    update(table: NoInfer<T>): {
+      set(values: any): { where(condition: any): { returning(): Query } };
+    };
+  },
   table: T,
   at: { id: T["$inferSelect"]["id"]; version: number },
   set: Partial<Omit<T["$inferInsert"], "id" | "version">>,
-): Promise<T["$inferSelect"] | undefined> => {
+): Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]> => {
   const id = table.id as SQLiteColumn;
   const version = table.version as SQLiteColumn;
-  const rows = await db
+  const query = db
     .update(table)
     .set({ ...set, version: sql`${version} + 1` })
     .where(and(eq(id, at.id), eq(version, at.version)))
     .returning();
-
-  // returning() on SQLite gives the updated rows of the table
-  return (rows as T["$inferSelect"][])[0];
+  // The query's own then gives drizzle's row type for a table it knows only by shape; the rows are the table's
+  return query as Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]>;
 };
