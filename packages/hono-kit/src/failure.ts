@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorPageFor } from "./error-page.js";
 import type { Failure, FailureKind } from "./failures.js";
+import type { StandardSchema } from "./standard-schema.js";
 
 /** One failure returned over HTTP. Has a code, a status and a default message */
 export type HttpError<
@@ -12,6 +13,11 @@ export type HttpError<
   readonly code: K;
   readonly status: S;
   readonly message: string;
+};
+
+/** A failure as the route keeps it: with the shape of its details, when it declares them */
+export type DeclaredError = HttpError & {
+  readonly details?: StandardSchema<any, any>;
 };
 
 /**
@@ -33,7 +39,10 @@ export type AnyFailure = Failure | HttpError;
 /** Turns a Failure into an HttpError with the status of its kind. An HttpError is returned as is */
 export type ToHttpError<F extends AnyFailure> =
   F extends Failure<infer K, infer Kind>
-    ? HttpError<K, (typeof FAILURE_STATUS)[Kind]>
+    ? HttpError<K, (typeof FAILURE_STATUS)[Kind]> &
+        (F extends { details: infer D extends StandardSchema<any, any> }
+          ? { readonly details: D }
+          : unknown)
     : F;
 
 export const toHttpError = <const F extends AnyFailure>(
@@ -41,11 +50,14 @@ export const toHttpError = <const F extends AnyFailure>(
 ): ToHttpError<F> =>
   ("status" in failure
     ? failure
-    : httpError(
-        failure.code,
-        FAILURE_STATUS[failure.kind],
-        failure.message,
-      )) as ToHttpError<F>;
+    : {
+        ...httpError(
+          failure.code,
+          FAILURE_STATUS[failure.kind],
+          failure.message,
+        ),
+        ...(failure.details && { details: failure.details }),
+      }) as ToHttpError<F>;
 
 /** `export const NotFound = httpError("NOT_FOUND", 404, "Not found");` */
 export const httpError = <
@@ -81,15 +93,21 @@ class HnkError extends HTTPException {
   }
 }
 
-/** Creates a failure raised at the HTTP entry point. Outside handlers, e.g. in middleware: `throw fail(Unauthorized)` */
-export const fail = (failure: AnyFailure, message = failure.message) => {
+/**
+ * Creates a failure raised at the HTTP entry point. Outside handlers, e.g. in middleware: `throw fail(Unauthorized)`.
+ * A failure that declares details is returned with them through reply.failure, never thrown
+ */
+export const fail = (
+  failure: HttpError | (Failure & { readonly details?: undefined }),
+  message = failure.message,
+) => {
   const error = toHttpError(failure);
 
   return new HnkError(error.code, error.status, message);
 };
 
-export const errorBody = (code: string, message: string) => ({
-  error: { code, message },
+export const errorBody = (code: string, message: string, details?: unknown) => ({
+  error: details === undefined ? { code, message } : { code, message, details },
 });
 
 /** The single exit for every failure. `app.onError(onError)` */

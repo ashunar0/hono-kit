@@ -46,15 +46,19 @@ export async function statuses() {
 
   if (res.status === 409) {
     const body = await res.json();
-    // 409 は 2 つ。同じ番号でも両方が型に出る
-    body.error.code satisfies "TAKEN" | "STARTING";
+    // 409 は 3 つ。同じ番号でも全部が型に出る
+    body.error.code satisfies "TAKEN" | "STARTING" | "OVER_LIMIT";
+    // code で分けると、その失敗の details の形が決まる
+    if (body.error.code === "OVER_LIMIT") body.error.details.limit satisfies number;
+    // @ts-expect-error details を宣言していない失敗には details が無い
+    if (body.error.code === "TAKEN") void body.error.details;
   }
   if (res.status === 502) {
     const body = await res.json();
     body.error.code satisfies "UPSTREAM_FAILED";
   }
 
-  // @ts-expect-error kind は taken / starting / upstream だけ
+  // @ts-expect-error kind は taken / starting / over / upstream だけ
   await client.statuses.$post({ json: { kind: "unknown" } });
 }
 

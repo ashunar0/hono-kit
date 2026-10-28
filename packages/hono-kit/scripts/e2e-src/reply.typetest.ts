@@ -1,4 +1,4 @@
-import { createEndpoint, errorResponses, NotFound } from "hono-kit";
+import { createEndpoint, err, errorResponses, NotFound, type Result } from "hono-kit";
 import { z } from "zod";
 import { allowAnonymous } from "./middleware/auth";
 
@@ -37,4 +37,54 @@ export const wrongBody = createEndpoint(
     // @ts-expect-error ok は true だけ
     return reply.success({ ok: false });
   },
+);
+
+const OverLimit = {
+  code: "OVER_LIMIT",
+  kind: "conflict",
+  message: "Over the limit",
+  details: z.object({ limit: z.number() }),
+} as const;
+
+const withDetails = { 200: ok, ...errorResponses(NotFound, OverLimit) };
+
+// details を宣言した失敗は { code, details } で返す。宣言していない失敗は今までどおり code だけ
+export const detailed = createEndpoint(
+  { auth: allowAnonymous, responses: withDetails },
+  async (_c, reply) =>
+    Math.random() > 0.5
+      ? reply.failure({ code: "OVER_LIMIT", details: { limit: 3 } })
+      : reply.failure("NOT_FOUND"),
+);
+
+// 関数が err に入れた失敗を、そのまま渡せる
+const check = (): Result<void, { code: typeof OverLimit.code; details: { limit: number } }> =>
+  err({ code: OverLimit.code, details: { limit: 3 } });
+
+export const passedThrough = createEndpoint(
+  { auth: allowAnonymous, responses: withDetails },
+  async (_c, reply) => {
+    const checked = check();
+    if (!checked.ok) return reply.failure(checked.error);
+    return reply.success({ ok: true });
+  },
+);
+
+export const withoutDetails = createEndpoint(
+  { auth: allowAnonymous, responses: withDetails },
+  // @ts-expect-error details を宣言した失敗は、code だけでは返せない
+  async (_c, reply) => reply.failure("OVER_LIMIT"),
+);
+
+export const wrongDetails = createEndpoint(
+  { auth: allowAnonymous, responses: withDetails },
+  async (_c, reply) =>
+    // @ts-expect-error details の形が宣言と合わない
+    reply.failure({ code: "OVER_LIMIT", details: { limit: "3" } }),
+);
+
+export const detailsOnPlain = createEndpoint(
+  { auth: allowAnonymous, responses: withDetails },
+  // @ts-expect-error details を宣言していない失敗には渡せない
+  async (_c, reply) => reply.failure({ code: "NOT_FOUND", details: {} }),
 );

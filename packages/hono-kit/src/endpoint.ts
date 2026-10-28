@@ -13,6 +13,7 @@ import {
   toHttpError,
   ValidationError,
   type AnyFailure,
+  type DeclaredError,
   type HttpError,
   type ToHttpError,
 } from "./failure.js";
@@ -39,6 +40,7 @@ import {
 import {
   hnkSchema,
   issue,
+  toJsonSchema,
   type InferOutput,
 } from "./standard-schema.js";
 
@@ -76,48 +78,80 @@ const described = <T extends AnySchema>(schema: T, description: string) => ({
   description,
 });
 
-type ErrorBody<K extends string> = { error: { code: K; message: string } };
+/**
+ * The failure response body `{ error: { code, message } }`, one per declared failure.
+ * A failure that declares details has `details` too, so the client knows their shape from the code
+ */
+type ErrorBody<E extends HttpError> = E extends {
+  details: infer D extends AnySchema;
+}
+  ? { error: { code: E["code"]; message: string; details: InferOutput<D> } }
+  : { error: { code: E["code"]; message: string } };
 
-/** The failure response body `{ error: { code, message } }`. code is one of the declared failures */
-const errorSchema = <K extends string>(codes: readonly K[]) =>
-  hnkSchema<ErrorBody<K>, ErrorBody<K>>(
-    (value) => {
-      const error = (value as Partial<ErrorBody<string>> | null)?.error;
-      if (
-        typeof error?.message !== "string" ||
-        !(codes as readonly string[]).includes(error.code)
-      )
+const errorObjectSchema = (
+  codes: readonly string[],
+  details?: Record<string, unknown>,
+) => ({
+  type: "object",
+  properties: {
+    code: { type: "string", enum: codes },
+    message: { type: "string" },
+    ...(details && { details }),
+  },
+  required: details ? ["code", "message", "details"] : ["code", "message"],
+});
+
+/** The failure response body. code is one of the declared failures, with the details it declares */
+const errorSchema = <E extends DeclaredError>(errors: readonly E[]) => {
+  const codes = errors.map((e) => e.code);
+  return hnkSchema<ErrorBody<E>, ErrorBody<E>>(
+    async (value) => {
+      const error = (value as { error?: Record<string, unknown> } | null)
+        ?.error;
+      const declared = errors.find((e) => e.code === error?.code);
+      if (typeof error?.message !== "string" || declared === undefined)
         return issue(`error.code must be one of ${codes.join(" / ")}`);
+      if (declared.details) {
+        const checked =
+          await declared.details["~standard"].validate(error.details);
+        if (checked.issues)
+          return issue(`error.details of ${declared.code}: ${checked.issues[0]?.message}`);
+      }
 
-      return { value: value as ErrorBody<K> };
+      return { value: value as ErrorBody<E> };
     },
-    () => ({
-      type: "object",
-      properties: {
-        error: {
-          type: "object",
-          properties: {
-            code: { type: "string", enum: codes },
-            message: { type: "string" },
-          },
-          required: ["code", "message"],
+    (io, options) => {
+      const plain = errors.filter((e) => !e.details).map((e) => e.code);
+      const withDetails = errors.filter((e) => e.details);
+      // Without details it stays one object with an enum of codes; each failure with details is its own branch
+      const objects = [
+        ...(plain.length > 0 ? [errorObjectSchema(plain)] : []),
+        ...withDetails.map((e) =>
+          errorObjectSchema([e.code], toJsonSchema(e.details!, io, options)),
+        ),
+      ];
+      return {
+        type: "object",
+        properties: {
+          error: objects.length === 1 ? objects[0] : { oneOf: objects },
         },
-      },
-      required: ["error"],
-    }),
+        required: ["error"],
+      };
+    },
   );
+};
 
 /** Attaches the failures that may be returned with that status to the response declaration. Not shown in OpenAPI */
 const DECLARED_ERRORS: unique symbol = Symbol("hnk.declaredErrors");
 
 type ErrorResponse = ReturnType<typeof described> & {
-  readonly [DECLARED_ERRORS]: readonly HttpError[];
+  readonly [DECLARED_ERRORS]: readonly DeclaredError[];
 };
 
 /** Merges failures with the same status into one response. Codes become a union of literals; messages are kept per code */
-const errorResponseOf = (errors: readonly HttpError[]): ErrorResponse => ({
+const errorResponseOf = (errors: readonly DeclaredError[]): ErrorResponse => ({
   ...described(
-    errorSchema(errors.map((e) => e.code)),
+    errorSchema(errors),
     errors.map((e) => e.message).join(" / "),
   ),
   [DECLARED_ERRORS]: errors,
@@ -131,8 +165,8 @@ const errorResponseOf = (errors: readonly HttpError[]): ErrorResponse => ({
 export const errorResponses = <const T extends readonly AnyFailure[]>(
   ...failures: T
 ) => {
-  const byStatus = new Map<number, HttpError[]>();
-  for (const e of failures.map(toHttpError))
+  const byStatus = new Map<number, DeclaredError[]>();
+  for (const e of failures.map(toHttpError) as DeclaredError[])
     byStatus.set(e.status, [...(byStatus.get(e.status) ?? []), e]);
 
   return Object.fromEntries(
@@ -143,7 +177,7 @@ export const errorResponses = <const T extends readonly AnyFailure[]>(
 type ErrorResponses<E extends HttpError> = {
   [S in E["status"]]: {
     description: string;
-    schema: ReturnType<typeof errorSchema<Extract<E, { status: S }>["code"]>>;
+    schema: ReturnType<typeof errorSchema<Extract<E, { status: S }>>>;
   };
 };
 
@@ -267,8 +301,29 @@ type JsonSchemaOf<R extends RouteConfig, S> = S extends keyof R["responses"]
 
 type JsonBodyOf<R extends RouteConfig, S> = InferOutput<JsonSchemaOf<R, S>>;
 
-type CodeOf<R extends RouteConfig, S> =
-  JsonBodyOf<R, S> extends { error: { code: infer K } } ? K : never;
+type CodeOf<R extends RouteConfig, S> = CodeOfBody<JsonBodyOf<R, S>>;
+
+/** Spread over the failure bodies of one status, so each body gives its own code */
+type CodeOfBody<B> = B extends { error: { code: infer K } } ? K : never;
+
+/** The details that failure declares, or undefined when it declares none */
+type DetailsOf<R extends RouteConfig, K> =
+  Extract<
+    { [S in keyof R["responses"]]: JsonBodyOf<R, S> }[keyof R["responses"]],
+    { error: { code: K } }
+  > extends { error: { details: infer D } }
+    ? D
+    : undefined;
+
+/** The code of what was passed to reply.failure */
+type CodeIn<E> = E extends string ? E : E extends { code: infer K } ? K : never;
+
+/** What reply.failure takes for that code: the code alone, or the code with its details */
+type FailureArg<R extends RouteConfig, K> = [DetailsOf<R, K>] extends [
+  undefined,
+]
+  ? K
+  : { readonly code: K; readonly details: DetailsOf<R, K> };
 
 /** The type of a route built by createRoute */
 type Built<C extends RouteConfig> = ReturnType<typeof createRoute<C>>;
@@ -293,7 +348,11 @@ type NoFailureDeclared =
 /** Returns the declared status for each failure code, keeping "NOT_FOUND means 404" in the type */
 type FailureResponse<R extends RouteConfig, K> = {
   [S in keyof R["responses"] & ContentfulStatusCode]: K extends CodeOf<R, S>
-    ? TypedResponse<{ error: { code: K; message: string } }, S, "json">
+    ? TypedResponse<
+        JSONParsed<Extract<JsonBodyOf<R, S>, { error: { code: K } }>>,
+        S,
+        "json"
+      >
     : never;
 }[keyof R["responses"] & ContentfulStatusCode];
 
@@ -320,16 +379,26 @@ type Reply<R extends RouteConfig> = {
       : TypedResponse<JSONParsed<JsonBodyOf<R, 200>>, 200, "json">;
   /**
    * An expected failure. Passing an undeclared code underlines the argument with "these are the declared ones".
+   * A failure that declares details takes them too: `{ code, details }` (what a function returned in err)
    * The return type is then never, so the same cause is not underlined again at the top of the handler
    */
-  failure<K extends string>(
+  failure<
+    const E extends
+      | string
+      | { readonly code: string; readonly details: unknown },
+  >(
+    // E is the whole argument, so it is inferred from a variable too (a Result's error). The rest only checks it:
+    // NoInfer keeps TS from inferring E from the expected shape (it would turn an object into its code).
+    // A wrong detail is then underlined where it is, as "not assignable to never".
     // & string makes error messages show the contents ("NOT_FOUND", ...) instead of the type name
-    error: [K] extends [DeclaredFailure<R>]
-      ? K
+    error: [CodeIn<E>] extends [DeclaredFailure<R>]
+      ? E & NoInfer<FailureArg<R, CodeIn<E>>>
       : [DeclaredFailure<R>] extends [never]
         ? NoFailureDeclared
         : DeclaredFailure<R> & string,
-  ): [K] extends [DeclaredFailure<R>] ? FailureResponse<R, K> : never;
+  ): [CodeIn<E>] extends [DeclaredFailure<R>]
+    ? FailureResponse<R, CodeIn<E>>
+    : never;
   /**
    * Sends people elsewhere, always with 303. Only on a route that declares `303: redirect()`.
    * The location must be a path of this app, or on an origin the declaration names; anything else throws (500)
@@ -451,10 +520,17 @@ export const buildEndpoint = <const C extends RouteConfig>(
           303,
         );
       },
-      failure: async (code: string) => {
+      failure: async (
+        error: string | { code: string; details: unknown },
+      ) => {
+        const { code, details } =
+          typeof error === "string" ? { code: error, details: undefined } : error;
         const declared = findDeclaredFailure(route, code, c);
         const page = await errorPageFor(c, { code, ...declared });
-        return page ?? c.json(errorBody(code, declared.message), declared.status);
+        return (
+          page ??
+          c.json(errorBody(code, declared.message, details), declared.status)
+        );
       },
     } as unknown as Reply<Built<C>>;
 

@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Added
+
+- A failure can carry the numbers behind it. Declare `details: z.object({ ... })` on it, and return it as `reply.failure({ code, details })` (or pass on the `err({ code, details })` a function returned). The response is `{ error: { code, message, details } }`; in the client's type, `details` has the declared shape once the `code` is checked, and the OpenAPI document shows each failure with details as its own branch. Failures without details are returned as before
+
 ## 0.11.1
 
 ### Fixed (template)
