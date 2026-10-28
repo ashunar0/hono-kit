@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## 0.11.1
+
+### Fixed (template)
+
+- A new app failed `pnpm check` at `format:check`: the template's `src/middleware/auth.ts` was not formatted. An app made with 0.11.0 runs `pnpm exec prettier --write src/middleware/auth.ts`
+
 ## 0.11.0
 
 ### Breaking

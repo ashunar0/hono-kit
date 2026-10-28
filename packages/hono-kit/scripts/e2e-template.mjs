@@ -38,13 +38,19 @@ if (packed) {
 }
 
 run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
+// 作ったばかりの雛形が、そのままで通ること（create → install → check が最初に打つもの）。
+// 下で書き足したものは prettier --write で整えるので、雛形の書式の崩れはここでしか見えない
+run("pnpm", ["install"], app);
+// postinstall の hnk prepare で routes.gen.ts ができ、prepare を手で打たなくても型が通る
+run("pnpm", ["typecheck"], app);
+run("pnpm", ["check"], app);
 // アプリを書いた体で、テーブル（db/schema.ts）・route・型のテスト（*.typetest.ts。宣言と handler・client の型が
 // 合っているか）を写す。tsc が src の中を全部見るので、置くだけで確かめられる
 fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true });
 // 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
 fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true });
-run("pnpm", ["install"], app);
-// postinstall の hnk prepare で routes.gen.ts ができ、prepare を手で打たなくても型が通る
+// 依存は増えていないので、install をし直すと postinstall が走らない。写した route は prepare で拾う
+run("pnpm", ["hnk", "prepare"], app);
 run("pnpm", ["typecheck"], app);
 run("pnpm", ["db:generate"], app);
 run("pnpm", ["exec", "prettier", "--write", "."], app);

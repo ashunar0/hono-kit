@@ -47,15 +47,13 @@ export const authenticatedUser = (user: { id: UserId; name: string; email: strin
  */
 export const requireAuth = guard(
   [Unauthorized],
-  createMiddleware<{ Variables: { currentUser: CurrentUser } & DepsVariables }>(
-    async (c, next) => {
-      const user = await c.var.deps.sessionUser(c.req.raw.headers);
-      if (user === null) throw fail(Unauthorized);
+  createMiddleware<{ Variables: { currentUser: CurrentUser } & DepsVariables }>(async (c, next) => {
+    const user = await c.var.deps.sessionUser(c.req.raw.headers);
+    if (user === null) throw fail(Unauthorized);
 
-      c.set("currentUser", user);
-      await next();
-    },
-  ),
+    c.set("currentUser", user);
+    await next();
+  }),
 );
 
 /**
