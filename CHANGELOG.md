@@ -13,6 +13,11 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 - No `withAccount`: reading the session is `sessionUser(headers)` in deps, and `requireAuth` calls it, turns away null with 401 and sets `currentUser`. `buildApp(makeDeps, clock)` lost its `authenticate` argument; tests sign in by swapping `sessionUser` in their `makeDeps` (`appAs` does). `Account` / `AccountId` / `accountId` / `authenticatedAccount` are `CurrentUser` / `UserId` / `userId` / `authenticatedUser`, and a `CurrentUser` holds what the auth provider gives with the session (id, name, email). `test/fixtures.ts` adds `someone()`, a new user per test, since the tests in a file share D1. These live in your app; renaming is optional, but its guards must set `currentUser`
 
+### Docs
+
+- A CSV or a page made from the data is a format listed under 200, not `file()`; `file()` is for a file returned as it is
+- Until `sessionUser` reads the session, endpoints behind `requireAuth` answer 401 when called by hand; tests still sign in
+
 ## 0.10.0
 
 ### Added
