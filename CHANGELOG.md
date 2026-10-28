@@ -2,7 +2,7 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
-## Unreleased
+## 0.15.0
 
 ### Changed
 
