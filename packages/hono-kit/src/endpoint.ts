@@ -389,10 +389,13 @@ type Reply<R extends RouteConfig> = {
   >(
     // E is the whole argument, so it is inferred from a variable too (a Result's error). The rest only checks it:
     // NoInfer keeps TS from inferring E from the expected shape (it would turn an object into its code).
-    // A wrong detail is then underlined where it is, as "not assignable to never".
+    // When E does not fit, it is compared with the expected shape alone, so a wrong detail is underlined
+    // where it is, as "string is not assignable to number" (E & the shape would turn it into never).
     // & string makes error messages show the contents ("NOT_FOUND", ...) instead of the type name
     error: [CodeIn<E>] extends [DeclaredFailure<R>]
-      ? E & NoInfer<FailureArg<R, CodeIn<E>>>
+      ? E extends FailureArg<R, CodeIn<E>>
+        ? E
+        : NoInfer<FailureArg<R, CodeIn<E>>>
       : [DeclaredFailure<R>] extends [never]
         ? NoFailureDeclared
         : DeclaredFailure<R> & string,

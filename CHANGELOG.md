@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Changed
+
+- When `reply.failure` is passed details of the wrong shape, the error says what is wrong with them (`Type 'string' is not assignable to type 'number'`, under that field alone) instead of `not assignable to type 'never'` (under every field). Passing the code alone for a failure that declares details names the `{ code, details }` it takes. Only messages change: what is accepted is the same
+
 ## 0.14.0
 
 ### Changed
