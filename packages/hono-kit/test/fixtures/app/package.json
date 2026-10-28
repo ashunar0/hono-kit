@@ -1,6 +1,6 @@
 {
   "private": true,
   "imports": {
-    "#src/*": "./src/*.ts"
+    "#/*": "./src/*.ts"
   }
 }

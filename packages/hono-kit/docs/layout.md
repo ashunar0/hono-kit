@@ -14,4 +14,4 @@ hono-kit fixes only the places below. How the rest of `src/` is split (domains, 
 
 ## Imports
 
-Inside your own resource (`src/routes/<noun>/` and everything under it), import with a relative path (`../_response`). Anything outside it goes through `#src/` (`#src/db/index`), the subpath import in `package.json` (`"#src/*": "./src/*.ts"`). A directory is imported by its `index`. So an import shows whether it is your own or someone else's.
+Inside your own resource (`src/routes/<noun>/` and everything under it), import with a relative path (`../_response`). Anything outside it goes through `#/` (`#/db/index`), the subpath import in `package.json` (`"#/*": "./src/*.ts"`). A directory is imported by its `index`. So an import shows whether it is your own or someone else's.

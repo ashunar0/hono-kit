@@ -4,6 +4,10 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ## Unreleased
 
+### Changed
+
+- The template imports from outside your own resource with `#/` instead of `#src/` (`"imports": { "#/*": "./src/*.ts" }` in `package.json`), as `@/` reads in Next.js. Every tool reads it with no other setting. An app made before keeps working with `#src/`; to switch, change that line and replace `#src/` with `#/` in `src/` and `test/`
+
 ### Added
 
 - `updateWithVersion(db, table, { id, version }, values)` in `hono-kit/sqlite`, for optimistic locking: an update that writes the row only while its `version` column is still the one the client read, and counts it up. It returns the query not yet run, as drizzle does (`const [row] = await updateWithVersion(...)`, or inside `db.batch`); no row back means someone changed it first. `drizzle-orm` becomes an optional peer dependency, used by `hono-kit/sqlite` only

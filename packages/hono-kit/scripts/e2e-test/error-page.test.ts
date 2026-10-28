@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 import { createApp, errorPage, type SessionUser } from "hono-kit";
 import { expect, it } from "vitest";
-import { makeDeps } from "#src/main";
-import { registerRoutes } from "#src/routes.gen";
+import { makeDeps } from "#/main";
+import { registerRoutes } from "#/routes.gen";
 import { alice } from "./fixtures";
 
 /** The template's app with an error page: signed out goes to /login, the rest is a page */

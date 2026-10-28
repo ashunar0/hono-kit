@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { hc } from "hono/client";
 import { expect, it } from "vitest";
-import type { AppType } from "#src/routes.gen";
+import type { AppType } from "#/routes.gen";
 import { appAs } from "../../../../test/fixtures";
 
 const client = hc<AppType>("http://localhost", {

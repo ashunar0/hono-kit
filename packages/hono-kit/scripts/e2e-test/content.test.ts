@@ -1,6 +1,6 @@
 import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
-import { buildApp } from "#src/main";
+import { buildApp } from "#/main";
 import { env } from "cloudflare:workers";
 import { appAs } from "./fixtures";
 

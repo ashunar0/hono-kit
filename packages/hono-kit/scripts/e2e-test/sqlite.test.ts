@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { updateWithVersion } from "hono-kit/sqlite";
 import { expect, it } from "vitest";
-import { draftsTable } from "#src/db/schema";
+import { draftsTable } from "#/db/schema";
 import { db } from "./fixtures";
 
 it("updateWithVersion: updates while the version is the one read, and counts it up", async () => {

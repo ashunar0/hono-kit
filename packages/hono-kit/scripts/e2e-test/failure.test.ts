@@ -1,6 +1,6 @@
 import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
-import { buildApp } from "#src/main";
+import { buildApp } from "#/main";
 import { request } from "./fixtures";
 
 const post = (kind: string) => request(null, "POST", "/statuses", { kind });

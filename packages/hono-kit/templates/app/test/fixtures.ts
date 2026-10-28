@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import type { SessionUser } from "hono-kit";
-import { wireDb } from "#src/db/index";
-import { buildApp, makeDeps } from "#src/main";
+import { wireDb } from "#/db/index";
+import { buildApp, makeDeps } from "#/main";
 
 export const db = () => wireDb(env.DB);
 

@@ -1,6 +1,6 @@
 import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
-import { buildApp } from "#src/main";
+import { buildApp } from "#/main";
 import { request } from "./fixtures";
 
 it("sends the file as it is, with its type and the headers set on c", async () => {

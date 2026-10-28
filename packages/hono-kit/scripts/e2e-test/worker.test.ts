@@ -2,7 +2,7 @@ import { type CronContext, err, ok } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
-import { buildApp, makeDeps } from "#src/main";
+import { buildApp, makeDeps } from "#/main";
 
 const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
 const controller = (cron: string) =>

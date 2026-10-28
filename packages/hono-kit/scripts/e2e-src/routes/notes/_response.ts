@@ -2,7 +2,7 @@
  * How a note is shown over HTTP
  */
 import { z } from "zod";
-import type { notesTable } from "#src/db/schema";
+import type { notesTable } from "#/db/schema";
 
 export const noteResponseSchema = z.object({
   id: z.string(),
