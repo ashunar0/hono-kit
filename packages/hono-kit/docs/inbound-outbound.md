@@ -11,7 +11,7 @@
 
 ## queue
 
-- Taking messages off: a job passed as `createWorker({ queue })`. It receives `{ deps, now, body }`, and on Workers the `message` (`attempts`, `id`), `env` and `ctx` too; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
+- Taking messages off: a job passed as `createWorker({ queue })`. It receives `{ deps, now, body }`, and on Workers the `message` (`attempts`, `id`), its `batch`, `env` and `ctx` too (with several queues, tell them apart by `batch.queue`); `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
 - Return err only for a failure that may go away when tried again. A failure that will not go away ends with ok, and leaves a record that the message was given up
 
 ## mailer / gateway

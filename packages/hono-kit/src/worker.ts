@@ -15,9 +15,12 @@ type FromWorkers = { env: Bindings; ctx: ExecutionContext };
 export type WorkerCronContext = CronContext &
   FromWorkers & { controller: ScheduledController };
 
-/** A queue message on Workers: { deps, now, body } plus the message itself (attempts, id), env and ctx */
+/**
+ * A queue message on Workers: { deps, now, body } plus the message itself (attempts, id), its batch, env and ctx.
+ * With several queues, tell them apart by `batch.queue`, as on plain Workers
+ */
 export type WorkerQueueContext<Body> = QueueContext<Body> &
-  FromWorkers & { message: Message<Body> };
+  FromWorkers & { message: Message<Body>; batch: MessageBatch<Body> };
 
 /** The deps of a worker given no makeDeps. A job that reads one is told what is missing, instead of getting undefined */
 const missingDeps = () =>
@@ -82,6 +85,7 @@ export const createWorker = <Body = never>(options: {
               now: message.timestamp,
               body: message.body,
               message,
+              batch,
               env,
               ctx,
             });

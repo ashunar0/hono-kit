@@ -29,7 +29,7 @@ it("scheduled: a job gets deps and now, and the controller to tell crons apart",
   expect(ran).toEqual(["daily 2026-10-01T08:00:00.000Z", "other 0 0 1 * *"]);
 });
 
-it("queue: a job gets the message too, and its Result acks or retries it", async () => {
+it("queue: a job gets the message and its batch too, and its Result acks or retries it", async () => {
   const done: string[] = [];
   const message = (id: string, body: number) => ({
     id,
@@ -42,14 +42,19 @@ it("queue: a job gets the message too, and its Result acks or retries it", async
   const worker = createWorker<number>({
     makeDeps,
     fetch: buildApp().fetch,
-    queue: async ({ body, message }) => {
+    queue: async ({ body, message, batch }) => {
       expect(message.attempts).toBe(2);
+      if (batch.queue !== "mails") return err("UNKNOWN_QUEUE");
       return body > 0 ? ok(undefined) : err("AGAIN");
     },
   });
 
-  const batch = { messages: [message("a", 1), message("b", 0)] } as unknown as MessageBatch<number>;
+  const batch = { queue: "mails", messages: [message("a", 1), message("b", 0)] } as unknown as MessageBatch<number>;
   await worker.queue!(batch, env, ctx);
 
   expect(done).toEqual(["ack a", "retry b"]);
+
+  // Another queue is told apart by batch.queue
+  await worker.queue!({ ...batch, queue: "exports" } as MessageBatch<number>, env, ctx);
+  expect(done).toEqual(["ack a", "retry b", "retry a", "retry b"]);
 });

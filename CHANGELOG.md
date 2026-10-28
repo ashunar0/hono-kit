@@ -6,7 +6,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 
 ### Changed
 
-- `createWorker` passes on what Workers gives, next to `deps` and `now`: `scheduled` gets `{ deps, now, controller, env, ctx }` and `queue` gets `{ deps, now, body, message, env, ctx }` (types `WorkerCronContext`, `WorkerQueueContext` from `hono-kit/worker`). Several crons can be told apart by `controller.cron`, and a job can use `ctx.waitUntil` or `message.attempts`. A job that takes `CronContext` / `QueueContext` still fits, so nothing needs rewriting
+- `createWorker` passes on what Workers gives, next to `deps` and `now`: `scheduled` gets `{ deps, now, controller, env, ctx }` and `queue` gets `{ deps, now, body, message, batch, env, ctx }` (types `WorkerCronContext`, `WorkerQueueContext` from `hono-kit/worker`). Several crons can be told apart by `controller.cron` and several queues by `batch.queue`, and a job can use `ctx.waitUntil` or `message.attempts`. A job that takes `CronContext` / `QueueContext` still fits, so nothing needs rewriting
 
 - When `reply.failure` is passed details of the wrong shape, the error says what is wrong with them (`Type 'string' is not assignable to type 'number'`, under that field alone) instead of `not assignable to type 'never'` (under every field). Passing the code alone for a failure that declares details names the `{ code, details }` it takes. Only messages change: what is accepted is the same
 
