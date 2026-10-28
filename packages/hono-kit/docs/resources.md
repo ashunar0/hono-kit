@@ -38,7 +38,7 @@ To send the same data as HTML (or Markdown) to whoever asks for it, list the for
 },
 ```
 
-A page that fails shows JSON (`{ error }`) unless the app has an error page. Register one in `src/index.ts`, before `authenticate`: `app.use("*", errorPage((failure) => failure.status === 401 ? { redirect: "/login" } : ErrorPage(failure)))`. `failure` is `{ code, status, message }`. It is used only when the client asked for HTML and the endpoint returns HTML, for declared failures, the ones thrown before the handler (401, 400, 406) and unexpected errors (500); the handler does not change.
+A page that fails shows JSON (`{ error }`) unless the app has an error page. Register one in `src/main.ts`, before `registerRoutes(app)`: `app.use("*", errorPage((failure) => failure.status === 401 ? { redirect: "/login" } : ErrorPage(failure)))`. `failure` is `{ code, status, message }`. It is used only when the client asked for HTML and the endpoint returns HTML, for declared failures, the ones thrown before the handler (401, 400, 406) and unexpected errors (500); the handler does not change.
 
 An update is `PUT` with the whole input, the same schema as the create (`invoiceInputSchema`); use `PATCH` only when a client must change some fields and leave the rest. A change of state is not an update: it is a verb directory under the thing with only `POST` (`src/routes/invoices/[id]/send/index.ts` for `POST /invoices/:id/send`), not a `PATCH` of the status and not a noun (`/sending`). An undo is another verb (`publish` / `unpublish`).
 
@@ -47,4 +47,4 @@ An update is `PUT` with the whole input, the same schema as the create (`invoice
 What sits next to it is up to you. Starting a file that is not an endpoint with `_` makes it easy to tell apart (`_response.ts`, as in Void). `hnk prepare` reads only `index.ts` (or `index.tsx`), and skips directories that start with `_`.
 
 - **Tests** go over HTTP next to the resource (`src/routes/<noun>/index.test.ts`): create, read, list, 400 on bad input, 404 for someone else's, 403 for a role that may not, 401 when signed out
-- **OpenAPI**: `openapiDocument(app, info)` from `hono-kit/openapi` builds the document from the registered endpoints. Serve it from `src/index.ts` when you need one (`app.get("/openapi.json", …)`)
+- **OpenAPI**: `openapiDocument(app, info)` from `hono-kit/openapi` builds the document from the registered endpoints. Serve it from `src/main.ts` when you need one (`app.get("/openapi.json", …)`)

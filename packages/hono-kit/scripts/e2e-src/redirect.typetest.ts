@@ -1,6 +1,6 @@
 import { createEndpoint, redirect } from "hono-kit";
 import { z } from "zod";
-import { allowAnonymous } from "./middleware/auth";
+import { allowAnonymous } from "hono-kit";
 
 const ok = z.object({ ok: z.literal(true) });
 

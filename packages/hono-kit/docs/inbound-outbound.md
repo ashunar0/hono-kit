@@ -3,7 +3,7 @@
 ## cron
 
 - A job is a function that receives `{ deps, now }`. Put it where you like, for example `src/jobs/<name>.ts`
-- `src/index.ts`: `createWorker({ makeDeps, fetch: app.fetch, scheduled: sendUnreadDigests })`
+- `src/main.ts`: `createWorker({ makeDeps, fetch: buildApp().fetch, scheduled: sendUnreadDigests })`
 - Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
 - Tests: call the job directly with `{ deps, now }` instead of going through `scheduled`
@@ -28,7 +28,7 @@ A failure that belongs to the entry point, not to a thing (a webhook signature t
 
 ```ts
 export const makeDeps = (
-  env: AppEnv["Bindings"],
+  env: Env,
   overrides: { invitationMailer?: Mailer } = {},
 ) => {
   /* ... */

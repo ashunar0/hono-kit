@@ -1,5 +1,5 @@
 /**
- * The app's one error page. `app.use("*", errorPage((failure) => ...))` in src/index.ts.
+ * The app's one error page. `app.use("*", errorPage((failure) => ...))` in src/main.ts, before registerRoutes(app).
  * It is shown only when the client asked for HTML and the endpoint returns HTML; everyone else still gets the JSON failure.
  * Both ways a failure leaves are covered: reply.failure in the handler, and what is thrown before it (401, 400, 406) or by mistake (500)
  */

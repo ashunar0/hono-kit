@@ -2,7 +2,7 @@ import { createEndpoint, type DepsVariables } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
 import type { Db } from "./db/index";
-import { allowAnonymous } from "./middleware/auth";
+import { allowAnonymous } from "hono-kit";
 
 const ok = z.object({ ok: z.literal(true) });
 

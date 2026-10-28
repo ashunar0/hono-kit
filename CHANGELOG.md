@@ -2,6 +2,18 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Breaking
+
+- The app's entry is `src/main.ts`, and what every app wrote the same is in hono-kit. `src/index.ts`, `src/deps.ts`, `src/env.ts` and `src/middleware/auth.ts` go away. To rewrite an app:
+  - Make `src/main.ts`: `export const makeDeps = (env: Env) => ({ db, sessionUser, ... })` (what `deps.ts` built), `export const buildApp = (deps = makeDeps, clock?: () => Date) => { const app = createApp({ makeDeps: deps, clock }); /* your middleware and routes */ registerRoutes(app); return app; }` and `export default createWorker({ makeDeps, fetch: buildApp().fetch })`. Point `main` in `wrangler.jsonc` at it
+  - `createApp({ makeDeps, clock })` sets `now`, provides deps and answers failures with `onError`; drop those three from your app. `createApp()` with nothing passed still sets `now` and `onError`
+  - Delete `src/env.ts` and the `declare module "hono-kit" { interface Register { ... } }` blocks: `hnk prepare` writes `Register` into `src/routes.gen.ts` from the `makeDeps` that `src/main.ts` exports (and stops when there is none). Bindings are what `makeDeps` takes
+  - Import `requireAuth`, `allowAnonymous`, `CurrentUser`, `UserId` and `userId` from `hono-kit`, and delete `src/middleware/auth.ts`. `sessionUser` returns the user as the auth provider gives it (`{ id, name, email }`), not a `CurrentUser`: `requireAuth` brands it. A guard you write yourself gets the user with `getCurrentUser(c)` (new), the only way to make a `CurrentUser`. Tests sign in with plain users (`SessionUser`) and no `authenticatedUser`
+  - The template serves no `/openapi.json`. Add `app.get("/openapi.json", (c) => c.json(openapiDocument(app, info)))` in `buildApp` if you serve one
+  - `ApiApp` is not re-exported: import `AppType` from `src/routes.gen.ts` for `hc`
+
 ## 0.12.0
 
 ### Added

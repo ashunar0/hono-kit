@@ -1,4 +1,6 @@
+import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
+import { buildApp } from "#src/main";
 import { request } from "./fixtures";
 
 const post = (kind: string) => request(null, "POST", "/statuses", { kind });
@@ -20,9 +22,8 @@ it("sends no details for a failure that declares none", async () => {
 });
 
 it("shows each failure with details as its own branch in the OpenAPI document", async () => {
-  const res = await request(null, "GET", "/openapi.json");
   type Schema = { properties: { error: { oneOf: Record<string, unknown>[] } } };
-  const doc = (await res.json()) as {
+  const doc = openapiDocument(buildApp(), { title: "e2e", version: "0" }) as unknown as {
     paths: Record<string, { post: { responses: Record<string, { content: Record<string, { schema: Schema }> }> } }>;
   };
 

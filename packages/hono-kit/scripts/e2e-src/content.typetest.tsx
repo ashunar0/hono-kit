@@ -1,6 +1,6 @@
 import { createEndpoint } from "hono-kit";
 import { z } from "zod";
-import { allowAnonymous } from "./middleware/auth";
+import { allowAnonymous } from "hono-kit";
 
 const invoice = z.object({ id: z.string(), amount: z.number() });
 type Invoice = z.infer<typeof invoice>;

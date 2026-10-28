@@ -4,7 +4,7 @@
  */
 import { createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
-import { requireAuth } from "#src/middleware/auth";
+import { requireAuth } from "hono-kit";
 
 const page = z.object({ id: z.string() });
 type Page = z.infer<typeof page>;

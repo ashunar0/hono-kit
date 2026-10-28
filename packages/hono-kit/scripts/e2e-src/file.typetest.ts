@@ -1,5 +1,5 @@
 import { createEndpoint, file } from "hono-kit";
-import { allowAnonymous } from "./middleware/auth";
+import { allowAnonymous } from "hono-kit";
 
 // file() の endpoint では、reply.success に中身と種類を渡す
 export const declared = createEndpoint(

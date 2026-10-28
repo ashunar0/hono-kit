@@ -1,4 +1,6 @@
+import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
+import { buildApp } from "#src/main";
 import { request } from "./fixtures";
 
 it("sends the file as it is, with its type and the headers set on c", async () => {
@@ -17,9 +19,8 @@ it("sends a file of unknown type as application/octet-stream", async () => {
 });
 
 it("lists the file in the OpenAPI document as binary", async () => {
-  const res = await request(null, "GET", "/openapi.json");
   type Response = { content?: unknown; headers?: Record<string, unknown> };
-  const doc = (await res.json()) as {
+  const doc = openapiDocument(buildApp(), { title: "e2e", version: "0" }) as unknown as {
     paths: Record<string, { get: { responses: Record<string, Response> } }>;
   };
 

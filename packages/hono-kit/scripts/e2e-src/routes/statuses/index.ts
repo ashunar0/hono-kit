@@ -3,7 +3,7 @@
  */
 import { createEndpoint, errorResponses } from "hono-kit";
 import { z } from "zod";
-import { allowAnonymous } from "#src/middleware/auth";
+import { allowAnonymous } from "hono-kit";
 import { OverLimit, Starting, Taken, UpstreamFailed } from "./_errors";
 
 export const POST = createEndpoint(

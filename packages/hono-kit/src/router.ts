@@ -2,11 +2,20 @@ import { Hono, type MiddlewareHandler, type ToSchema } from "hono";
 import { validator } from "hono/validator";
 import { HTTPException } from "hono/http-exception";
 import type { H, ParamKeys } from "hono/types";
-import { buildEndpoint, type BuiltRoute, type EndpointFn } from "./endpoint.js";
+import {
+  buildEndpoint,
+  provideDeps,
+  type BuiltRoute,
+  type EndpointFn,
+} from "./endpoint.js";
 import { rememberFormat } from "./error-page.js";
-import { fail, ValidationError } from "./failure.js";
+import { fail, onError, ValidationError } from "./failure.js";
 import type { RedirectResponse } from "./redirect.js";
-import type { RegisteredEnv } from "./register.js";
+import type {
+  RegisteredBindings,
+  RegisteredDeps,
+  RegisteredEnv,
+} from "./register.js";
 import type { InferInput, InferOutput } from "./standard-schema.js";
 import type {
   AnySchema,
@@ -80,11 +89,27 @@ const validatorsOf = (route: RouteConfig) => {
 };
 
 /**
- * The app's root. Use instead of `new Hono()`, so c.get / c.set know the app's Env (Register).
+ * The app's root, instead of `new Hono()`: `createApp({ makeDeps })` in src/main.ts.
+ * It reads the clock once per request into c.get("now"), puts makeDeps' result in c.var.deps,
+ * and answers every failure through onError. Add the app's middleware after it, then registerRoutes(app) last.
+ * Tests pass their own makeDeps (stand-ins) and clock (a fixed time).
  * The return type is written out so the published .d.ts keeps RegisteredEnv instead of resolving it to Env
  */
-export const createApp = (): Hono<RegisteredEnv> =>
-  new Hono<RegisteredEnv>();
+export const createApp = (
+  options: {
+    makeDeps?: (env: RegisteredBindings) => RegisteredDeps;
+    clock?: () => Date;
+  } = {},
+): Hono<RegisteredEnv> => {
+  const { makeDeps, clock = () => new Date() } = options;
+  const app = new Hono<RegisteredEnv>().use("*", async (c, next) => {
+    c.set("now", clock());
+    await next();
+  });
+  if (makeDeps) app.use("*", provideDeps(makeDeps));
+  app.onError(onError);
+  return app;
+};
 
 // ---- createEndpoint: one file per resource, one export per method ----
 

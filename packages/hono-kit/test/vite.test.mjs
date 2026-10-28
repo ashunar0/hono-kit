@@ -17,6 +17,7 @@ const appWith = (files) => {
     fs.mkdirSync(path.dirname(path.join(root, "src/routes", file)), { recursive: true });
     fs.writeFileSync(path.join(root, "src/routes", file), text);
   }
+  fs.writeFileSync(path.join(root, "src/main.ts"), "export const makeDeps = (env) => ({});\n");
   return root;
 };
 
@@ -51,7 +52,7 @@ test("src/routes の外の変更では書かない", () => {
   plugin.configureServer({ watcher });
 
   fs.writeFileSync(out, "untouched");
-  watcher.emit("change", path.join(root, "src/index.ts"));
+  watcher.emit("change", path.join(root, "src/main.ts"));
   watcher.emit("change", out);
   assert.equal(fs.readFileSync(out, "utf8"), "untouched");
 });

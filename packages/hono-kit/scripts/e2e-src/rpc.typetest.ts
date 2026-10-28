@@ -1,5 +1,5 @@
 import { hc } from "hono/client";
-import type { ApiApp } from "./index";
+import type { AppType as ApiApp } from "./routes.gen";
 
 const client = hc<ApiApp>("/");
 

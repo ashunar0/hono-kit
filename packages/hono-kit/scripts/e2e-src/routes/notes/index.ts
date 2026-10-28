@@ -3,7 +3,7 @@
  */
 import { createEndpoint } from "hono-kit";
 import { notesTable } from "#src/db/schema";
-import { requireAuth } from "#src/middleware/auth";
+import { requireAuth } from "hono-kit";
 import { noteResponse, noteResponseSchema } from "./_response";
 
 /** Create. The handler writes through the db from deps */

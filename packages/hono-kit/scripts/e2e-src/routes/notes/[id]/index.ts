@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { createEndpoint, errorResponses, NotFound } from "hono-kit";
 import { z } from "zod";
 import { notesTable } from "#src/db/schema";
-import { requireAuth } from "#src/middleware/auth";
+import { requireAuth } from "hono-kit";
 import { noteResponse, noteResponseSchema } from "../_response";
 
 export const GET = createEndpoint(

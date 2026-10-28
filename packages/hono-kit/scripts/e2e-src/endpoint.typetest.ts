@@ -1,8 +1,17 @@
-import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
+import {
+  allowAnonymous,
+  createApp,
+  createEndpoint,
+  getCurrentUser,
+  type DepsVariables,
+  registerEndpoint,
+  requireAuth,
+  userId,
+  type CurrentUser,
+  type UserId,
+} from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
-import { allowAnonymous, requireAuth } from "./middleware/auth";
-import type { CurrentUser } from "./middleware/auth";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();
@@ -113,6 +122,41 @@ export const authAndMiddleware = createEndpoint(
   async (c, reply) => {
     c.var.currentUser satisfies CurrentUser;
     c.get("traceId") satisfies string;
+
+    return reply.success({ ok: true });
+  },
+);
+
+// currentUser の id は UserId。ほかの文字列と取り違えられない
+export const userIdBranded = createEndpoint(
+  { auth: requireAuth, responses: { 200: ok } },
+  async (c, reply) => {
+    c.var.currentUser.id satisfies UserId;
+    c.var.currentUser.email satisfies string;
+    // @ts-expect-error ただの文字列は UserId ではない
+    "alice" satisfies UserId;
+
+    return reply.success({ ok: true });
+  },
+);
+
+// CurrentUser は requireAuth だけが作る。手で作った object は渡せない（なりすましを止める）
+const ownedBy = (user: CurrentUser) => user.id;
+// @ts-expect-error 手で作ったユーザーは CurrentUser ではない
+ownedBy({ id: userId("alice"), name: "Alice", email: "alice@example.com" });
+
+// アプリが書く guard も、getCurrentUser で本物のセッションから CurrentUser を得る
+// （サインインしていれば置き、していなくても通す。公開のページで自分の分を少し多く見せる）
+const viewer = createMiddleware<{ Variables: { currentUser: CurrentUser | null } & DepsVariables }>(
+  async (c, next) => {
+    c.set("currentUser", await getCurrentUser(c));
+    await next();
+  },
+);
+export const withViewer = createEndpoint(
+  { auth: viewer, responses: { 200: ok } },
+  async (c, reply) => {
+    c.var.currentUser satisfies CurrentUser | null;
 
     return reply.success({ ok: true });
   },

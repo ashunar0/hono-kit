@@ -2,7 +2,7 @@ import { reportWithDocs } from "../docs.mjs";
 import { fileOf, isTest, projectOf, relativeOf } from "../project.mjs";
 
 /**
- * 時計を読むのは、アプリを組み立てる所（src/index.ts、src/server.ts、src/middleware/）とテストだけ。
+ * 時計を読むのは、アプリを組み立てる所（src/main.ts、src/server.ts、src/middleware/）とテストだけ。
  * HTTP は 1 リクエストに 1 回だけ読んで c.get("now") に積み、handler はそれを使う。job は渡された now を使う。
  * そこから呼ぶ関数は now を引数で受け取る。
  *
@@ -11,7 +11,7 @@ import { fileOf, isTest, projectOf, relativeOf } from "../project.mjs";
  * 引数の付いた new Date(value) は時計ではなく変換なので止めない
  */
 const isAppEntry = (rel) =>
-  rel === "src/index.ts" || rel === "src/server.ts" || rel.startsWith("src/middleware/");
+  rel === "src/main.ts" || rel === "src/server.ts" || rel.startsWith("src/middleware/");
 
 export default {
   create(context) {

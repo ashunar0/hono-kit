@@ -10,13 +10,17 @@ import { generate } from "../bin/prepare.mjs";
 
 const ENDPOINT = "export const GET = createEndpoint({}, async () => {});\n";
 
-const appWith = (files) => {
+const MAIN = "export const makeDeps = (env) => ({});\n";
+
+/** src/routes の下のファイルと、src/main.ts（null なら置かない） */
+const appWith = (files, main = MAIN) => {
   const src = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "hnk-prepare-")), "src");
   for (const [file, text] of Object.entries(files)) {
     const full = path.join(src, "routes", file);
     fs.mkdirSync(path.dirname(full), { recursive: true });
     fs.writeFileSync(full, text);
   }
+  if (main !== null) fs.writeFileSync(path.join(src, "main.ts"), main);
   return src;
 };
 
@@ -106,4 +110,22 @@ test("同じディレクトリに index.ts と index.tsx があったら止ま�
   const { problems } = generate(appWith({ "pages/index.ts": ENDPOINT, "pages/index.tsx": ENDPOINT }));
   assert.equal(problems.length, 1);
   assert.match(problems[0], /both index\.ts and index\.tsx/);
+});
+
+test("main.ts の makeDeps を Register に書く", () => {
+  const { code } = generate(appWith({ "notes/index.ts": ENDPOINT }));
+  assert.match(code, /import type \{ makeDeps \} from "\.\/main";/);
+  assert.match(code, /interface Register \{\n    makeDeps: typeof makeDeps;/);
+});
+
+test("main.ts が無ければ止まる", () => {
+  const { problems } = generate(appWith({ "notes/index.ts": ENDPOINT }, null));
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /main\.ts is missing/);
+});
+
+test("main.ts が makeDeps を export していなければ止まる", () => {
+  const { problems } = generate(appWith({ "notes/index.ts": ENDPOINT }, "export const buildApp = () => {};\n"));
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /main\.ts: no makeDeps export/);
 });

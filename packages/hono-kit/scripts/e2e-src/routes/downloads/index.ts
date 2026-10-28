@@ -3,7 +3,7 @@
  */
 import { createEndpoint, file } from "hono-kit";
 import { z } from "zod";
-import { allowAnonymous } from "#src/middleware/auth";
+import { allowAnonymous } from "hono-kit";
 
 export const GET = createEndpoint(
   {

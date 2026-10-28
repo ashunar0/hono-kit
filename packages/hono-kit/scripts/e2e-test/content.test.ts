@@ -1,4 +1,6 @@
+import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
+import { buildApp } from "#src/main";
 import { env } from "cloudflare:workers";
 import { appAs } from "./fixtures";
 
@@ -38,8 +40,7 @@ it("answers 406 when none of the formats is accepted", async () => {
 });
 
 it("lists every format in the OpenAPI document", async () => {
-  const res = await appAs(null).request("/openapi.json", {}, env);
-  const doc = (await res.json()) as {
+  const doc = openapiDocument(buildApp(), { title: "e2e", version: "0" }) as unknown as {
     paths: Record<string, { get: { responses: Record<string, { content?: Record<string, unknown> }> } }>;
   };
 
