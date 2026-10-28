@@ -7,6 +7,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Changed
 
 - A 400 (`VALIDATION_ERROR`) names every field that was wrong, with all its reasons, in `details`: `{ error: { code: "VALIDATION_ERROR", message: "Invalid request", details: { amount: ["Too small: ..."], "items.0.name": ["..."] } } }`. Before, `message` was the first reason alone and no field was named. `message` is now `Invalid request`, unless the input as a whole is wrong (not JSON, not an object), when it says why and `details` is `{}`. In the client's type, `details` is `Record<string, string[]>`
+- A path no endpoint has is answered like any other failure, `404 { error: { code: "NOT_FOUND", message: "Not found" } }`, instead of Hono's plain-text `404 Not Found` (`createApp` sets `notFound`)
 
 ## 0.13.0
 
