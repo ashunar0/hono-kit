@@ -2,82 +2,71 @@ import { createMiddleware } from "hono/factory";
 import { fail, guard, Unauthorized, type DepsVariables } from "hono-kit";
 
 /**
- * The auth of this app. Rewrite these for your auth stack (how the session is read, what an Account holds,
- * which guards exist): hono-kit fixes only that each endpoint names one in `auth` and that it sets actor.
+ * The auth of this app. Rewrite these for your auth stack (what a CurrentUser holds, which guards exist);
+ * how the session is read is sessionUser in deps. hono-kit fixes only that each endpoint names a guard in `auth`
+ * and that it sets currentUser.
  */
 
 /**
- * The brand for account IDs. Mixing one up with a plain string is a type error.
- * Only accountId below may apply the brand (no-id-cast allows `as AccountId` only in this file)
+ * The brand for user IDs. Mixing one up with a plain string is a type error.
+ * Only userId below may apply the brand (no-id-cast allows `as UserId` only in this file)
  */
-declare const accountIdBrand: unique symbol;
+declare const userIdBrand: unique symbol;
 
-export type AccountId = string & { readonly [accountIdBrand]: true };
+export type UserId = string & { readonly [userIdBrand]: true };
 
-/** Brands a string from outside or from the DB as an account ID */
-export const accountId = (value: string) => value as AccountId;
+/** Brands a string from outside or from the DB as a user ID */
+export const userId = (value: string) => value as UserId;
 
 /**
  * The brand. Its name is invisible outside this file, so a literal cannot produce a branded value.
- * Only authenticatedAccount below can create one
+ * Only authenticatedUser below can create one
  */
 declare const verified: unique symbol;
 
 /**
- * Who is signed in, and only what the rules need. Here only the ID; add what your rules need (a role, an organization).
- * It is not the user record of the auth provider (email, name, ...). Signed out is null, never an account with an empty ID
+ * Who is signed in now: what the auth provider gives with the session (here id, name and email).
+ * The app's own data about a person (a profile, a member) is a table of its own, read where it is needed.
+ * Signed out is null, never a user with an empty ID
  */
-export type Account = {
-  readonly kind: "account";
-  readonly id: AccountId;
+export type CurrentUser = {
+  readonly id: UserId;
+  readonly name: string;
+  readonly email: string;
   readonly [verified]: true;
 };
 
-/** Creates an authenticated account. Called only by the auth middleware (and tests) */
-export const authenticatedAccount = (id: AccountId) => ({ kind: "account", id }) as Account;
-
-/** Context variables set by withAccount */
-export type AuthVariables = {
-  /** The session's account, or null when signed out. Handlers do not read it; the guard turns it into actor */
-  account: Account | null;
-};
+/** Creates the signed-in user. Called only where the session is read (sessionUser in deps) and by tests */
+export const authenticatedUser = (user: { id: UserId; name: string; email: string }) =>
+  user as CurrentUser;
 
 /**
- * Sets the session's account in the context (null when signed out). Lets signed-out requests through.
- *
- * TODO: once the auth provider decodes the cookie session, set its result here. Until then, this is always null.
- * deps are in c.var.deps, for an auth provider that reads the database (build it in makeDeps)
- */
-export const withAccount = createMiddleware<{ Variables: AuthVariables & DepsVariables }>(async (c, next) => {
-  c.set("account", null);
-  await next();
-});
-
-/**
- * Requires sign-in. Put it in an endpoint's auth (`auth: requireAuth`) and, in the handler after it,
- * actor (who is acting) becomes an Account (account itself still includes null).
+ * Requires sign-in. Put it in an endpoint's auth (`auth: requireAuth`): it reads the session,
+ * turns away a signed-out request with 401, and sets currentUser for the handler.
  * Unauthorized is added to responses automatically
  */
 export const requireAuth = guard(
   [Unauthorized],
-  createMiddleware<{
-    Variables: AuthVariables & { actor: Account };
-  }>(async (c, next) => {
-    const account = c.get("account");
-    if (account === null) throw fail(Unauthorized);
+  createMiddleware<{ Variables: { currentUser: CurrentUser } & DepsVariables }>(
+    async (c, next) => {
+      const user = await c.var.deps.sessionUser(c.req.raw.headers);
+      if (user === null) throw fail(Unauthorized);
 
-    c.set("actor", account);
-    await next();
-  }),
+      c.set("currentUser", user);
+      await next();
+    },
+  ),
 );
 
 /**
- * Says explicitly that no auth is required. Lets everyone through, and actor is null (whoever it is).
+ * Says explicitly that no auth is required. Lets everyone through, and currentUser is null (whoever it is).
  *
  * auth is required, so a public endpoint says so with `auth: allowAnonymous`.
  * grep it to list every unauthenticated endpoint in this app
  */
-export const allowAnonymous = createMiddleware<{ Variables: { actor: null } }>(async (c, next) => {
-  c.set("actor", null);
-  await next();
-});
+export const allowAnonymous = createMiddleware<{ Variables: { currentUser: null } }>(
+  async (c, next) => {
+    c.set("currentUser", null);
+    await next();
+  },
+);

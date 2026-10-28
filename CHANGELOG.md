@@ -7,10 +7,11 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Breaking
 
 - deps are in Hono's context: a handler reads `c.var.deps` instead of taking a third argument, and a middleware after `provideDeps` reads it too, so an auth middleware that needs the database no longer builds its own. Rewrite `async (c, reply, { db }) => {` as `async (c, reply) => {` followed by `const { db } = c.var.deps;`. A middleware types it with `createMiddleware<{ Variables: DepsVariables }>` (`DepsVariables` from `hono-kit`). deps are now built for every request that passes `provideDeps`, not only when a handler reads them. Without `provideDeps`, `c.var.deps` is undefined
+- The guard in `auth` must set `currentUser` (was `actor`), and handlers read `c.var.currentUser`. One name: the guard reads the session itself, so nothing else sets it. Rewrite `c.get("actor")` as `c.var.currentUser`, and in your guards `{ actor: Account }` / `c.set("actor", …)` as `{ currentUser: … }` / `c.set("currentUser", …)`
 
 ### Changed (template)
 
-- `withAccount` and `buildApp`'s `authenticate` are typed with `AuthVariables & DepsVariables`, so the auth provider plugged in there reads `c.var.deps` (build it in `makeDeps`). An existing app adds `& DepsVariables` to both when its auth middleware needs deps
+- No `withAccount`: reading the session is `sessionUser(headers)` in deps, and `requireAuth` calls it, turns away null with 401 and sets `currentUser`. `buildApp(makeDeps, clock)` lost its `authenticate` argument; tests sign in by swapping `sessionUser` in their `makeDeps` (`appAs` does). `Account` / `AccountId` / `accountId` / `authenticatedAccount` are `CurrentUser` / `UserId` / `userId` / `authenticatedUser`, and a `CurrentUser` holds what the auth provider gives with the session (id, name, email). `test/fixtures.ts` adds `someone()`, a new user per test, since the tests in a file share D1. These live in your app; renaming is optional, but its guards must set `currentUser`
 
 ## 0.10.0
 

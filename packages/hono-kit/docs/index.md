@@ -5,7 +5,7 @@ The rules of an app built on hono-kit, for the installed version. hono-kit fixes
 Always read:
 
 - [layout.md](layout.md): the files hono-kit fixes, and how to import
-- [rules.md](rules.md): the rules every file keeps (time, actor, failures, check order, IDs, unique constraints, replies, lists, module scope, tests)
+- [rules.md](rules.md): the rules every file keeps (time, currentUser, failures, check order, IDs, unique constraints, replies, lists, module scope, tests)
 
 Read before you…
 

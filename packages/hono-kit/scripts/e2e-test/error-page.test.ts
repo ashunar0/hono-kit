@@ -2,18 +2,21 @@ import { env } from "cloudflare:workers";
 import { createApp, errorPage, onError, provideDeps } from "hono-kit";
 import { expect, it } from "vitest";
 import { makeDeps } from "#src/deps";
-import type { Account } from "#src/middleware/auth";
+import type { CurrentUser } from "#src/middleware/auth";
 import { registerRoutes } from "#src/routes.gen";
 import { alice } from "./fixtures";
 
 /** The template's app with an error page: signed out goes to /login, the rest is a page */
-const appWithErrorPage = (account: Account | null) => {
+const appWithErrorPage = (user: CurrentUser | null) => {
   const app = createApp()
     .use("*", async (c, next) => {
       c.set("now", new Date());
       await next();
     })
-    .use("*", provideDeps(makeDeps))
+    .use(
+      "*",
+      provideDeps((env) => ({ ...makeDeps(env), sessionUser: () => Promise.resolve(user) })),
+    )
     .use(
       "*",
       errorPage((failure) =>
@@ -22,18 +25,14 @@ const appWithErrorPage = (account: Account | null) => {
           : `<h1>${failure.status} ${failure.code}</h1>`,
       ),
     )
-    .use("*", async (c, next) => {
-      c.set("account", account);
-      await next();
-    })
     .onError(onError);
   registerRoutes(app);
   return app;
 };
 
 const html = { Accept: "text/html" };
-const get = (account: Account | null, path: string, headers: Record<string, string>) =>
-  appWithErrorPage(account).request(path, { headers }, env);
+const get = (user: CurrentUser | null, path: string, headers: Record<string, string>) =>
+  appWithErrorPage(user).request(path, { headers }, env);
 
 it("shows the page for a declared failure", async () => {
   const res = await get(alice, "/pages/missing", html);

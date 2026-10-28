@@ -1,21 +1,17 @@
-import type { MiddlewareHandler } from "hono";
-import { createApp, onError, provideDeps, type DepsVariables } from "hono-kit";
+import { createApp, onError, provideDeps } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
 import type { AppEnv } from "./env";
-import { withAccount, type AuthVariables } from "./middleware/auth";
 import { registerRoutes } from "./routes.gen";
 
 /**
- * Builds the app. It takes how to build deps, how to decide the signed-in account and the clock from outside, so
- * production passes makeDeps and withAccount, and tests pass stand-ins.
- * authenticate is the middleware that sets the session's account (null when signed out). This is where an auth provider plugs in.
+ * Builds the app. It takes how to build deps and the clock from outside, so production passes makeDeps,
+ * and tests pass stand-ins (a signed-in user is sessionUser in their makeDeps).
  * clock is read once per request into c.get("now"). Tests pass a fixed time
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
-  authenticate: MiddlewareHandler<{ Variables: AuthVariables & DepsVariables }> = withAccount,
   clock: () => Date = () => new Date(),
 ) => {
   const app = createApp()
@@ -24,7 +20,6 @@ export const buildApp = (
       await next();
     })
     .use("*", provideDeps(makeDeps))
-    .use("*", authenticate)
     .onError(onError);
 
   // Every endpoint under src/routes. routes.gen.ts is written by pnpm hnk prepare (pnpm check runs it first)

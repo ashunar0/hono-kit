@@ -1,8 +1,8 @@
 import { createEndpoint, createApp, registerEndpoint } from "hono-kit";
 import { z } from "zod";
 import { createMiddleware } from "hono/factory";
-import { allowAnonymous, requireAuth, withAccount } from "./middleware/auth";
-import type { Account } from "./middleware/auth";
+import { allowAnonymous, requireAuth } from "./middleware/auth";
+import type { CurrentUser } from "./middleware/auth";
 
 const ok = z.object({ ok: z.literal(true) });
 const app = createApp();
@@ -68,14 +68,18 @@ export const noAuth = createEndpoint(
   async (_c, reply) => reply.success({ ok: true }),
 );
 
-// auth は actor を入れるもの。withAccount は account を積むだけで誰も弾かないので、auth には書けない
-export const authWithoutActor = createEndpoint(
-  // @ts-expect-error withAccount は actor を入れない
-  { auth: withAccount, responses: { 200: ok } },
+// auth は currentUser を置くもの。何かを読み込むだけで誰も弾かない middleware は、auth には書けない
+const loadsSession = createMiddleware<{ Variables: { session: string } }>(async (c, next) => {
+  c.set("session", "s");
+  await next();
+});
+export const authWithoutCurrentUser = createEndpoint(
+  // @ts-expect-error currentUser を置かない
+  { auth: loadsSession, responses: { 200: ok } },
   async (_c, reply) => reply.success({ ok: true }),
 );
 
-// 型引数の無い createMiddleware は Env が any。actor を入れるように見えてしまうので、auth には書けない
+// 型引数の無い createMiddleware は Env が any。currentUser を置くように見えてしまうので、auth には書けない
 const untyped = createMiddleware(async (_c, next) => {
   await next();
 });
@@ -85,11 +89,11 @@ export const authUntyped = createEndpoint(
   async (_c, reply) => reply.success({ ok: true }),
 );
 
-// allowAnonymous の actor は null
+// allowAnonymous の currentUser は null
 export const anonymous = createEndpoint(
   { auth: allowAnonymous, responses: { 200: ok } },
   async (c, reply) => {
-    c.get("actor") satisfies null;
+    c.var.currentUser satisfies null;
 
     return reply.success({ ok: true });
   },
@@ -107,7 +111,7 @@ export const authAndMiddleware = createEndpoint(
     responses: { 200: ok },
   },
   async (c, reply) => {
-    c.get("actor") satisfies Account;
+    c.var.currentUser satisfies CurrentUser;
     c.get("traceId") satisfies string;
 
     return reply.success({ ok: true });

@@ -47,7 +47,7 @@ export type ResponseEntry =
 export type RouteConfig = {
   method: "get" | "post" | "put" | "patch" | "delete";
   path: string;
-  /** Who may call it: a guard (requireAuth, allowAnonymous, ...). It runs first and sets actor */
+  /** Who may call it: a guard (requireAuth, allowAnonymous, ...). It runs first and sets currentUser */
   auth: H;
   /** Other middleware, run after auth */
   middleware?: H | H[];

@@ -2,37 +2,46 @@ import { env } from "cloudflare:workers";
 import { wireDb } from "#src/db/index";
 import { buildApp } from "#src/index";
 import { makeDeps } from "#src/deps";
-import { authenticatedAccount, accountId, type Account } from "#src/middleware/auth";
+import { authenticatedUser, userId, type CurrentUser } from "#src/middleware/auth";
 
 export const db = () => wireDb(env.DB);
 
-export const alice = authenticatedAccount(accountId("alice"));
-export const bob = authenticatedAccount(accountId("bob"));
+export const alice = authenticatedUser({
+  id: userId("alice"),
+  name: "Alice",
+  email: "alice@example.com",
+});
+export const bob = authenticatedUser({ id: userId("bob"), name: "Bob", email: "bob@example.com" });
 
 /**
- * The app, signed in as this account (real deps and D1).
- * null means signed out. Instead of an auth provider it just sets the session's account; everything else is as in production.
+ * A new user nobody else has used. The tests in a file share one D1, so a test that reads a list
+ * starts with its own user instead of alice, whose rows other tests leave behind
+ */
+export const someone = () => {
+  const id = crypto.randomUUID();
+  return authenticatedUser({ id: userId(id), name: "Someone", email: `${id}@example.com` });
+};
+
+/**
+ * The app, signed in as this user (real deps and D1).
+ * null means signed out. Instead of an auth provider, sessionUser just returns the user; everything else is as in production.
  * at fixes c.get("now") (the real clock when omitted)
  */
-export const appAs = (account: Account | null, at?: Date) =>
+export const appAs = (user: CurrentUser | null, at?: Date) =>
   buildApp(
-    makeDeps,
-    async (c, next) => {
-      c.set("account", account);
-      await next();
-    },
+    (env) => ({ ...makeDeps(env), sessionUser: () => Promise.resolve(user) }),
     at ? () => at : undefined,
   );
 
 /** Send JSON through appAs. env points to the real D1. at fixes the request's now */
 export const request = (
-  account: Account | null,
+  user: CurrentUser | null,
   method: string,
   path: string,
   body?: unknown,
   at?: Date,
 ) =>
-  appAs(account, at).request(
+  appAs(user, at).request(
     path,
     {
       method,

@@ -117,7 +117,7 @@ export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
  * routes.gen.ts registers it with registerEndpoint
  */
 export const createEndpoint = <const D extends EndpointDeclaration>(
-  checked: D & AuthSetsActor<D> & RedirectAt303<D> & RenderersTakeJson<D>,
+  checked: D & AuthSetsCurrentUser<D> & RedirectAt303<D> & RenderersTakeJson<D>,
   fn: EndpointFn<AsRoute<D>>,
 ): Endpoint<D> => {
   const config: D = checked;
@@ -163,9 +163,9 @@ type EnvOf<M> = M extends MiddlewareHandler<infer E, any, any, any> ? E : never;
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
 /**
- * auth decides who is acting, so its middleware must set actor (the signed-in account, null for anyone, ...).
- * withAccount only loads the session and sets account, so it cannot stand in for a guard.
- * An untyped middleware (Env `any`) is refused too: it would seem to set actor, and leave every c.get(...) in the handler `any`.
+ * auth decides who may call, so its middleware must set currentUser (the signed-in user, null for anyone, ...).
+ * A middleware that only loads something (a session, a trace ID) sets no currentUser, so it cannot stand in for a guard.
+ * An untyped middleware (Env `any`) is refused too: it would seem to set currentUser, and leave every c.var in the handler `any`.
  * When it does not hold, auth is underlined with this message
  */
 /**
@@ -215,18 +215,18 @@ type RedirectAt303<D> = D extends { responses: infer Rs }
     : never
   : unknown;
 
-type AuthSetsActor<D> = D extends { auth: infer A }
+type AuthSetsCurrentUser<D> = D extends { auth: infer A }
   ? IsAny<EnvOf<A>> extends true
     ? {
         readonly auth: {
-          readonly "auth's Env is any": "give it one, e.g. createMiddleware<{ Variables: { actor: Account } }>(...)";
+          readonly "auth's Env is any": "give it one, e.g. createMiddleware<{ Variables: { currentUser: CurrentUser } }>(...)";
         };
       }
-    : EnvOf<A> extends { Variables: { actor: unknown } }
+    : EnvOf<A> extends { Variables: { currentUser: unknown } }
       ? unknown
       : {
           readonly auth: {
-            readonly "auth must set actor": "a guard sets who is acting: createMiddleware<{ Variables: { actor: Account } }>(...), or actor: null for anyone";
+            readonly "auth must set currentUser": "a guard sets who is signed in: createMiddleware<{ Variables: { currentUser: CurrentUser } }>(...), or currentUser: null for anyone";
           };
         }
   : unknown;
