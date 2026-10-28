@@ -6,11 +6,12 @@
 - `src/main.ts`: `createWorker({ makeDeps, fetch: buildApp().fetch, scheduled: sendUnreadDigests })`
 - Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
 - `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
+- On Workers, `scheduled` also gets what Workers passes: `{ deps, now, controller, env, ctx }`. With several crons, tell them apart by `controller.cron`, as on plain Workers, and call each job with `{ deps, now }`: `scheduled: async ({ deps, now, controller }) => { if (controller.cron === "0 8 * * *") return sendUnreadDigests({ deps, now }); ... }`
 - Tests: call the job directly with `{ deps, now }` instead of going through `scheduled`
 
 ## queue
 
-- Taking messages off: a job passed as `createWorker({ queue })`. It receives `{ deps, now, body }`; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
+- Taking messages off: a job passed as `createWorker({ queue })`. It receives `{ deps, now, body }`, and on Workers the `message` (`attempts`, `id`), `env` and `ctx` too; `now` is when the message was put on the queue. Return a `Result`: ok acks, err retries
 - Return err only for a failure that may go away when tried again. A failure that will not go away ends with ok, and leaves a record that the message was given up
 
 ## mailer / gateway
