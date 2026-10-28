@@ -113,7 +113,7 @@ export type Endpoint<D extends EndpointDeclaration> = readonly H[] & {
 };
 
 /**
- * One endpoint. `export const GET = createEndpoint({ auth, request, responses }, async (c, reply, deps) => ...)`.
+ * One endpoint. `export const GET = createEndpoint({ auth, request, responses }, async (c, reply) => ...)`.
  * routes.gen.ts registers it with registerEndpoint
  */
 export const createEndpoint = <const D extends EndpointDeclaration>(

@@ -14,7 +14,7 @@
 export { err, ok, type Result } from "./result.js";
 export type { Cursor, Page, PageQuery } from "./page.js";
 
-export type { Register } from "./register.js";
+export type { DepsVariables, Register } from "./register.js";
 export { errorResponses, guard, provideDeps, type Guard } from "./endpoint.js";
 export {
   createEndpoint,

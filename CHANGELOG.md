@@ -2,6 +2,16 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Breaking
+
+- deps are in Hono's context: a handler reads `c.var.deps` instead of taking a third argument, and a middleware after `provideDeps` reads it too, so an auth middleware that needs the database no longer builds its own. Rewrite `async (c, reply, { db }) => {` as `async (c, reply) => {` followed by `const { db } = c.var.deps;`. A middleware types it with `createMiddleware<{ Variables: DepsVariables }>` (`DepsVariables` from `hono-kit`). deps are now built for every request that passes `provideDeps`, not only when a handler reads them. Without `provideDeps`, `c.var.deps` is undefined
+
+### Changed (template)
+
+- `withAccount` and `buildApp`'s `authenticate` are typed with `AuthVariables & DepsVariables`, so the auth provider plugged in there reads `c.var.deps` (build it in `makeDeps`). An existing app adds `& DepsVariables` to both when its auth middleware needs deps
+
 ## 0.10.0
 
 ### Added

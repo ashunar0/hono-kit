@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { createApp, onError, provideDeps } from "hono-kit";
+import { createApp, onError, provideDeps, type DepsVariables } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { openapiDocument } from "hono-kit/openapi";
 import { makeDeps, type Deps } from "./deps";
@@ -15,7 +15,7 @@ import { registerRoutes } from "./routes.gen";
  */
 export const buildApp = (
   makeDeps: (env: AppEnv["Bindings"]) => Deps,
-  authenticate: MiddlewareHandler<{ Variables: AuthVariables }> = withAccount,
+  authenticate: MiddlewareHandler<{ Variables: AuthVariables & DepsVariables }> = withAccount,
   clock: () => Date = () => new Date(),
 ) => {
   const app = createApp()

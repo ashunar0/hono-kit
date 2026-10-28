@@ -1,4 +1,5 @@
 import type { Context, MiddlewareHandler, TypedResponse } from "hono";
+import { createMiddleware } from "hono/factory";
 import { routePath } from "hono/route";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { JSONParsed } from "hono/utils/types";
@@ -22,7 +23,11 @@ import {
   REDIRECT,
   type RedirectResponse,
 } from "./redirect.js";
-import type { RegisteredDeps, RegisteredEnv } from "./register.js";
+import type {
+  DepsVariables,
+  RegisteredDeps,
+  RegisteredEnv,
+} from "./register.js";
 import {
   type AnySchema,
   type RouteConfig,
@@ -43,47 +48,24 @@ import {
 
 // ---- Dependencies ----
 
-/** A slot used only inside hono-kit. App code does not take deps out of c.var */
-const DEPS_KEY = "hnk:deps";
-
 /**
- * Middleware that builds deps per request. `app.use("*", provideDeps(makeDeps))`.
+ * Middleware that builds deps per request and puts them in Hono's context: `app.use("*", provideDeps(makeDeps))`,
+ * then `c.var.deps` in handlers and in the middleware after it.
  *
  * If deps were built once at startup, Workers would reject I/O across requests
  * for a connection-holding DB. So it takes how to build, not what was built.
- * Nothing is built here. Deps are built once, when an endpoint handler first receives them, so
- * nothing is built for requests that just return 401, or for /openapi.json.
- * It is optional: an app that imports what it uses needs no deps, and its handlers take only (c, reply)
+ * It is optional: an app that imports what it uses needs no deps
  */
-export const provideDeps =
-  (
-    makeDeps: (env: RegisteredEnv["Bindings"]) => RegisteredDeps,
-  ): MiddlewareHandler =>
-  async (c, next) => {
-    let made: RegisteredDeps | undefined;
-    const resolve = () => (made ??= makeDeps(c.env));
-    c.set(DEPS_KEY as never, resolve as never);
+export const provideDeps = (
+  makeDeps: (env: RegisteredEnv["Bindings"]) => RegisteredDeps,
+) =>
+  createMiddleware<{
+    Bindings: RegisteredEnv["Bindings"];
+    Variables: DepsVariables;
+  }>(async (c, next) => {
+    c.set("deps", makeDeps(c.env));
     await next();
-  };
-
-/**
- * The deps of an app that builds none. A handler that does not take them runs as is;
- * one that reads one is told what is missing, instead of getting undefined
- */
-export const missingDeps = (installer: "provideDeps" | "makeDeps") =>
-  new Proxy(
-    {},
-    {
-      get(_, key) {
-        if (typeof key === "symbol") return undefined;
-        throw new Error(
-          installer === "provideDeps"
-            ? `deps.${key} is not there: provideDeps is not installed. Add app.use("*", provideDeps(makeDeps))`
-            : `deps.${key} is not there: createWorker has no makeDeps. Pass createWorker({ makeDeps, ... })`,
-        );
-      },
-    },
-  ) as RegisteredDeps;
+  });
 
 type MaybePromise<T> = T | Promise<T>;
 // ---- responses declarations ----
@@ -419,14 +401,13 @@ const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
 export type BuiltRoute<C extends RouteConfig> = Built<C>;
 
 /**
- * The handler type. Receive (c), return (reply) and use (deps) are fixed by argument position
+ * The handler type. Receive (c) and return (reply) are fixed by argument position; deps are in `c.var.deps`
  */
 export type EndpointFn<C extends RouteConfig> = (
   c: Parameters<
     RouteHandler<Built<C>, RouteConfigToEnv<Built<C>> & RegisteredEnv>
   >[0],
   reply: Reply<Built<C>>,
-  deps: RegisteredDeps,
 ) => MaybePromise<RouteConfigToTypedResponse<Built<C>>>;
 
 /**
@@ -477,12 +458,8 @@ export const buildEndpoint = <const C extends RouteConfig>(
       },
     } as unknown as Reply<Built<C>>;
 
-    const resolve = c.get(DEPS_KEY as never) as
-      (() => RegisteredDeps) | undefined;
-    const deps = resolve === undefined ? missingDeps("provideDeps") : resolve();
-
     // R is not fixed here, so TS cannot match it up and we re-type it. Callers are guarded by the type of fn
-    return fn(c as never, reply, deps) as never;
+    return fn(c as never, reply) as never;
   };
 
   return [route, handler] as const;

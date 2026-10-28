@@ -6,7 +6,7 @@ hono-kit fixes only the places below. How the rest of `src/` is split (domains, 
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `src/index.ts`                        | The app's entry: `buildApp` and `createWorker`                                                           |
 | `src/env.ts`                          | `AppEnv`: the bindings, and what a request holds (`account`, `actor`, `now`)                             |
-| `src/deps.ts`                         | The one place that builds what handlers and jobs receive (like `main` in Go). The template's is `{ db }` |
+| `src/deps.ts`                         | The one place that builds deps (like `main` in Go): `c.var.deps` in handlers and middleware, `{ deps }` in jobs. The template's is `{ db }` |
 | `src/middleware/auth.ts`              | `Account`, and the guards an endpoint names in `auth` (`requireAuth`, `allowAnonymous`)                  |
 | `src/db/index.ts`, `src/db/schema.ts` | The database driver, and the tables                                                                      |
 | `src/routes/`                         | The endpoints. The directory is the URL ([resources.md](resources.md))                                   |

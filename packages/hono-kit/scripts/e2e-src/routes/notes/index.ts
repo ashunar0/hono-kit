@@ -9,7 +9,8 @@ import { noteResponse, noteResponseSchema } from "./_response";
 /** Create. The handler writes through the db from deps */
 export const POST = createEndpoint(
   { auth: requireAuth, responses: { 200: noteResponseSchema } },
-  async (c, reply, { db }) => {
+  async (c, reply) => {
+    const { db } = c.var.deps;
     const now = c.get("now");
     const [note] = await db
       .insert(notesTable)

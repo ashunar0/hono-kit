@@ -14,7 +14,8 @@ export const GET = createEndpoint(
     request: { param: z.object({ id: z.string() }) },
     responses: { 200: noteResponseSchema, ...errorResponses(NotFound) },
   },
-  async (c, reply, { db }) => {
+  async (c, reply) => {
+    const { db } = c.var.deps;
     const [note] = await db
       .select()
       .from(notesTable)

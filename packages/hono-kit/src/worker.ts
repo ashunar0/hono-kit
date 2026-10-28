@@ -1,9 +1,22 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
-import { missingDeps } from "./endpoint.js";
 import { type CronContext, type QueueContext, runScheduled } from "./entry.js";
 
 type Bindings = RegisteredEnv["Bindings"];
+
+/** The deps of a worker given no makeDeps. A job that reads one is told what is missing, instead of getting undefined */
+const missingDeps = () =>
+  new Proxy(
+    {},
+    {
+      get(_, key) {
+        if (typeof key === "symbol") return undefined;
+        throw new Error(
+          `deps.${key} is not there: createWorker has no makeDeps. Pass createWorker({ makeDeps, ... })`,
+        );
+      },
+    },
+  ) as RegisteredDeps;
 
 /**
  * The Workers entry point. HTTP goes to fetch, schedules to scheduled, queues to queue.
@@ -25,7 +38,7 @@ export const createWorker = <Body = never>(options: {
   queue?: (context: QueueContext<Body>) => Promise<Result<unknown, string>>;
 }): ExportedHandler<Bindings, Body> => {
   const { makeDeps, fetch, scheduled, queue } = options;
-  const depsOf = (env: Bindings) => makeDeps?.(env) ?? missingDeps("makeDeps");
+  const depsOf = (env: Bindings) => makeDeps?.(env) ?? missingDeps();
 
   return {
     fetch,

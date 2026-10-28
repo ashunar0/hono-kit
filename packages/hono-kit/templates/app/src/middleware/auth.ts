@@ -1,5 +1,5 @@
 import { createMiddleware } from "hono/factory";
-import { fail, guard, Unauthorized } from "hono-kit";
+import { fail, guard, Unauthorized, type DepsVariables } from "hono-kit";
 
 /**
  * The auth of this app. Rewrite these for your auth stack (how the session is read, what an Account holds,
@@ -45,9 +45,10 @@ export type AuthVariables = {
 /**
  * Sets the session's account in the context (null when signed out). Lets signed-out requests through.
  *
- * TODO: once the auth provider decodes the cookie session, set its result here. Until then, this is always null
+ * TODO: once the auth provider decodes the cookie session, set its result here. Until then, this is always null.
+ * deps are in c.var.deps, for an auth provider that reads the database (build it in makeDeps)
  */
-export const withAccount = createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
+export const withAccount = createMiddleware<{ Variables: AuthVariables & DepsVariables }>(async (c, next) => {
   c.set("account", null);
   await next();
 });

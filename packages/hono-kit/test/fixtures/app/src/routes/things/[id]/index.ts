@@ -12,5 +12,5 @@ export const GET = createEndpoint(
     request: { param: params },
     responses: {},
   },
-  async (_c, reply, { a }) => reply.success(thingResponse(await a.get(thing))),
+  async (c, reply) => reply.success(thingResponse(await c.var.deps.a.get(thing))),
 );
