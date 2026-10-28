@@ -8,3 +8,10 @@ export const notesTable = sqliteTable("notes", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+/** A row with a version, for updateWithVersion (hono-kit/sqlite) */
+export const draftsTable = sqliteTable("drafts", {
+  id: text("id").primaryKey(),
+  body: text("body").notNull(),
+  version: integer("version").notNull(),
+});

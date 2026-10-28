@@ -1,6 +1,6 @@
 /**
  * hnk の本体（src/）について、文書で言っていることを機械で確かめる。注記だけだと、いつかずれる。
- * - 依存は hono だけ。スキーマのライブラリ（zod、valibot など）は import しない
+ * - 依存は hono だけ。スキーマのライブラリ（zod、valibot など）は import しない。drizzle は sqlite.ts だけ（peer dependency）
  * - 型を信じてもらう書き方（`as never` / `as unknown as`）は、下の表の場所と数だけ
  */
 import fs from "node:fs";
@@ -39,8 +39,10 @@ test("依存は hono だけ（ほかは src の中の相対 import）", () => {
       assert.ok(
         specifier.startsWith("./") ||
           specifier === "hono" ||
-          specifier.startsWith("hono/"),
-        `${file} が ${specifier} を import している。hnk の依存は hono だけにする（スキーマは Standard Schema で受け取る）`,
+          specifier.startsWith("hono/") ||
+          // drizzle は peer dependency で、DB の道具を置く sqlite.ts だけが読む（アプリの drizzle を借りる）
+          (file === "sqlite.ts" && /^drizzle-orm(\/|$)/.test(specifier)),
+        `${file} が ${specifier} を import している。hnk の依存は hono だけにする（スキーマは Standard Schema で受け取る。drizzle は sqlite.ts だけ）`,
       );
     }
   }

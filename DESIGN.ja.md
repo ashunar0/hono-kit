@@ -22,7 +22,7 @@ hono-kit を作る側のメモ。決めたことの理由と、まだ決めて�
 - **状態の遷移は動詞のディレクトリ**（Google の AIP-136 や Stripe と同じ）。戻せない遷移（送付・支払い・取り消し）には合う名詞が無く、名前探しで AI が迷うから
 - **import の外向きは `#src/`**。Node の標準の仕組み（package.json の `imports`）。tsconfig の paths だと vitest がそのままでは読めず、設定を 2 か所に書くか依存を足すことになる
 - **登録と AppType は生成器が書き、`routes.gen.ts` は git に入れない**（Void の `.void/` と同じ。install・dev・check のたびに書くので古いまま残らず、古いかを比べる仕組みが要らない）。AppType はチェーンせず、endpoint を 1 本ずつ `&` で並べる。export は oxc-parser で読み、読めないファイルは黙って抜かさず、理由を出して止まる
-- **依存は hono だけ**。スキーマは Standard Schema を満たすものなら何でもよく、hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書く。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。OpenAPI は別の部品で、JSON Schema への変換はスキーマのライブラリ自身に任せる（Standard JSON Schema）
+- **依存は hono だけ**。スキーマは Standard Schema を満たすものなら何でもよく、hono-kit が持つスキーマ（失敗の本文、ページ送り）は Standard Schema を手で満たして書く。例外は `hono-kit/sqlite` だけで、drizzle を peer dependency にしてアプリの drizzle を借りる（同梱はしない。drizzle を抱えるかは未決）。楽観ロックの道具（`updateWithVersion`）は drizzle に無く、手で書くと version の足し忘れや 0 行の見落としが静かに通るので、ここに置く。トランザクションは包まない（pg の transaction と D1 の batch は形そのものが違い、包むと違いが隠れる）。依存と `as never` の場所は `packages/hono-kit/test/source.test.mjs` が確かめる。OpenAPI は別の部品で、JSON Schema への変換はスキーマのライブラリ自身に任せる（Standard JSON Schema）
 - **失敗は Result、どうしようもないものは throw**。どの失敗がありうるかが型に出るのは、Go の `error` より強い。番号を種類から決める表を hono-kit が 1 か所で持つのは、Go の errors.go や gRPC のステータスコードと同じ考え方
 - **依存は `createApp({ makeDeps })`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。要るのは実行環境とテスト（偽物を渡す）のためで、アーキテクチャのためではない。deps と bindings の型は、`hnk prepare` が `src/main.ts` の `makeDeps` から `Register` に書く
 - **名前は `create〜`**。Hono v5 は `define〜` に移るので、ぶつからない。endpoint は `createEndpoint`（hono-kit では route をリソースの意味で使うので、`createRoute` にはしない）

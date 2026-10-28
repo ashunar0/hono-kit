@@ -84,10 +84,12 @@
     "CHANGELOG.md"
   ],
   "peerDependencies": {
-    "hono": "^4.13.1"
+    "hono": "^4.13.1",
+    "drizzle-orm": ">=0.45.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261007.1",
+    "drizzle-orm": "^0.45.2",
     "hono": "^4.13.14",
     "oxlint": "^1.80.0",
     "prettier": "^3.9.6",
@@ -105,5 +107,10 @@
   },
   "dependencies": {
     "oxc-parser": "^0.155.0"
+  },
+  "peerDependenciesMeta": {
+    "drizzle-orm": {
+      "optional": true
+    }
   }
 }

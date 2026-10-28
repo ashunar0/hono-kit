@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Added
+
+- `updateWithVersion(db, table, { id, version }, values)` in `hono-kit/sqlite`, for optimistic locking: it updates the row only while its `version` column is still the one the client read, counts it up, and returns the row (`undefined` when someone changed it first). `drizzle-orm` becomes an optional peer dependency, used by `hono-kit/sqlite` only
+
 ## 0.15.0
 
 ### Changed
