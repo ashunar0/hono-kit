@@ -6,17 +6,17 @@ import { spawnSync } from "node:child_process";
 
 const steps = [
   // With a stale routes.gen.ts, types and tests see old routes
-  ["routes.gen.ts", ["pnpm", "hnk", "prepare"]],
-  ["typecheck", ["pnpm", "typecheck"]],
-  ["lint", ["pnpm", "lint"]],
-  ["format:check", ["pnpm", "format:check"]],
-  ["test", ["pnpm", "test"]],
+  { name: "routes.gen.ts", args: ["hnk", "prepare"] },
+  { name: "typecheck", args: ["typecheck"] },
+  { name: "lint", args: ["lint"] },
+  { name: "format:check", args: ["format:check"] },
+  { name: "test", args: ["test"] },
 ];
 
 const failed = [];
-for (const [name, [command, ...args]] of steps) {
+for (const { name, args } of steps) {
   console.log(`\n── ${name} ──`);
-  const { status } = spawnSync(command, args, { stdio: "inherit" });
+  const { status } = spawnSync("pnpm", args, { stdio: "inherit" });
   if (status !== 0) failed.push(name);
 }
 
