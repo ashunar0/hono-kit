@@ -41,6 +41,17 @@ type PrimaryKeyOf<T extends VersionedTable> = Extract<
 >;
 
 /**
+ * What updateWithVersion returns: the app's drizzle query, typed with the table's rows both where await reads them
+ * (then) and where db.batch reads them (`_.result`)
+ */
+type VersionedUpdate<Query, Row> = Omit<Query, "then" | "_"> &
+  PromiseLike<Row[]> & {
+    readonly _: Omit<Query extends { _: infer Info } ? Info : never, "result"> & {
+      readonly result: Row[];
+    };
+  };
+
+/**
  * Optimistic locking: an update that writes the row only while its version is still the one read, and counts it up.
  * `at` names the row by the table's primary key, whatever its name: `{ id, version }`, or `{ bookId, version }` for a
  * table keyed by the book. Another column, or a table whose key spans several columns, does not type-check.
@@ -65,7 +76,7 @@ export const updateWithVersion = <
   table: T,
   at: { [K in Key]: T["$inferSelect"][K] } & { version: number },
   set: Partial<Omit<T["$inferInsert"], Key | "version">>,
-): Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]> => {
+): VersionedUpdate<Query, T["$inferSelect"]> => {
   const keys = Object.keys(at).filter((name) => name !== "version");
   if (keys.length !== 1)
     throw new Error(
@@ -79,6 +90,6 @@ export const updateWithVersion = <
     .set({ ...set, version: sql`${version} + 1` })
     .where(and(eq(keyColumn, at[key]), eq(version, at.version)))
     .returning();
-  // The query's own then gives drizzle's row type for a table it knows only by shape; the rows are the table's
-  return query as Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]>;
+  // drizzle types the rows of a table it knows only by shape loosely; the rows are the table's
+  return query as VersionedUpdate<Query, T["$inferSelect"]>;
 };

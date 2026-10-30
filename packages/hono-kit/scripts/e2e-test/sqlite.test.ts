@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { updateWithVersion } from "hono-kit/sqlite";
-import { expect, it } from "vitest";
+import { expect, expectTypeOf, it } from "vitest";
 import { draftsTable, seatsTable, shelvesTable } from "#/db/schema";
 import { db } from "./fixtures";
 
@@ -35,6 +35,8 @@ it("updateWithVersion: it is a query, so it can go in a batch", async () => {
   ]);
 
   expect(rows).toEqual([{ id, body: "batched", version: 2 }]);
+  // In a batch the rows are the table's too, as when awaited
+  expectTypeOf(rows).toEqualTypeOf<(typeof draftsTable.$inferSelect)[]>();
 });
 
 it("updateWithVersion: a table without a version column does not type-check", () => {
