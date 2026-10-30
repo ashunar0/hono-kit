@@ -1,11 +1,11 @@
-import { env } from "cloudflare:workers";
 import { hc } from "hono/client";
 import { expect, it } from "vitest";
 import type { AppType } from "#/routes.gen";
 import { appAs } from "../../../../test/fixtures";
+import { env } from "../../../../test/bindings";
 
 const client = hc<AppType>("http://localhost", {
-  fetch: (input: RequestInfo | URL, init?: RequestInit) => appAs(null).request(input, init, env),
+  fetch: (input: string | URL | Request, init?: RequestInit) => appAs(null).request(input, init, env),
 });
 
 it("takes the rest of the path as one param", async () => {

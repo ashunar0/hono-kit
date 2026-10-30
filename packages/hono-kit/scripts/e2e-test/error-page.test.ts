@@ -1,14 +1,14 @@
-import { env } from "cloudflare:workers";
 import { createApp, errorPage, type SessionUser } from "hono-kit";
 import { expect, it } from "vitest";
 import { makeDeps } from "#/main";
 import { registerRoutes } from "#/routes.gen";
 import { alice } from "./fixtures";
+import { env } from "./bindings";
 
 /** The template's app with an error page: signed out goes to /login, the rest is a page */
 const appWithErrorPage = (user: SessionUser | null) => {
   const app = createApp({
-    makeDeps: (env) => ({ ...makeDeps(env), sessionUser: () => Promise.resolve(user) }),
+    makeDeps: (...args: Parameters<typeof makeDeps>) => ({ ...makeDeps(...args), sessionUser: () => Promise.resolve(user) }),
   }).use(
     "*",
     errorPage((failure) =>

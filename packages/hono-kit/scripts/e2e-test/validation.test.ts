@@ -1,6 +1,6 @@
-import { env } from "cloudflare:workers";
 import { expect, it } from "vitest";
 import { appAs, request } from "./fixtures";
+import { env } from "./bindings";
 
 const signUp = (body: unknown) => request(null, "POST", "/signups", body);
 

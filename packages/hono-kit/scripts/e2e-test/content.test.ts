@@ -1,8 +1,8 @@
 import { openapiDocument } from "hono-kit/openapi";
 import { expect, it } from "vitest";
 import { buildApp } from "#/main";
-import { env } from "cloudflare:workers";
 import { appAs } from "./fixtures";
+import { env } from "./bindings";
 
 const get = (accept?: string) =>
   appAs(null).request("/greetings", { headers: accept === undefined ? {} : { Accept: accept } }, env);

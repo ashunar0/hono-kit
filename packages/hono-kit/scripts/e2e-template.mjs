@@ -56,6 +56,8 @@ for (const template of ["workers", "node"]) {
   fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true, filter: fits });
   // 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
   fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true, filter: fits });
+  // テストが request に渡す bindings。workers は D1 の入った env、node は無し
+  fs.copyFileSync(path.join(root, `scripts/e2e-env/${template}.ts`), path.join(app, "test/bindings.ts"));
   // 依存は増えていないので、install をし直すと postinstall が走らない。写した route は prepare で拾う
   run("pnpm", ["hnk", "prepare"], app);
   run("pnpm", ["typecheck"], app);
