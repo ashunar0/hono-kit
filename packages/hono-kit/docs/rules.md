@@ -6,6 +6,21 @@ The rules every file keeps. Lint stops most of them; the rest are here.
 - **currentUser**: the guard in the endpoint's `auth` (required) reads the session and sets `c.var.currentUser`. The type checks it: a middleware whose Variables have no `currentUser` (one that only loads something and lets everyone through) cannot be `auth`, nor can an untyped one (`createMiddleware(async (c, next) => ...)` with no type argument). `requireAuth` sets the signed-in `CurrentUser`, `allowAnonymous` sets `null`; both come from `hono-kit`. Reading the session is the app's one function in deps, `sessionUser(headers)` (`src/auth.ts`), returning what the auth provider gives (`{ id, ... }`) or null; tests swap it in `makeDeps`. A guard the app adds (`requireRole(...)` once its users have roles) gets the user with `getCurrentUser(c)`, as `requireAuth` does: it is the only way to make a `CurrentUser`, so a user made by hand (from a request body) cannot pass for the signed-in one. A handler reads `c.var.currentUser`, never `getCurrentUser` (that reads the session again). Until `sessionUser` reads its session (the template's returns `null`), every `requireAuth` endpoint answers 401 when called by hand (`pnpm dev`, curl); tests still sign in, since `appAs` swaps `sessionUser`. Other middleware goes in `middleware` and runs after `auth`
   - What a `CurrentUser` holds is what `sessionUser` returns (the template: id, name, email), with `id` as a `UserId`. The app's own data about a person (a profile, a member) is a table of its own, read where it is needed. For a public endpoint that shows the signed-in a little more (their own drafts, whether they liked it), write a guard that lets everyone through and sets `currentUser` to `await getCurrentUser(c)` (`CurrentUser | null`); do not add another name (`viewer`)
   - **Permissions come in two kinds.** Decided by the role alone (only an admin adds a member): the guard, `auth: requireRole("admin")` (the template has no roles; return `role` from `sessionUser` and write the guard). Needs the row, or mixes in an "or" (an admin or the author): all of it in code, after the row is read, returning `err(Forbidden.code)`. Never put half of an "or" in the guard: it would turn away the other half. So `grep` of the guards lists who may call each endpoint
+  - A guard is a typed middleware wrapped in `guard(failures, middleware)`. The failures it may answer are added to the endpoint's responses (and its OpenAPI). It takes the user with `getCurrentUser(c)` and sets `currentUser`:
+    ```ts
+    // src/auth.ts
+    export const requireRole = (role: Role) =>
+      guard(
+        [Unauthorized, Forbidden],
+        createMiddleware<{ Variables: { currentUser: CurrentUser } & DepsVariables }>(async (c, next) => {
+          const user = await getCurrentUser(c);
+          if (user === null) throw fail(Unauthorized);
+          if (user.role !== role) throw fail(Forbidden);
+          c.set("currentUser", user);
+          await next();
+        }),
+      );
+    ```
 - **Failures**: expected ones (not found, no permission, an external service not answering) are returned as `Result` (`err(NotFound.code)`). Unexpected ones (the DB is down) are thrown
   - 401, 403, 404 are hono-kit standards (`Unauthorized` / `Forbidden` / `NotFound`). Make the others as `{ code, kind, message } as const`, and hono-kit decides the status from `kind`
   - **Details**: when the client needs the numbers behind a failure to show it (the budget and what was spent, the stock left), add `details: z.object({ ... })` to it. That failure is then always returned as `{ code, details }`: the function that found it returns `err({ code: OverBudget.code, details: { budget, spent } })`, and the handler passes it on as it is (`reply.failure(result.error)`). The response is `{ error: { code, message, details } }`, and the client's type knows the shape of `details` once it has checked the `code`. Do not make the client read the numbers again in another request: they may have changed, and it would repeat the rule. A failure that declares details cannot be thrown with `fail()`
