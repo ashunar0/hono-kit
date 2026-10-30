@@ -2,6 +2,22 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## 0.17.0
+
+### Added
+
+- A Node template: `pnpm create hnk my-app --template node` (Node + SQLite with libSQL, served with `@hono/node-server`). The database is opened once at startup, `makeDeps()` takes nothing, `src/server.ts` starts the server and stops it on SIGTERM, and tests run on an in-memory database. `--template workers` is the template there was until now
+- Crons as files: `src/crons/<name>.ts` exports `cron = createCron({ schedule: "0 8 * * *" }, async ({ deps, now }) => { ... })`. `hnk prepare` lists them as `crons` in `src/routes.gen.ts`, and stops when they differ from `triggers.crons` in `wrangler.jsonc` (it does not edit it). Workers runs them with `createWorker({ makeDeps, fetch, crons })`; Node with `startCrons(crons, { makeDeps })` from the new package `hono-kit-node`. Tests call `cron.run({ deps, now })`. `createWorker({ scheduled })` still works
+- `hono-kit-node`, a package of its own (as Hono keeps `@hono/node-server` apart), so the cron library it needs (croner) stays out of Workers apps. Schedules are read in UTC, as on Workers
+
+### Changed
+
+- `hnk init` (`pnpm create hnk`) asks which template when `--template` is not given. Where it cannot ask (CI, an AI's shell: no terminal), it stops and creates nothing, instead of making the Workers app. Pass `--template workers` to keep what it made before
+- `updateWithVersion` names the row by the table's primary key, whatever its name: `{ bookId, version }` for a table keyed by the book. `{ id, version }` works as before. A column that is not the primary key, or a key over several columns, does not type-check
+- Inside `db.batch`, the rows of `updateWithVersion` have the table's type, as when it is awaited (they were `{ [x: string]: unknown }[]`)
+- `makeDeps` may take no argument (Node): the bindings are then `object`
+- The docs show how to write a guard of your own (`requireRole`) with `guard(failures, middleware)`, and say how cron and tests go on Node
+
 ## 0.16.0
 
 ### Changed
