@@ -22,6 +22,8 @@ cd my-app && pnpm install
 pnpm check
 ```
 
+`pnpm create hnk` は雛形を聞いてくる。`workers`（Cloudflare Workers + D1）か `node`（Node + SQLite、libSQL）。`--template node` を付ければ聞かれない（`pnpm create hnk my-app --template node`）。
+
 `pnpm check` は型検査・lint・format の確認・テストを回し、最後に失敗を一覧で出す。AI には「これを通して」と言えば足りる。
 
 ## 決まり
@@ -30,7 +32,7 @@ pnpm check
 
 ## 範囲
 
-- 今は Cloudflare Workers + D1 + Drizzle
+- Cloudflare Workers + D1 か Node + SQLite（libSQL）、どちらも Drizzle
 - 検証は Standard Schema を満たすものなら何でも（zod で確かめた）
 - 0.x。実プロダクトで使いながら形を変える
 

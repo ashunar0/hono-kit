@@ -1,8 +1,9 @@
 /**
- * 雛形の通し確認。空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk prepare）→ typecheck → db:generate → pnpm check を通す。
+ * 雛形の通し確認。雛形（workers・node）ごとに、空のディレクトリに hnk init → e2e-src/ を src に写す → pnpm install（postinstall で hnk prepare）→ typecheck → db:generate → pnpm check を通す。
  * テンプレートは別々のファイルだが、組み合わせて初めて型・lint・テストが通る。それをここで守る。
  * 使い方: node scripts/e2e-template.mjs [--packed]
  *   既定は手元の hono-kit を link: でつなぐ。--packed は pnpm pack した tgz を展開し、その中の CLI と dist で通す（npm に出す物そのもの）
+ *   node では、Workers でしか動かないもの（cloudflare: や hono-kit/worker を import するファイル）は写さない
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -16,7 +17,6 @@ const packed = args.includes("--packed");
 
 // シンボリックリンクを解いておく（/var → /private/var のような所で、pnpm の解決がずれないように）
 const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "hnk-e2e-")));
-const app = path.join(dir, "demo-app");
 
 const run = (command, args, cwd, env) => {
   console.log(`\n$ ${[command, ...args].join(" ")}`);
@@ -37,23 +37,30 @@ if (packed) {
   spec = `file:${path.join(dir, tgz)}`;
 }
 
-run("node", [cli, "init", app], dir, { HNK_SPEC: spec });
-// 作ったばかりの雛形が、そのままで通ること（create → install → check が最初に打つもの）。
-// 下で書き足したものは prettier --write で整えるので、雛形の書式の崩れはここでしか見えない
-run("pnpm", ["install"], app);
-// postinstall の hnk prepare で routes.gen.ts ができ、prepare を手で打たなくても型が通る
-run("pnpm", ["typecheck"], app);
-run("pnpm", ["check"], app);
-// アプリを書いた体で、テーブル（db/schema.ts）・route・型のテスト（*.typetest.ts。宣言と handler・client の型が
-// 合っているか）を写す。tsc が src の中を全部見るので、置くだけで確かめられる
-fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true });
-// 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
-fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true });
-// 依存は増えていないので、install をし直すと postinstall が走らない。写した route は prepare で拾う
-run("pnpm", ["hnk", "prepare"], app);
-run("pnpm", ["typecheck"], app);
-run("pnpm", ["db:generate"], app);
-run("pnpm", ["exec", "prettier", "--write", "."], app);
-run("pnpm", ["check"], app);
+const workersOnly = /from "(cloudflare:[\w-]+|hono-kit\/worker)"/;
 
-console.log(`\n通った（${app}）`);
+for (const template of ["workers", "node"]) {
+  const app = path.join(dir, `demo-${template}`);
+  const fits = (file) =>
+    template === "workers" || fs.statSync(file).isDirectory() || !workersOnly.test(fs.readFileSync(file, "utf8"));
+
+  run("node", [cli, "init", app, "--template", template], dir, { HNK_SPEC: spec });
+  // 作ったばかりの雛形が、そのままで通ること（create → install → check が最初に打つもの）。
+  // 下で書き足したものは prettier --write で整えるので、雛形の書式の崩れはここでしか見えない
+  run("pnpm", ["install"], app);
+  // postinstall の hnk prepare で routes.gen.ts ができ、prepare を手で打たなくても型が通る
+  run("pnpm", ["typecheck"], app);
+  run("pnpm", ["check"], app);
+  // アプリを書いた体で、テーブル（db/schema.ts）・route・型のテスト（*.typetest.ts。宣言と handler・client の型が
+  // 合っているか）を写す。tsc が src の中を全部見るので、置くだけで確かめられる
+  fs.cpSync(path.join(root, "scripts/e2e-src"), path.join(app, "src"), { recursive: true, filter: fits });
+  // 動かしたときの振る舞い（リダイレクトの行き先など）は、雛形の test/ の隣に置いて pnpm check のテストで回す
+  fs.cpSync(path.join(root, "scripts/e2e-test"), path.join(app, "test"), { recursive: true, filter: fits });
+  // 依存は増えていないので、install をし直すと postinstall が走らない。写した route は prepare で拾う
+  run("pnpm", ["hnk", "prepare"], app);
+  run("pnpm", ["typecheck"], app);
+  run("pnpm", ["db:generate"], app);
+  run("pnpm", ["exec", "prettier", "--write", "."], app);
+  run("pnpm", ["check"], app);
+  console.log(`\n${template} は通った（${app}）`);
+}

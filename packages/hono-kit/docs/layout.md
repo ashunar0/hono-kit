@@ -4,7 +4,8 @@ hono-kit fixes only the places below. How the rest of `src/` is split (domains, 
 
 | File                                  | Role                                                                                                     |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `src/main.ts`                         | The app's entry, like `main` in Go: `makeDeps` (exported; `c.var.deps` in handlers and middleware, `{ deps }` in jobs), `buildApp` and `createWorker` |
+| `src/main.ts`                         | The app's entry, like `main` in Go: `makeDeps` (exported; `c.var.deps` in handlers and middleware, `{ deps }` in jobs), `buildApp`, and on Workers `createWorker` |
+| `src/server.ts` (Node)                | Starts the server (`serve`), the timers for jobs, and the shutdown. Apart from `main.ts` so tests import the app without starting it |
 | `src/auth.ts`                         | `sessionUser(headers)`: who is signed in, read with the app's auth provider                              |
 | `src/db/index.ts`, `src/db/schema.ts` | The database driver, and the tables                                                                      |
 | `src/routes/`                         | The endpoints. The directory is the URL ([resources.md](resources.md))                                   |

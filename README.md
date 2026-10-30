@@ -22,6 +22,8 @@ cd my-app && pnpm install
 pnpm check
 ```
 
+`pnpm create hnk` asks which template: `workers` (Cloudflare Workers + D1) or `node` (Node + SQLite with libSQL). Pass `--template node` to skip the question (`pnpm create hnk my-app --template node`).
+
 `pnpm check` runs typecheck, lint, format check and tests, and lists all failures at the end. With AI, "make `pnpm check` pass" is the one instruction you need.
 
 ## The rules
@@ -30,7 +32,7 @@ The rules ship inside the package, so they match the installed version: start at
 
 ## Scope
 
-- Cloudflare Workers + D1 + Drizzle for now
+- Cloudflare Workers + D1, or Node + SQLite (libSQL), with Drizzle
 - Any Standard Schema library works for validation (tested with zod)
 - 0.x. The shape will change as it gets used in real products
 

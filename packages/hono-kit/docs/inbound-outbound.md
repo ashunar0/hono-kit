@@ -3,9 +3,9 @@
 ## cron
 
 - A job is a function that receives `{ deps, now }`. Put it where you like, for example `src/jobs/<name>.ts`
-- `src/main.ts`: `createWorker({ makeDeps, fetch: buildApp().fetch, scheduled: sendUnreadDigests })`
-- Off Workers (a timer in a Node server, a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
-- `wrangler.jsonc`: add `"triggers": { "crons": ["0 * * * *"] }`
+- On Workers, `src/main.ts`: `createWorker({ makeDeps, fetch: buildApp().fetch, scheduled: sendUnreadDigests })`, and in `wrangler.jsonc`: `"triggers": { "crons": ["0 * * * *"] }`
+- On Node, `src/server.ts`, with a cron library such as croner: `new Cron("0 * * * *", { protect: true }, (self) => runScheduled(sendUnreadDigests, { deps: makeDeps(), now: self.currentRun() ?? new Date() }))`. Call its `stop()` on shutdown
+- Anywhere else (a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
 - On Workers, `scheduled` also gets what Workers passes: `{ deps, now, controller, env, ctx }`. With several crons, tell them apart by `controller.cron`, as on plain Workers, and call each job with `{ deps, now }`: `scheduled: async ({ deps, now, controller }) => { if (controller.cron === "0 8 * * *") return sendUnreadDigests({ deps, now }); ... }`
 - Tests: call the job directly with `{ deps, now }` instead of going through `scheduled`
 

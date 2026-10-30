@@ -13,8 +13,13 @@ type MakeDeps = Register extends {
 
 export type RegisteredDeps = ReturnType<MakeDeps>;
 
-/** The bindings (D1, secrets, ...): what makeDeps takes */
-export type RegisteredBindings = Parameters<MakeDeps>[0];
+/**
+ * The bindings (D1, secrets, ...): what makeDeps takes.
+ * A makeDeps that takes nothing (on Node, where the database is opened once at startup) reads no bindings
+ */
+export type RegisteredBindings = Parameters<MakeDeps> extends [infer Bindings, ...unknown[]]
+  ? Bindings
+  : object;
 
 /**
  * What provideDeps puts in Hono's context: `c.var.deps`, in handlers and in middleware alike.
