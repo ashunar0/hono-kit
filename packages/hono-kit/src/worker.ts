@@ -1,6 +1,6 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
 import type { Result } from "./result.js";
-import type { CronContext, QueueContext } from "./entry.js";
+import type { Cron, CronContext, QueueContext } from "./entry.js";
 
 type Bindings = RegisteredEnv["Bindings"];
 
@@ -39,6 +39,8 @@ const missingDeps = () =>
 /**
  * The Workers entry point. HTTP goes to fetch, schedules to scheduled, queues to queue.
  *
+ * - crons (the list hnk prepare writes from src/crons) run on the schedule each declares: every cron whose schedule is
+ *   `controller.cron` runs, and a failure in one does not stop the others. `scheduled` is for writing it by hand instead
  * - deps are built once per call with makeDeps (provideDeps does the same for HTTP). Without makeDeps, jobs get no deps
  * - What Workers passes (controller or message, env, ctx) reaches the job too
  * - now comes from the event: the scheduled time for scheduled, the enqueue time for queue
@@ -53,25 +55,33 @@ export const createWorker = <Body = never>(options: {
     env: Bindings,
     ctx: ExecutionContext,
   ) => Response | Promise<Response>;
+  crons?: readonly Cron[];
   scheduled?: (context: WorkerCronContext) => Promise<void>;
   queue?: (
     context: WorkerQueueContext<Body>,
   ) => Promise<Result<unknown, string>>;
 }): ExportedHandler<Bindings, Body> => {
-  const { makeDeps, fetch, scheduled, queue } = options;
+  const { makeDeps, fetch, crons, scheduled, queue } = options;
   const depsOf = (env: Bindings) => makeDeps?.(env) ?? missingDeps();
 
   return {
     fetch,
-    ...(scheduled && {
+    ...((crons || scheduled) && {
       async scheduled(controller, env, ctx) {
-        await scheduled({
-          deps: depsOf(env),
-          now: new Date(controller.scheduledTime),
-          controller,
-          env,
-          ctx,
-        });
+        const deps = depsOf(env);
+        const now = new Date(controller.scheduledTime);
+        if (scheduled) await scheduled({ deps, now, controller, env, ctx });
+        if (!crons) return;
+
+        const due = crons.filter((cron) => cron.schedule === controller.cron);
+        // hnk prepare compares src/crons with wrangler.jsonc, so this is a trigger added by hand (the dashboard)
+        if (due.length === 0 && !scheduled)
+          throw new Error(`No cron in src/crons has the schedule "${controller.cron}"`);
+        const failed = (
+          await Promise.allSettled(due.map((cron) => cron.run({ deps, now })))
+        ).flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+        if (failed.length > 0)
+          throw new AggregateError(failed, `${failed.length} cron(s) failed for "${controller.cron}"`);
       },
     }),
     ...(queue && {

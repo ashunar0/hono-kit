@@ -58,3 +58,18 @@ it("queue: a job gets the message and its batch too, and its Result acks or retr
   await worker.queue!({ ...batch, queue: "exports" } as MessageBatch<number>, env, ctx);
   expect(done).toEqual(["ack a", "retry b", "retry a", "retry b"]);
 });
+
+it("crons: runs every cron whose schedule is the controller's, with now the scheduled time", async () => {
+  const { beats } = await import("#/crons/heartbeat");
+  const { crons } = await import("#/routes.gen");
+  beats.length = 0;
+  const worker = createWorker({ makeDeps, fetch: buildApp().fetch, crons });
+
+  await worker.scheduled!(controller("0 8 * * *"), env, ctx);
+
+  expect(beats).toEqual(["2026-10-01T08:00:00.000Z"]);
+  // A trigger with no cron (added by hand) fails, instead of running nothing quietly
+  await expect(worker.scheduled!(controller("0 9 * * *"), env, ctx)).rejects.toThrow(
+    'No cron in src/crons has the schedule "0 9 * * *"',
+  );
+});

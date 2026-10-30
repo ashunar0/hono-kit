@@ -2,12 +2,20 @@
 
 ## cron
 
-- A job is a function that receives `{ deps, now }`. Put it where you like, for example `src/jobs/<name>.ts`
-- On Workers, `src/main.ts`: `createWorker({ makeDeps, fetch: buildApp().fetch, scheduled: sendUnreadDigests })`, and in `wrangler.jsonc`: `"triggers": { "crons": ["0 * * * *"] }`
-- On Node, `src/server.ts`, with a cron library such as croner: `new Cron("0 * * * *", { protect: true }, (self) => runScheduled(sendUnreadDigests, { deps: makeDeps(), now: self.currentRun() ?? new Date() }))`. Call its `stop()` on shutdown
-- Anywhere else (a script run by an outside cron): call `runScheduled(sendUnreadDigests, { deps: makeDeps(env), now })` from `hono-kit`, with `now` the time the job was due, as `createWorker` does
-- On Workers, `scheduled` also gets what Workers passes: `{ deps, now, controller, env, ctx }`. With several crons, tell them apart by `controller.cron`, as on plain Workers, and call each job with `{ deps, now }`: `scheduled: async ({ deps, now, controller }) => { if (controller.cron === "0 8 * * *") return sendUnreadDigests({ deps, now }); ... }`
-- Tests: call the job directly with `{ deps, now }` instead of going through `scheduled`
+- One cron is one file, `src/crons/<name>.ts` (the name is its place: `src/crons/billing/monthly.ts` is `billing/monthly`). It exports `cron`:
+  ```ts
+  import { createCron } from "hono-kit";
+
+  export const cron = createCron({ schedule: "0 8 * * *" }, async ({ deps, now }) => {
+    // now is the time the run was due, not when it ran
+  });
+  ```
+- `schedule` is a cron expression in UTC, written as a string literal. Files starting with `_` and tests are not crons
+- `hnk prepare` lists them as `crons` in `src/routes.gen.ts`. The templates already run that list:
+  - Workers: `createWorker({ makeDeps, fetch: buildApp().fetch, crons })` in `src/main.ts`. Add each schedule to `"triggers": { "crons": [...] }` in `wrangler.jsonc` too: `hnk prepare` stops when the two differ (one edited without the other would quietly never run). It does not edit `wrangler.jsonc`
+  - Node: `startCrons(crons, { makeDeps })` from `hono-kit-node` in `src/server.ts`, which returns the function that stops them on shutdown. A run still going when the next is due makes that one skip; a failure is logged and the timer goes on
+- Tests: call `cron.run({ deps, now })`
+- On Workers, `createWorker({ scheduled })` still takes a hand-written handler with what Workers passes (`{ deps, now, controller, env, ctx }`), and `runScheduled(job, { deps, now })` runs a job from anywhere else (a script run by an outside cron)
 
 ## queue
 

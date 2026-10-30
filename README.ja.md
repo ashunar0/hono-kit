@@ -12,7 +12,7 @@
 AI にバックエンドを書かせると、URL とファイルの対応・失敗の返し方・権限の確かめ方が毎回少しずつ揺れる。
 hono-kit は形を先に決め、外れたものを止める。
 
-フレームワークでもプラットフォームでもない。素の Hono の上に薄く載るだけで、アプリに載る依存は `hono` だけ。ルーティングは [Void](https://void.cloud/guide/server-routing) の形を借りていて（`src/routes/` のディレクトリが URL）、hono-kit はその高さからビルド・デプロイ・インフラを抜いたもの。そのかわりに endpoint の書き方を型と lint で明示させる。
+フレームワークでもプラットフォームでもない。素の Hono の上に薄く載るだけで、アプリに載る依存は `hono` だけ（Node では cron のために `hono-kit-node` も）。ルーティングは [Void](https://void.cloud/guide/server-routing) の形を借りていて（`src/routes/` のディレクトリが URL）、hono-kit はその高さからビルド・デプロイ・インフラを抜いたもの。そのかわりに endpoint の書き方を型と lint で明示させる。
 
 ## 始め方
 

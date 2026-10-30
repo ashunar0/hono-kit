@@ -8,7 +8,7 @@
   },
   "scripts": {
     "postinstall": "hnk prepare",
-    "dev": "hnk prepare && tsx watch src/server.ts",
+    "dev": "node scripts/dev.mjs",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
@@ -25,6 +25,7 @@
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.1",
     "hono-kit": "__HNK_SPEC__",
+    "hono-kit-node": "__HNK_NODE_SPEC__",
     "zod": "^4.4.3"
   },
   "devDependencies": {

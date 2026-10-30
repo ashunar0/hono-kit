@@ -1,0 +1,53 @@
+{
+  "name": "hono-kit-node",
+  "version": "0.16.0",
+  "description": "Runs a hono-kit app's crons on Node (the Node side of hono-kit/worker).",
+  "license": "MIT",
+  "author": "ashunar0",
+  "homepage": "https://github.com/ashunar0/hono-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashunar0/hono-kit.git",
+    "directory": "packages/hono-kit-node"
+  },
+  "bugs": "https://github.com/ashunar0/hono-kit/issues",
+  "keywords": [
+    "hono",
+    "hono-kit",
+    "node",
+    "cron"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "croner": "^11.0.0"
+  },
+  "peerDependencies": {
+    "hono-kit": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "hono-kit": "workspace:^",
+    "typescript": "^7.0.2"
+  }
+}

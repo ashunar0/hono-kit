@@ -12,7 +12,7 @@ When it stops you it shows how to fix it, so AI can fix it on its own, and witho
 When AI writes a backend, the details drift every time: which file is which URL, how failures are returned, how access is checked.
 hono-kit fixes the shape up front and stops deviations.
 
-It is not a framework or a platform. It sits thinly on top of plain Hono, and what it puts into your app is `hono` only. The routing is borrowed from [Void](https://void.cloud/guide/server-routing) (directories under `src/routes/` are the URL). hono-kit stays at that height without the build, deploy and infrastructure, and instead makes each endpoint explicit with types and lint.
+It is not a framework or a platform. It sits thinly on top of plain Hono, and what it puts into your app is `hono` only (and on Node, `hono-kit-node` for the crons). The routing is borrowed from [Void](https://void.cloud/guide/server-routing) (directories under `src/routes/` are the URL). hono-kit stays at that height without the build, deploy and infrastructure, and instead makes each endpoint explicit with types and lint.
 
 ## Getting started
 

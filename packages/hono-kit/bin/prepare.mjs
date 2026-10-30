@@ -6,6 +6,9 @@
  *   _ で始まるファイルとディレクトリは読まない
  * - AppType: 全 endpoint の入力と応答。hc に渡す。チェーンせず、1 本ずつ & で並べる
  * - Register: src/main.ts の makeDeps を hono-kit に教える（deps と bindings の型はそこから）。アプリは書かない
+ * - crons: src/crons/**\/*.ts の `export const cron = createCron({ schedule: "..." }, ...)` の一覧。名前はファイルの場所。
+ *   wrangler.jsonc があれば triggers.crons と見比べ、ずれていたら止める（片方だけ直すと、黙って動かなくなるので）。
+ *   wrangler.jsonc は書き換えない
  *
  * export は oxc-parser で読む。読めないファイルや、endpoint の無い index.ts は、黙って抜かさず理由を出して止まる
  * （抜けたことに気づけないと、AI も人も直せないので）。--watch では止まらず、壊れている間は前の生成物のまま
@@ -84,6 +87,64 @@ const ENTRY_NAMES = ["index.ts", "index.tsx"];
 /** deps と bindings の型の出どころ。アプリの main.ts が makeDeps を export する */
 const MAIN = "main.ts";
 
+/** cron のファイル。_ で始まるものとテストは読まない（routes と同じ） */
+const isCronFile = (file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !path.basename(file).startsWith("_");
+
+/** `export const cron = createCron({ schedule: "..." }, ...)` の schedule。文字列で書いていなければ理由を積んで null */
+const scheduleOf = (file, problems) => {
+  const parsed = parseSync(file, fs.readFileSync(file, "utf8"));
+  for (const error of parsed.errors) problems.push(`${file}: ${error.message}`);
+  const declarators = parsed.program.body.flatMap((statement) =>
+    statement.type === "ExportNamedDeclaration" && statement.declaration?.type === "VariableDeclaration"
+      ? statement.declaration.declarations
+      : [],
+  );
+  const declarator = declarators.find((d) => d.id.type === "Identifier" && d.id.name === "cron");
+  if (!declarator) {
+    problems.push(`${file}: no cron export. Write export const cron = createCron({ schedule: "0 8 * * *" }, async ({ deps, now }) => { ... })`);
+    return null;
+  }
+  const call = declarator.init;
+  const schedule =
+    call?.type === "CallExpression" && call.callee.type === "Identifier" && call.callee.name === "createCron"
+      ? call.arguments[0]?.properties?.find((p) => p.key?.name === "schedule")?.value
+      : undefined;
+  if (schedule?.type !== "Literal" || typeof schedule.value !== "string") {
+    problems.push(`${file}: write the cron as createCron({ schedule: "<a string>" }, ...), so the schedule can be compared with wrangler.jsonc`);
+    return null;
+  }
+  return schedule.value;
+};
+
+/** JSONC（コメントと末尾のカンマ）を JSON として読む。文字列の中の // や , はそのまま */
+const parseJsonc = (text) =>
+  JSON.parse(
+    text
+      .replace(/("(?:\\.|[^"\\])*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g, (match, string) => string ?? "")
+      .replace(/("(?:\\.|[^"\\])*")|,(\s*[}\]])/g, (match, string, end) => string ?? end),
+  );
+
+/** src/crons と wrangler.jsonc の triggers.crons のずれ。wrangler.jsonc が無ければ（Node）見ない */
+const wranglerProblems = (src, crons) => {
+  const config = path.join(src, "..", "wrangler.jsonc");
+  if (!fs.existsSync(config)) return [];
+  let triggers;
+  try {
+    triggers = parseJsonc(fs.readFileSync(config, "utf8")).triggers?.crons ?? [];
+  } catch (error) {
+    return [`${config}: could not read it to compare with src/crons (${error.message})`];
+  }
+  const declared = new Set(crons.map((c) => c.schedule));
+  return [
+    ...[...declared]
+      .filter((schedule) => !triggers.includes(schedule))
+      .map((schedule) => `${config}: "${schedule}" (src/crons) is not in triggers.crons, so it never runs. Add it`),
+    ...triggers
+      .filter((schedule) => !declared.has(schedule))
+      .map((schedule) => `${config}: "${schedule}" in triggers.crons has no cron in src/crons. Remove it, or add the cron`),
+  ];
+};
+
 /** 生成するコード、または止める理由 */
 export const generate = (src) => {
   const routesDir = path.join(src, "routes");
@@ -136,6 +197,15 @@ export const generate = (src) => {
   problems.push(...clashes);
   endpoints.sort(byPath);
 
+  const cronsDir = path.join(src, "crons");
+  const cronFiles = fs.existsSync(cronsDir) ? filesIn(cronsDir).filter(isCronFile).sort() : [];
+  const crons = cronFiles.flatMap((file, i) => {
+    const schedule = scheduleOf(file, problems);
+    const name = path.relative(cronsDir, file).replace(/\.tsx?$/, "").split(path.sep).join("/");
+    return schedule === null ? [] : [{ name, schedule, module: `cron${i}` }];
+  });
+  problems.push(...wranglerProblems(src, crons));
+
   if (problems.length > 0) return { problems };
 
   const schemas = endpoints.map(
@@ -147,6 +217,7 @@ export const generate = (src) => {
     'import type { makeDeps } from "./main";',
     `import { registerEndpoint${endpoints.length > 0 ? ", type EndpointSchema" : ""} } from "hono-kit";`,
     ...routeFiles.map((file, i) => `import * as route${i} from "${importPath(file)}";`),
+    ...cronFiles.map((file, i) => `import * as cron${i} from "${importPath(file)}";`),
     "",
     "/** Every endpoint, static paths first. buildApp calls this once, after its middleware */",
     `export const registerRoutes = (${endpoints.length > 0 ? "app" : "_app"}: Parameters<typeof registerEndpoint>[0]) => {`,
@@ -155,6 +226,9 @@ export const generate = (src) => {
     "",
     "/** Every endpoint's input and responses. hc<AppType>(url) gives a typed client */",
     `export type AppType = Hono<{},${schemas.length > 0 ? `\n  ${schemas.join("\n  & ")}\n` : " {}"}>;`,
+    "",
+    "/** Every cron in src/crons, named by its file. createWorker({ crons }) on Workers, startCrons(crons) from hono-kit-node on Node */",
+    `export const crons = [${crons.map((c) => `\n  { name: "${c.name}", ...${c.module}.cron },`).join("")}${crons.length > 0 ? "\n" : ""}];`,
     "",
     "/** Tells hono-kit the app's deps and bindings, from makeDeps in src/main.ts */",
     'declare module "hono-kit" {',
@@ -195,9 +269,15 @@ export const prepare = ({ watch }) => {
   }
   writeRoutes(src);
   let timer;
-  fs.watch(path.join(src, "routes"), { recursive: true }, () => {
+  const again = () => {
     clearTimeout(timer);
     timer = setTimeout(() => writeRoutes(src), 50);
+  };
+  // crons は無い間は見張れないので、src ごと見て routes と crons の変更だけ拾う
+  const watched = [path.join(src, "routes"), path.join(src, "crons")];
+  fs.watch(src, { recursive: true }, (_, file) => {
+    if (file && watched.some((dir) => path.join(src, file).startsWith(dir))) again();
   });
-  console.log(`watching ${path.join(src, "routes")}`);
+  if (fs.existsSync("wrangler.jsonc")) fs.watch("wrangler.jsonc", again);
+  console.log(`watching ${watched.join(" and ")}`);
 };

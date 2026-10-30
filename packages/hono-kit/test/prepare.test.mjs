@@ -129,3 +129,68 @@ test("main.ts が makeDeps を export していなければ止まる", () => {
   assert.equal(problems.length, 1);
   assert.match(problems[0], /main\.ts: no makeDeps export/);
 });
+
+/** src/crons の下のファイルと、アプリの直下の wrangler.jsonc（null なら置かない） */
+const appWithCrons = (crons, wrangler = null) => {
+  const src = appWith({ "notes/index.ts": ENDPOINT });
+  for (const [file, text] of Object.entries(crons)) {
+    const full = path.join(src, "crons", file);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, text);
+  }
+  if (wrangler !== null) fs.writeFileSync(path.join(src, "..", "wrangler.jsonc"), wrangler);
+  return src;
+};
+
+const cronAt = (schedule) =>
+  `export const cron = createCron({ schedule: "${schedule}" }, async ({ deps, now }) => {});\n`;
+
+test("src/crons の cron を、ファイルの場所を名前にして並べる。_ とテストは読まない", () => {
+  const { code } = generate(
+    appWithCrons({
+      "sweep-orders.ts": cronAt("*/15 * * * *"),
+      "billing/monthly.ts": cronAt("0 0 1 * *"),
+      "_shared.ts": "export const x = 1;\n",
+      "sweep-orders.test.ts": "it();\n",
+    }),
+  );
+  assert.match(code, /\{ name: "billing\/monthly", \.\.\.cron0\.cron \}/);
+  assert.match(code, /\{ name: "sweep-orders", \.\.\.cron1\.cron \}/);
+  assert.doesNotMatch(code, /_shared|\.test/);
+});
+
+test("src/crons が無ければ crons は空", () => {
+  const { code } = generate(appWith({ "notes/index.ts": ENDPOINT }));
+  assert.match(code, /export const crons = \[\];/);
+});
+
+test("cron の export が無い、schedule が文字列でないファイルは止める", () => {
+  const { problems } = generate(
+    appWithCrons({
+      "a.ts": "export const job = 1;\n",
+      "b.ts": "const s = '0 8 * * *';\nexport const cron = createCron({ schedule: s }, async () => {});\n",
+    }),
+  );
+  assert.equal(problems.length, 2);
+  assert.match(problems[0], /a\.ts: no cron export/);
+  assert.match(problems[1], /b\.ts: write the cron as createCron\(\{ schedule: "<a string>" \}/);
+});
+
+test("wrangler.jsonc の triggers.crons と同じなら通す（コメントと末尾のカンマがあっても）", () => {
+  const wrangler = `{
+  // https://example.com/a//b
+  "name": "app", /* "crons": ["x"] */
+  "triggers": { "crons": ["*/15 * * * *",], },
+}`;
+  const result = generate(appWithCrons({ "sweep.ts": cronAt("*/15 * * * *") }, wrangler));
+  assert.ok("code" in result, result.problems?.join("\n"));
+});
+
+test("wrangler.jsonc とずれていたら、両方向とも止める", () => {
+  const { problems } = generate(
+    appWithCrons({ "sweep.ts": cronAt("*/15 * * * *") }, '{ "triggers": { "crons": ["0 8 * * *"] } }'),
+  );
+  assert.equal(problems.length, 2);
+  assert.match(problems[0], /"\*\/15 \* \* \* \*" \(src\/crons\) is not in triggers\.crons/);
+  assert.match(problems[1], /"0 8 \* \* \*" in triggers\.crons has no cron in src\/crons/);
+});

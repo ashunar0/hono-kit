@@ -2,7 +2,7 @@ import { createApp } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { sessionUser } from "./auth";
 import { wireDb } from "./db/index";
-import { registerRoutes } from "./routes.gen";
+import { crons, registerRoutes } from "./routes.gen";
 
 /** What handlers, middleware and jobs read in c.var.deps. Built per request; tests swap parts of it */
 export const makeDeps = (env: Env) => ({ db: wireDb(env.DB), sessionUser });
@@ -14,4 +14,5 @@ export const buildApp = (deps = makeDeps, clock?: () => Date) => {
   return app;
 };
 
-export default createWorker({ makeDeps, fetch: buildApp().fetch });
+// crons: the ones in src/crons, each on its schedule (listed in wrangler.jsonc triggers.crons too)
+export default createWorker({ makeDeps, fetch: buildApp().fetch, crons });

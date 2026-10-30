@@ -69,14 +69,17 @@ const init = async (target, template) => {
   const from = path.join(root, "templates", template ?? (await chooseTemplate()));
   fs.mkdirSync(dir, { recursive: true });
   const appName = path.basename(dir);
-  // 既定は npm に出ている同じ版。e2e は HNK_SPEC で手元の hono-kit（link: や file:）に差し替える
+  // 既定は npm に出ている同じ版。e2e は HNK_SPEC・HNK_NODE_SPEC で手元のもの（link: や file:）に差し替える
   const { version } = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const spec = process.env.HNK_SPEC ?? `^${version}`;
+  // hono-kit-node（node の雛形だけ）は hono-kit と同じ版で出す
+  const nodeSpec = process.env.HNK_NODE_SPEC ?? `^${version}`;
   for (const file of listFiles(from)) {
     const text = fs
       .readFileSync(path.join(from, file), "utf8")
       .replaceAll("__APP_NAME__", appName)
-      .replaceAll("__HNK_SPEC__", spec);
+      .replaceAll("__HNK_SPEC__", spec)
+      .replaceAll("__HNK_NODE_SPEC__", nodeSpec);
     // npm は .gitignore を公開物に入れないので、雛形では gitignore の名前で持つ
     write(path.join(dir, file === "gitignore" ? ".gitignore" : file), text);
   }

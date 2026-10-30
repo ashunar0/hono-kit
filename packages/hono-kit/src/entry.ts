@@ -22,3 +22,20 @@ export const runScheduled = (
   job: (context: CronContext) => Promise<void>,
   options: { deps: RegisteredDeps; now: Date },
 ): Promise<void> => job(options);
+
+/** A scheduled job declared in src/crons: when it runs, and what it does. hnk prepare lists them in routes.gen.ts */
+export type Cron = {
+  /** A cron expression ("0 8 * * *", every day at 8:00 UTC). A string literal, so hnk prepare can compare it with wrangler.jsonc */
+  schedule: string;
+  run: (context: CronContext) => Promise<void>;
+};
+
+/**
+ * `export const cron = createCron({ schedule: "0 8 * * *" }, async ({ deps, now }) => { ... })` in src/crons/<name>.ts.
+ * It only declares: createWorker({ crons }) runs it on Workers, startCrons(crons) from hono-kit-node on Node.
+ * Tests call `cron.run({ deps, now })`
+ */
+export const createCron = (
+  declaration: { schedule: string },
+  run: (context: CronContext) => Promise<void>,
+): Cron => ({ schedule: declaration.schedule, run });

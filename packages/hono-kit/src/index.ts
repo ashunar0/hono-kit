@@ -54,7 +54,13 @@ export {
   type AnyFailure,
   type HttpError,
 } from "./failure.js";
-export { type CronContext, type QueueContext, runScheduled } from "./entry.js";
+export {
+  createCron,
+  type Cron,
+  type CronContext,
+  type QueueContext,
+  runScheduled,
+} from "./entry.js";
 export { type ContentMap, type Rendered, type Renderer } from "./content.js";
 export {
   errorPage,
