@@ -25,16 +25,25 @@ export const uniqueViolationOf = (error: unknown): string | null => {
   return null;
 };
 
-/** A drizzle table with an `id` column and a whole-number `version` column, the one counted up */
+/** A drizzle table with a whole-number `version` column, the one counted up */
 type VersionedTable = {
-  id: unknown;
   version: unknown;
-  $inferSelect: { id: unknown; version: number };
+  $inferSelect: { version: number };
   $inferInsert: object;
 };
 
+/** The name of the table's primary key column (`id`, `bookId`, ...). A key over several columns has none */
+type PrimaryKeyOf<T extends VersionedTable> = Extract<
+  {
+    [K in keyof T]: T[K] extends { _: { isPrimaryKey: true } } ? K : never;
+  }[keyof T],
+  keyof T["$inferSelect"]
+>;
+
 /**
  * Optimistic locking: an update that writes the row only while its version is still the one read, and counts it up.
+ * `at` names the row by the table's primary key, whatever its name: `{ id, version }`, or `{ bookId, version }` for a
+ * table keyed by the book. Another column, or a table whose key spans several columns, does not type-check.
  * It returns the query, not run yet, as drizzle does: `const [row] = await updateWithVersion(...)`, or put it in
  * `db.batch([...])`. No row back means no row matched: someone changed it in between, or there is no such row.
  * Tell those apart before (read the row first and answer NOT_FOUND), so no row means a conflict.
@@ -43,22 +52,32 @@ type VersionedTable = {
  * db and table are taken by shape: drizzle's classes have private fields, so ones made by another copy of drizzle
  * (a linked hono-kit) would not match them as classes. The query's type comes from the app's own drizzle
  */
-export const updateWithVersion = <T extends VersionedTable, Query>(
+export const updateWithVersion = <
+  T extends VersionedTable,
+  Key extends PrimaryKeyOf<T>,
+  Query,
+>(
   db: {
     update(table: NoInfer<T>): {
       set(values: any): { where(condition: any): { returning(): Query } };
     };
   },
   table: T,
-  at: { id: T["$inferSelect"]["id"]; version: number },
-  set: Partial<Omit<T["$inferInsert"], "id" | "version">>,
+  at: { [K in Key]: T["$inferSelect"][K] } & { version: number },
+  set: Partial<Omit<T["$inferInsert"], Key | "version">>,
 ): Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]> => {
-  const id = table.id as SQLiteColumn;
+  const keys = Object.keys(at).filter((name) => name !== "version");
+  if (keys.length !== 1)
+    throw new Error(
+      `updateWithVersion: name the row by its primary key and version, got ${keys.join(", ")}`,
+    );
+  const [key] = keys as [Key];
+  const keyColumn = table[key] as SQLiteColumn;
   const version = table.version as SQLiteColumn;
   const query = db
     .update(table)
     .set({ ...set, version: sql`${version} + 1` })
-    .where(and(eq(id, at.id), eq(version, at.version)))
+    .where(and(eq(keyColumn, at[key]), eq(version, at.version)))
     .returning();
   // The query's own then gives drizzle's row type for a table it knows only by shape; the rows are the table's
   return query as Omit<Query, "then"> & PromiseLike<T["$inferSelect"][]>;

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { updateWithVersion } from "hono-kit/sqlite";
 import { expect, it } from "vitest";
-import { draftsTable } from "#/db/schema";
+import { draftsTable, seatsTable, shelvesTable } from "#/db/schema";
 import { db } from "./fixtures";
 
 it("updateWithVersion: updates while the version is the one read, and counts it up", async () => {
@@ -41,4 +41,24 @@ it("updateWithVersion: a table without a version column does not type-check", ()
   const plain = { id: draftsTable.id } as const;
   // @ts-expect-error the table needs a version column
   void (() => updateWithVersion(db(), plain, { id: "x", version: 1 }, {}));
+});
+
+it("updateWithVersion: names the row by the primary key, whatever its name", async () => {
+  const bookId = crypto.randomUUID();
+  await db().insert(shelvesTable).values({ bookId, count: 5, version: 0 });
+
+  const [row] = await updateWithVersion(db(), shelvesTable, { bookId, version: 0 }, { count: 8 });
+  const [stale] = await updateWithVersion(db(), shelvesTable, { bookId, version: 0 }, { count: 6 });
+
+  expect(row).toEqual({ bookId, count: 8, version: 1 });
+  expect(stale).toBeUndefined();
+});
+
+it("updateWithVersion: a column that is not the primary key, or a key over two columns, does not type-check", () => {
+  // @ts-expect-error id is not this table's primary key
+  void (() => updateWithVersion(db(), shelvesTable, { id: "x", version: 0 }, {}));
+  // @ts-expect-error body is not the primary key
+  void (() => updateWithVersion(db(), draftsTable, { body: "x", version: 0 }, {}));
+  // @ts-expect-error the key spans two columns
+  void (() => updateWithVersion(db(), seatsTable, { roomId: "r", version: 0 }, {}));
 });
