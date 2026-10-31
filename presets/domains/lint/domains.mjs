@@ -9,8 +9,7 @@ import path from "node:path";
 /** アプリの根から見たパス（src/domains/expense/usecases/editExpense.ts）。区切りは / */
 const relativeOf = (file, root) => path.relative(root, file).replace(/\\/g, "/");
 
-const isTest = (rel) =>
-  /\.(test|typetest|spec)\.tsx?$/.test(rel) || rel.endsWith("/_test-helpers.ts");
+const isTest = (rel) => /\.(test|typetest|spec)\.tsx?$/.test(rel);
 
 /**
  * ファイルの種類。domain なら { kind: "index" | "rules" | "queries" | "mutations" | "usecases" | "usecases-shared", domain }、

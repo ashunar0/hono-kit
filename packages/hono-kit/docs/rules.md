@@ -38,7 +38,7 @@ The rules every file keeps. Lint stops most of them; the rest are here.
 - **Lists**: a paged list uses these parts (whether a list is paged is up to the app): routes use `pageQuerySchema(filters)` / `pageResponseSchema(item)` / `pageResponse(page, map)` from `hono-kit`. The read takes a `PageQuery`, reads `limit + 1` rows and returns `toPage(...)` from `hono-kit/page`. The cursor compares with `lt` for a newest-first list and `gt` for an oldest-first one
 - **Module scope**: keep no changing values there (`let`, a `Map`, an array you push to). One Worker (or one Node process) serves concurrent requests, so it would be shared across them (`hnk/no-module-scope-state`). A dummy in tests that collects what was sent takes its array from the test
 - **Optional input**: `undefined` in input, `null` in the DB. Normalize with `?? null` before writing
-- **Tests**: use the real local database (D1, or an in-memory SQLite on Node). HTTP via `request(user, method, path, body, at)` from `test/fixtures.ts`; pass `at` whenever the answer depends on the date. The database is shared by the tests in a file, so a test that reads a list uses its own user (`someone()`), not `alice`
+- **Tests**: use the real local database (D1, or an in-memory SQLite on Node). HTTP via `request(user, method, path, body, at)` from `test/fixtures.ts`; pass `at` whenever the answer depends on the date. The database is shared by the tests in a file, so a test that reads a list uses its own user (`someone()`), not `alice`. Helpers that several tests share (a book with stock, a shipped order) go in `test/`, next to `fixtures.ts`, not in a resource's folder: other resources may not read it
 
 ## Do not
 
