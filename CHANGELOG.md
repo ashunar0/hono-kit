@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## Unreleased
+
+### Changed
+
+- `reply.success(body)` checks the body against the 200's schema (or the JSON schema of its formats) while it runs, and sends what the schema gives back. A key the schema does not have is left out, so a row passed as it is no longer sends its other columns. A body that does not match is a 500. The types already caught a wrong shape, but not a key too many or a value that only claims its type (`as`). Hono's `defineHandler` (v5) checks its `response` the same way
+
 ## 0.17.1
 
 ### Changed

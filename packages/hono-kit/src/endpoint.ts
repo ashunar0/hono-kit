@@ -452,6 +452,37 @@ const sendFormat = async (
   });
 };
 
+/** The schema the success body is checked with: the 200's schema, or the JSON schema of its formats. None for a file */
+const successSchema = (entry: unknown): AnySchema | undefined => {
+  if (isContentMap(entry)) {
+    const json = entry["application/json"];
+    return typeof json === "function" ? undefined : json;
+  }
+  if (typeof entry !== "object" || entry === null || isFile(entry)) return undefined;
+  if ("~standard" in entry) return entry as AnySchema;
+  const schema = (entry as { schema?: unknown }).schema;
+  return typeof schema === "object" && schema !== null && "~standard" in schema
+    ? (schema as AnySchema)
+    : undefined;
+};
+
+/**
+ * Checks the success body against the declaration while it runs, and returns what the schema gives back: a key the
+ * schema does not have (a password hash on a row passed as it is) is left out. The type sees neither a key too many
+ * nor a value that only claims its type (`as`), so a body that does not match is a bug in this app: 500
+ */
+const checkSuccess = async (schema: AnySchema, body: unknown, c: Context) => {
+  const checked = await schema["~standard"].validate(body);
+  if (checked.issues) {
+    const first = checked.issues[0];
+    const at = first?.path?.map((p) => (typeof p === "object" ? p.key : p)).join(".");
+    throw new Error(
+      `The 200 of ${c.req.method} ${routePath(c)} does not match its responses: ${first?.message}${at ? ` (at ${at})` : ""}`,
+    );
+  }
+  return checked.value;
+};
+
 /** Finds the failure for that code in the declaration, which knows its status and message */
 const findDeclaredFailure = (route: RouteConfig, code: string, c: Context) => {
   for (const [status, response] of Object.entries(route.responses)) {
@@ -502,8 +533,10 @@ export const buildEndpoint = <const C extends RouteConfig>(
     // Caches must keep one copy per Accept, or someone asking for HTML gets the JSON cached before
     if (formats.length > 1) c.header("Vary", "Accept", { append: true });
 
+    const schema = successSchema(success);
     const reply = {
-      success: (body: unknown) => {
+      success: async (given: unknown) => {
+        const body = schema ? await checkSuccess(schema, given, c) : given;
         if (isContentMap(success) && format !== undefined)
           return sendFormat(c, success, format, body);
         if (!isFile(success)) return c.json(body as never, 200);
