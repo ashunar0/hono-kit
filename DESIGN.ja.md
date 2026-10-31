@@ -27,10 +27,10 @@ hono-kit を作る側のメモ。決めたことの理由と、まだ決めて�
 - **依存は `createApp({ makeDeps })`**。Workers はリクエストをまたいだ I/O を拒むので、組み立てた結果ではなく組み立て方を渡す。要るのは実行環境とテスト（偽物を渡す）のためで、アーキテクチャのためではない。deps と bindings の型は、`hnk prepare` が `src/main.ts` の `makeDeps` から `Register` に書く
 - **名前は `create〜`**。Hono v5 は `define〜` に移るので、ぶつからない。endpoint は `createEndpoint`（hono-kit では route をリソースの意味で使うので、`createRoute` にはしない）
 - **一覧の上限は lint で求めない**。上限を付けるかは運用の判断で、付けなくても hono-kit の形は崩れない。1 つしか無いリソース（`/me/profile`）や、件数が別の所で決まる集計で、lint を黙らせる行が要る場面が続いた
+- **アーキテクチャは `presets/domains/` にファイルで置く**。npm には出さず、使うプロジェクトが写して持つ（shadcn と同じ）。決まりの文面がまだ動くので、パッケージにすると版を上げるたびに追いかけることになる
 
 ## 未決
 
 - 設定の形（`request: { param, query, json }`、応答はスキーマそのまま）は、使ってみて揺れたら見直す
-- アーキテクチャ（0.8.0 まであった domain・service・queries の規約）の行き先。別のプリセットにするか、捨てるか
 - `Result` を受け取らずに捨てたら止める lint（Go の errcheck にあたるもの）。実験ではまだ起きていないので、起きたら足す
 - この形で実プロダクトを書いてから、生成器とスキルに持ち帰る
