@@ -119,3 +119,18 @@ export const sameStatusMixed = createEndpoint(
       ? reply.failure({ code: "OVER_LIMIT", details: { limit: 3 } })
       : reply.failure("TAKEN"),
 );
+
+// docs の勧める書き方：errorResponses を宣言の中でじかに呼び、関数が err に入れた失敗をそのまま渡す。
+// （handler の中で code を文字で書くと、errorResponses をじかに呼んだときだけ TS が string に広げる。定数か err から渡す）
+const checkOver = (): Result<void, { code: typeof OverLimit.code; details: { limit: number } }> =>
+  err({ code: OverLimit.code, details: { limit: 3 } });
+
+export const sameStatusInline = createEndpoint(
+  { auth: allowAnonymous, responses: { 200: ok, ...errorResponses(Taken, OverLimit) } },
+  async (_c, reply) => {
+    const checked = checkOver();
+    if (!checked.ok) return reply.failure(checked.error);
+    if (Math.random() > 0.5) return reply.failure({ code: OverLimit.code, details: { limit: 3 } });
+    return reply.failure("TAKEN");
+  },
+);
