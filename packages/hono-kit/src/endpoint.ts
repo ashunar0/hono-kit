@@ -264,8 +264,41 @@ type AutoErrors<R> =
 /** Codes of the failures written by hand. The only ones reply.failure accepts */
 declare const DECLARED_BY_HAND: unique symbol;
 
+/** The failure bodies a response declares, or never when it is not a failure response */
+type ErrorBodyOf<X> = X extends { schema: infer S extends AnySchema }
+  ? InferOutput<S> extends { error: { code: string } }
+    ? InferOutput<S>
+    : never
+  : never;
+
+/**
+ * One status declared in both: failure responses are combined (each code keeps its own details), as mergeResponses
+ * does at runtime. An intersection here would mix the bodies, and a handler's code would be asked for details it has not
+ */
+type MergeResponse<X, Y> = [ErrorBodyOf<X>] extends [never]
+  ? X
+  : [ErrorBodyOf<Y>] extends [never]
+    ? X
+    : {
+        description: string;
+        schema: ReturnType<
+          typeof hnkSchema<ErrorBodyOf<X> | ErrorBodyOf<Y>, ErrorBodyOf<X> | ErrorBodyOf<Y>>
+        >;
+      };
+
+/** The type of mergeResponses: the handler's declarations (A) with the automatic ones (B) */
+type MergeResponses<A, B> = {
+  [K in keyof A | keyof B]: K extends keyof A
+    ? K extends keyof B
+      ? MergeResponse<A[K], B[K]>
+      : A[K]
+    : K extends keyof B
+      ? B[K]
+      : never;
+};
+
 type WithAutoErrors<R extends RouteConfig> = Omit<R, "responses"> & {
-  responses: R["responses"] & ErrorResponses<AutoErrors<R>>;
+  responses: MergeResponses<R["responses"], ErrorResponses<AutoErrors<R>>>;
   readonly [DECLARED_BY_HAND]?: {
     [S in keyof R["responses"]]: CodeOf<R, S>;
   }[keyof R["responses"]];

@@ -1,4 +1,5 @@
-import { createEndpoint, err, errorResponses, NotFound, type Result } from "hono-kit";
+import { createEndpoint, err, errorResponses, guard, NotFound, type Result } from "hono-kit";
+import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import { allowAnonymous } from "hono-kit";
 
@@ -87,4 +88,34 @@ export const detailsOnPlain = createEndpoint(
   { auth: allowAnonymous, responses: withDetails },
   // @ts-expect-error details を宣言していない失敗には渡せない
   async (_c, reply) => reply.failure({ code: "NOT_FOUND", details: {} }),
+);
+
+const Busy = { code: "BUSY", kind: "conflict", message: "Busy" } as const;
+const Taken = { code: "TAKEN", kind: "conflict", message: "Taken" } as const;
+const busyGuard = guard(
+  [Busy],
+  createMiddleware<{ Variables: { traceId: string } }>(async (_c, next) => next()),
+);
+
+// guard の失敗と handler の失敗が同じ status（どちらも 409）でも、handler は自分の失敗を返せる
+export const guardSameStatus = createEndpoint(
+  { auth: allowAnonymous, middleware: [busyGuard], responses: { 200: ok, ...errorResponses(Taken) } },
+  async (_c, reply) => reply.failure("TAKEN"),
+);
+
+export const guardFailureNotReturned = createEndpoint(
+  { auth: allowAnonymous, middleware: [busyGuard], responses: { 200: ok, ...errorResponses(Taken) } },
+  // @ts-expect-error BUSY は guard が返すもので、handler は返さない
+  async (_c, reply) => reply.failure("BUSY"),
+);
+
+// 同じ status（409）に details のある失敗と無い失敗が並んでも、それぞれの形で返せる
+const sameStatus = { 200: ok, ...errorResponses(Taken, OverLimit) };
+
+export const sameStatusMixed = createEndpoint(
+  { auth: allowAnonymous, responses: sameStatus },
+  async (_c, reply) =>
+    Math.random() > 0.5
+      ? reply.failure({ code: "OVER_LIMIT", details: { limit: 3 } })
+      : reply.failure("TAKEN"),
 );
