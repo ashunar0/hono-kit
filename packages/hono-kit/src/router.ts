@@ -1,7 +1,8 @@
 import { Hono, type MiddlewareHandler, type ToSchema } from "hono";
-import { validator } from "hono/validator";
 import { HTTPException } from "hono/http-exception";
+import type { Context } from "hono";
 import type { H, ParamKeys } from "hono/types";
+import { defineHandler } from "./define-handler.js";
 import {
   buildEndpoint,
   provideDeps,
@@ -28,24 +29,12 @@ import type {
 /** Attaches the declaration to the handler. The OpenAPI document is built by reading it from registered handlers */
 export const ROUTE: unique symbol = Symbol("hnk.route");
 
-/** Input validation. Anything that implements Standard Schema. Failures go to onError as ValidationError */
-const check = (
-  target: "param" | "query" | "header" | "cookie" | "json",
-  schema: AnySchema,
-) =>
-  validator(target, async (value) => {
-    const result = await schema["~standard"].validate(value);
-    if (result.issues) throw invalid(result.issues);
-
-    return result.value;
-  });
-
 /** application/json and application/*+json, with optional parameters (charset, ...) */
 const JSON_CONTENT_TYPE = /^application\/([a-z0-9.-]+\+)?json(\s*;.*)?$/i;
 
 /**
- * Rejects a body that is not declared as JSON. Without a JSON Content-Type, Hono does not read the body
- * and hands {} to the validator, so a schema whose fields are all optional would accept any body as {}
+ * Rejects a body that is not declared as JSON. Without a JSON Content-Type, the body is not read and the schema is
+ * handed {}, so a schema whose fields are all optional would accept any body as {}
  */
 const requireJsonBody: MiddlewareHandler = async (c, next) => {
   if (!JSON_CONTENT_TYPE.test(c.req.header("content-type") ?? "")) {
@@ -54,46 +43,35 @@ const requireJsonBody: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
+/** The requests whose handler has started: a 400 thrown after that is the handler's own, not the input's */
+const started = new WeakSet<Context>();
+
 /**
- * A body that is not JSON at all (`{not json`) makes Hono's validator throw its own HTTPException(400),
- * which onError would answer as INTERNAL. That is input the client got wrong, so it is a ValidationError,
- * the 400 every endpoint with input already declares. Only what is thrown before next() is converted:
- * a failure of the handler after it passes through as is
+ * defineHandler answers input it cannot read or that fails a schema with its own HTTPException(400). That is the
+ * ValidationError every endpoint with input already declares, with its fields, so it is turned into one. Only the
+ * first target that failed is reported (param → query → header → cookie → json), as each field is named in it
  */
 const asValidationError =
-  (middleware: MiddlewareHandler): MiddlewareHandler =>
+  (handler: H): H =>
   async (c, next) => {
-    let passed = false;
     try {
-      return await middleware(c, async () => {
-        passed = true;
-        await next();
-      });
+      return await handler(c, next);
     } catch (error) {
-      // Our own ValidationError (with its fields) passes as it is; only Hono's own 400 is converted
       if (
-        !passed &&
         error instanceof HTTPException &&
         !(error instanceof HnkError) &&
-        error.status === 400
-      )
-        throw invalid([{ message: error.message }]);
+        error.status === 400 &&
+        !started.has(c)
+      ) {
+        const failed = (error.cause as { issues?: { issues: StandardIssues }[] } | undefined)
+          ?.issues?.[0];
+        throw invalid(failed?.issues ?? [{ message: error.message }]);
+      }
       throw error;
     }
   };
 
-const validatorsOf = (route: RouteConfig) => {
-  const { param, query, header, cookie, json } = route.request ?? {};
-
-  return [
-    param && check("param", param),
-    query && check("query", query),
-    header && check("header", header),
-    cookie && check("cookie", cookie),
-    json && requireJsonBody,
-    json && asValidationError(check("json", json)),
-  ].filter((v): v is NonNullable<typeof v> => !!v);
-};
+type StandardIssues = Parameters<typeof invalid>[0];
 
 /**
  * The app's root, instead of `new Hono()`: `createApp({ makeDeps })` in src/main.ts.
@@ -155,15 +133,23 @@ export const createEndpoint = <const D extends EndpointDeclaration>(
 ): Endpoint<D> => {
   const config: D = checked;
   const [route, handler] = buildEndpoint(config as AsRoute<D>, fn);
-  const middleware = [route.auth, route.middleware ?? []].flat();
+  const { param, query, header, cookie, json } = route.request ?? {};
+  // auth and the route's middleware run first, then the input is validated, then the handler (Hono's defineHandler).
+  // Its `response` is not used: with it, the handler could not return a declared failure. reply checks the success
+  const middleware = [route.auth, route.middleware ?? [], json ? [requireJsonBody] : []].flat();
+  const defined = defineHandler({ param, query, header, cookie, json })(
+    ...middleware,
+    (c: Context) => {
+      started.add(c);
+      return (handler as (c: Context) => unknown)(c);
+    },
+  );
 
   // DECLARATION is a brand with no runtime value: nothing to assign, only to assert
   // rememberFormat goes first so that a failure thrown by auth or validation still knows it is for a page
   return [
     rememberFormat(route),
-    ...middleware,
-    ...validatorsOf(route),
-    Object.assign(handler, { [ROUTE]: route }),
+    Object.assign(asValidationError(defined as H), { [ROUTE]: route }),
   ] as unknown as Endpoint<D>;
 };
 

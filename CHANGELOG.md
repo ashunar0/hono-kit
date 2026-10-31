@@ -7,6 +7,7 @@ What changed in each version of hono-kit, and how to rewrite an app for what bre
 ### Changed
 
 - `reply.success(body)` checks the body against the 200's schema (or the JSON schema of its formats) while it runs, and sends what the schema gives back. A key the schema does not have is left out, so a row passed as it is no longer sends its other columns. A body that does not match is a 500. The types already caught a wrong shape, but not a key too many or a value that only claims its type (`as`). Hono's `defineHandler` (v5) checks its `response` the same way
+- Endpoints run on Hono v5's `defineHandler`: it validates the input and runs `auth` and the route's middleware before the handler. Until v5 is released, a copy of it lives in hono-kit (`src/define-handler.ts`). Answers do not change: a failed input is the same `VALIDATION_ERROR` with its fields
 
 ## 0.17.1
 

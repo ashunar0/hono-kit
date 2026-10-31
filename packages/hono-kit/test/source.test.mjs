@@ -61,6 +61,8 @@ const CASTS = {
   "openapi.ts": 1,
   // createEndpoint が返す配列に DECLARATION を型だけで載せる。実行時に持たせる値は無い印なので
   "router.ts": 1,
+  // Hono v5 の defineHandler を写したもの（v5 が出たら消す）。元のコードのまま触らない
+  "define-handler.ts": 3,
 };
 
 test("as never / as unknown as は、決めた場所と数だけ", () => {
