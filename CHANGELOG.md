@@ -2,6 +2,13 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## 0.17.1
+
+### Changed
+
+- The template's `pnpm check` no longer prints a warning from the type-aware lint about its own script (`scripts/check.mjs`)
+- The docs say how to create a row that may not exist yet with `version: 0` (`insert … onConflictDoNothing().returning()`, so two first edits at once are a conflict, not a 500), and that helpers several tests share go in `test/`
+
 ## 0.17.0
 
 ### Added
