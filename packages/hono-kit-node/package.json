@@ -1,6 +1,6 @@
 {
   "name": "hono-kit-node",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Runs a hono-kit app's crons on Node (the Node side of hono-kit/worker).",
   "license": "MIT",
   "author": "ashunar0",

@@ -2,6 +2,12 @@
 
 What changed in each version of hono-kit, and how to rewrite an app for what breaks. Versions before 0.6.0 are not listed.
 
+## 0.18.1
+
+### Fixed
+
+- When a guard and the handler both have a failure with the same status (a guard's `409` and the handler's own `409`), `reply.failure` in the handler no longer loses its type. The route's failures are now merged per status, as they already were at run time
+
 ## 0.18.0
 
 ### Changed
