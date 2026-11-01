@@ -1,6 +1,6 @@
 import { createCron } from "hono-kit";
 import { startCrons } from "hono-kit-node";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { makeDeps } from "#/main";
 
 it("startCrons runs a cron on its schedule with now the due time, and stops", async () => {
@@ -22,7 +22,8 @@ it("startCrons runs a cron on its schedule with now the due time, and stops", as
   expect(runs.length).toBe(ran);
 });
 
-it("a failing cron is logged, and the timer goes on", async () => {
+it("a failing cron is logged as one JSON line with its name, and the timer goes on", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
   let tries = 0;
   const failing = createCron({ schedule: "* * * * * *" }, async () => {
     tries++;
@@ -34,4 +35,11 @@ it("a failing cron is logged, and the timer goes on", async () => {
   stop();
 
   expect(tries).toBeGreaterThanOrEqual(2);
+  expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
+    level: "error",
+    kind: "unhandled",
+    cron: "failing",
+    schedule: "* * * * * *",
+  });
+  log.mockRestore();
 });

@@ -1,4 +1,5 @@
 import type { RegisteredDeps, RegisteredEnv } from "./register.js";
+import { logUnhandled } from "./log.js";
 import type { Result } from "./result.js";
 import type { Cron, CronContext, QueueContext } from "./entry.js";
 
@@ -102,7 +103,7 @@ export const createWorker = <Body = never>(options: {
             if (result.ok) message.ack();
             else message.retry();
           } catch (error) {
-            console.error("[queue] unhandled", error);
+            logUnhandled({ queue: batch.queue, message: message.id }, error);
             message.retry();
           }
         }

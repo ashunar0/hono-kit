@@ -25,7 +25,17 @@ export const startCrons = (
           name: cron.name,
           timezone: "UTC",
           protect: true,
-          catch: (error) => console.error(`[cron] ${cron.name} failed`, error),
+          // The same line as hono-kit's onError and queue: { level, kind, ...where, error }
+          catch: (error) =>
+            console.error(
+              JSON.stringify({
+                level: "error",
+                kind: "unhandled",
+                cron: cron.name,
+                schedule: cron.schedule,
+                error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+              }),
+            ),
         },
         async (self) => {
           await cron.run({ deps: options.makeDeps(), now: self.currentRun() ?? new Date() });

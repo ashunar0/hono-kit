@@ -4,6 +4,7 @@ import { routePath } from "hono/route";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorPageFor } from "./error-page.js";
 import type { Failure, FailureKind } from "./failures.js";
+import { logUnhandled } from "./log.js";
 import {
   hnkSchema,
   issue,
@@ -181,19 +182,13 @@ export const onError: ErrorHandler = async (error, c) => {
       : error instanceof HTTPException
         ? { code: "INTERNAL", status: error.status, message: error.message }
         : { code: "INTERNAL", status: 500, message: "Internal Server Error" };
-  if (!(error instanceof HTTPException)) {
-    // One JSON line, so the logs can be filtered by route and joined by the ray id
-    console.error(
-      JSON.stringify({
-        level: "error",
-        kind: "unhandled",
-        method: c.req.method,
-        route: routePath(c, -1),
-        ray: c.req.header("cf-ray") ?? null,
-        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
-      }),
+  // The route's shape (/invoices/:id) rather than the URL, so failures of one endpoint count together.
+  // -1 is the endpoint even when a middleware threw. The ray joins it to the request in the Workers logs
+  if (!(error instanceof HTTPException))
+    logUnhandled(
+      { method: c.req.method, route: routePath(c, -1), ray: c.req.header("cf-ray") ?? null },
+      error,
     );
-  }
 
   // An HTML request to a page gets the app's error page, if it has one
   const page = await errorPageFor(c, shown);

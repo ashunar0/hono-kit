@@ -1,7 +1,7 @@
 import { type CronContext, err, ok } from "hono-kit";
 import { createWorker } from "hono-kit/worker";
 import { env } from "cloudflare:workers";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { buildApp, makeDeps } from "#/main";
 
 const ctx = { waitUntil: () => {}, passThroughOnException: () => {} } as unknown as ExecutionContext;
@@ -57,6 +57,37 @@ it("queue: a job gets the message and its batch too, and its Result acks or retr
   // Another queue is told apart by batch.queue
   await worker.queue!({ ...batch, queue: "exports" } as MessageBatch<number>, env, ctx);
   expect(done).toEqual(["ack a", "retry b", "retry a", "retry b"]);
+});
+
+it("queue: a throw retries only that message, and is logged as one JSON line with the queue and the message id", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => {});
+  const done: string[] = [];
+  const message = (id: string) => ({
+    id,
+    body: 0,
+    attempts: 1,
+    timestamp: new Date(0),
+    ack: () => done.push(`ack ${id}`),
+    retry: () => done.push(`retry ${id}`),
+  });
+  const worker = createWorker<number>({
+    makeDeps,
+    fetch: buildApp().fetch,
+    queue: async ({ message }) => {
+      if (message.id === "a") throw new Error("boom");
+      return ok(undefined);
+    },
+  });
+
+  const batch = { queue: "mails", messages: [message("a"), message("b")] } as unknown as MessageBatch<number>;
+  await worker.queue!(batch, env, ctx);
+
+  expect(done).toEqual(["retry a", "ack b"]);
+  expect(log).toHaveBeenCalledTimes(1);
+  const line = JSON.parse(String(log.mock.calls[0]?.[0]));
+  expect(line).toMatchObject({ level: "error", kind: "unhandled", queue: "mails", message: "a" });
+  expect(line.error).toContain("boom");
+  log.mockRestore();
 });
 
 it("crons: runs every cron whose schedule is the controller's, with now the scheduled time", async () => {
