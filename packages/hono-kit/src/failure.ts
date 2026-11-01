@@ -1,5 +1,6 @@
 import type { ErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { routePath } from "hono/route";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorPageFor } from "./error-page.js";
 import type { Failure, FailureKind } from "./failures.js";
@@ -180,7 +181,19 @@ export const onError: ErrorHandler = async (error, c) => {
       : error instanceof HTTPException
         ? { code: "INTERNAL", status: error.status, message: error.message }
         : { code: "INTERNAL", status: 500, message: "Internal Server Error" };
-  if (!(error instanceof HTTPException)) console.error("[unhandled]", error);
+  if (!(error instanceof HTTPException)) {
+    // One JSON line, so the logs can be filtered by route and joined by the ray id
+    console.error(
+      JSON.stringify({
+        level: "error",
+        kind: "unhandled",
+        method: c.req.method,
+        route: routePath(c, -1),
+        ray: c.req.header("cf-ray") ?? null,
+        error: error instanceof Error ? (error.stack ?? error.message) : String(error),
+      }),
+    );
+  }
 
   // An HTML request to a page gets the app's error page, if it has one
   const page = await errorPageFor(c, shown);
