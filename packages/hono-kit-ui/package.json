@@ -1,0 +1,45 @@
+{
+  "name": "hono-kit-ui",
+  "version": "0.0.0",
+  "description": "Pages for a hono-kit app: islands, forms and moving between pages without loading them, on hono/jsx.",
+  "license": "MIT",
+  "author": "ashunar0",
+  "homepage": "https://github.com/ashunar0/hono-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashunar0/hono-kit.git",
+    "directory": "packages/hono-kit-ui"
+  },
+  "bugs": "https://github.com/ashunar0/hono-kit/issues",
+  "keywords": ["hono", "hono-kit", "jsx", "islands"],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./client": "./src/client/index.ts",
+    "./vite": "./src/vite.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "./client": { "types": "./dist/client/index.d.ts", "default": "./dist/client/index.js" },
+      "./vite": { "types": "./dist/vite.d.ts", "default": "./dist/vite.js" },
+      "./package.json": "./package.json"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "prepack": "pnpm build"
+  },
+  "peerDependencies": {
+    "hono": "^4.13.1",
+    "vite": ">=8"
+  },
+  "devDependencies": {
+    "hono": "^4.13.14",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
