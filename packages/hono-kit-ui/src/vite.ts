@@ -9,8 +9,15 @@
  * - The browser's script (client, default src/client.tsx) is built as /static/client.js, without a hash,
  *   so a layout can name it: import.meta.env.DEV ? "/src/client.tsx" : "/static/client.js"
  * - JSX is hono/jsx (Vite does not read tsconfig's jsxImportSource), and hono is one copy (dedupe)
+ * - In the browser hono/jsx is hono/jsx/dom, so the code that renders to a string is not sent
  */
 import type { Plugin } from "vite";
+
+const BROWSER_JSX: Record<string, string> = {
+  "hono/jsx": "hono/jsx/dom",
+  "hono/jsx/jsx-runtime": "hono/jsx/dom/jsx-runtime",
+  "hono/jsx/jsx-dev-runtime": "hono/jsx/dom/jsx-dev-runtime",
+};
 
 export const honoKitUi = ({ client = "src/client.tsx" }: { client?: string } = {}): Plugin[] => {
   let src = "";
@@ -28,6 +35,15 @@ export const honoKitUi = ({ client = "src/client.tsx" }: { client?: string } = {
           },
         },
       }),
+    },
+    {
+      name: "hono-kit-ui:browser-jsx",
+      enforce: "pre",
+      resolveId(id, importer, options) {
+        const target = BROWSER_JSX[id];
+        if (target === undefined || this.environment.config.consumer !== "client") return;
+        return this.resolve(target, importer, { ...options, skipSelf: true });
+      },
     },
     {
       name: "hono-kit-ui:islands",
